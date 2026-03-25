@@ -6,7 +6,7 @@ WORKDIR /app
 # Copy only the manifest files first — layer is cached until deps change
 COPY Project.toml Manifest.toml ./
 
-RUN julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+RUN julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile(exclude=["Krill"])'
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM julia:1.12.4-bookworm
