@@ -17,6 +17,13 @@ spec:
       timeoutSeconds: 300
       containers:
         - image: us-central1-docker.pkg.dev/fleet-anagram-244304/krill/krill:latest
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
           resources:
             limits:
               cpu: "1"

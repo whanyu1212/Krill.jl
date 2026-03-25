@@ -23,8 +23,14 @@ COPY bin/ bin/
 COPY context/ context/
 COPY krill.toml krill.toml
 
-# Precompile Krill itself (not just deps) — reduces first-request latency
-RUN julia --project=. -e 'using Krill'
+# Precompile Krill and warm up hot code paths
+RUN julia --project=. -e ' \
+    using Krill; \
+    using HTTP; \
+    using JSON3; \
+    # Force compilation of config loading path \
+    try; load_config(config_path="krill.toml", project_root="."); catch _; end; \
+    '
 
 ENV PORT=8080
 
