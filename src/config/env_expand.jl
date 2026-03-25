@@ -5,7 +5,7 @@ Replace `\$VAR` references in a string with their values from `ENV`.
 Unset variables are left as-is.
 """
 expand_env(s::AbstractString) =
-    replace(s, r"\$([A-Z_][A-Z0-9_]*)" => m -> get(ENV, m[2:end], m))
+    replace(s, r"\$([A-Z_][A-Z0-9_]*)" => m -> get(ENV, m[2:end], ""))
 expand_env(x) = x
 
 """

@@ -21,14 +21,12 @@ COPY --from=deps /app /app
 COPY src/ src/
 COPY bin/ bin/
 COPY context/ context/
-COPY krill.toml.example krill.toml.example
+COPY krill.toml krill.toml
 
 # Precompile Krill itself (not just deps) — reduces first-request latency
 RUN julia --project=. -e 'using Krill'
 
-# Cloud Run injects PORT env var; Krill reads it for the webhook listener
 ENV PORT=8080
 
-# krill.toml is NOT baked in — mount it or supply secrets via env vars
-# data_dir is mounted from GCS at /data at runtime
+# Secrets come from Cloud Run env vars; $VAR expansion happens at startup
 CMD ["julia", "--project=.", "--threads=auto", "bin/krill.jl"]

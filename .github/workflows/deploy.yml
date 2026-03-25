@@ -49,9 +49,12 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          # Inject the image SHA into cloudrun.yaml and deploy
-          sed "s|${{ env.IMAGE }}:latest|${{ env.IMAGE }}:${{ github.sha }}|" cloudrun.yaml \
-            | gcloud run services replace - --region ${{ env.REGION }}
+          sed -e "s|${{ env.IMAGE }}:latest|${{ env.IMAGE }}:${{ github.sha }}|" \
+              -e "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|" \
+              -e "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|" \
+              -e "s|__GEMINI_API_KEY__|${{ secrets.GEMINI_API_KEY }}|" \
+              -e "s|__GH_PAT__|${{ secrets.GH_PAT }}|" \
+              cloudrun.yaml | gcloud run services replace - --region ${{ env.REGION }}
 
       - name: Show service URL
         run: |

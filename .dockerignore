@@ -1,5 +1,4 @@
-# Secrets — never bake into image
-krill.toml
+# Secrets
 .env
 
 # Dev/test artifacts
