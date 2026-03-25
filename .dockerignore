@@ -9,7 +9,6 @@ notes/
 refs/
 scripts/
 examples/
-Manifest*.toml
 *.jl.cov
 *.jl.mem
 
