@@ -219,7 +219,7 @@ gh api search/repositories?q=QUERY --jq '.items[0:5] | .[].full_name'
 - `cron_add` schedules a recurring or one-shot task. The prompt fires as if a user sent it.
 - Schedule types:
   - `at` — one-shot at an ISO datetime (e.g., `2026-03-25T09:00:00`)
-  - `every` — recurring interval (e.g., `30s`, `5m`, `2h`)
+  - `every` or `interval` — recurring interval (e.g., `30s`, `5m`, `2h`)
   - `cron` — standard 5-field cron expression (e.g., `0 9 * * 1-5` for weekdays at 9am)
 - Channel, session_key, and chat_id are auto-detected from the current conversation.
 - Use `cron_list` to see all jobs with status, fire count, and last fired time.

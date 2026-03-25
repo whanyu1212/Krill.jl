@@ -44,7 +44,5 @@ build/
 refs/
 notes/
 
-# Personal context files — copy from *.example and fill in your details
-context/USER.md
-context/AGENTS.md
+# Personal context files
 AGENTS.md

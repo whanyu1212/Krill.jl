@@ -89,12 +89,12 @@ function parse_schedule(type::AbstractString, value::AbstractString)::Schedule
     if t == "at"
         dt = DateTime(strip(value), dateformat"yyyy-mm-ddTHH:MM:SS")
         return AtSchedule(dt)
-    elseif t == "every"
+    elseif t == "every" || t == "interval"
         return IntervalSchedule(_parse_interval(value))
     elseif t == "cron"
         return parse_cron(value)
     else
-        throw(ArgumentError("Unknown schedule type: $type (expected at, every, or cron)"))
+        throw(ArgumentError("Unknown schedule type: $type (expected at, every/interval, or cron)"))
     end
 end
 
