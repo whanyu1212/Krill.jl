@@ -6,8 +6,8 @@ test/
 docs/
 notes/
 refs/
-scripts/
 examples/
+build/
 *.jl.cov
 *.jl.mem
 

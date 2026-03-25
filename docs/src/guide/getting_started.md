@@ -154,32 +154,7 @@ publish_outbound!(hub, reply)
 
 The full `RuntimeState` constructor packages that wiring for you and adds sessions, prompt context, tools, MCP, memory, cron, and subagents.
 
-## 7. Deployment
-
-Krill runs anywhere Julia runs — a local machine, a VPS, or a container platform. A `Dockerfile` is included for containerized deployments, and a GitHub Actions workflow (`.github/workflows/deploy.yml`) handles automated deploy to Google Cloud Run.
-
-### Cloud Run Notes
-
-Cloud Run expects the container to listen on a port for health checks. Krill starts a minimal HTTP health server on the `PORT` environment variable (set automatically by Cloud Run). Locally, `PORT` is unset and the health server is skipped.
-
-#### Julia Startup Time (JIT / TTFX)
-
-Julia's just-in-time compiler can cause slow container startup. On a fresh Cloud Run instance, the first call to `load_config` and `start_agent!` triggers JIT compilation of many code paths. If this takes too long, Cloud Run terminates the container before the agent starts.
-
-Mitigations applied in this project:
-
-- **Precompile workload in Dockerfile** — the build step calls `load_config(...)` during `docker build`, forcing compilation of hot paths into the precompile cache. This reduces runtime startup from ~60s to ~5-10s.
-- **Startup CPU boost** — `run.googleapis.com/startup-cpu-boost: "true"` in `cloudrun.yaml` gives the container extra CPU during startup, speeding up JIT.
-- **Custom startup probe** — the startup probe in `cloudrun.yaml` allows up to 310 seconds before marking the container as unhealthy, giving Julia enough time to compile on first deploy.
-- **Memory limit** — set to 2Gi. Julia's compiler is memory-hungry; 512Mi is not enough for the initial JIT pass.
-
-If startup time becomes a recurring problem, consider using [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl) to build a sysimage with all of Krill's code ahead-of-time compiled. This reduces cold start to 1-2 seconds at the cost of longer Docker builds (~5-10 min) and a larger image (~500MB).
-
-### Persistent Storage
-
-Session data, memory, and cron state are written to `data_dir` (configurable in `krill.toml`, defaults to `~/.krill`). For stateless container deployments, mount a persistent volume at that path. The included Cloud Run config mounts a GCS bucket via GCS FUSE at `/data` and sets `KRILL_DATA_DIR=/data`.
-
-## 8. What to Read Next
+## 7. What to Read Next
 
 - Use [Configuration](configuration.md) to understand environment overrides and workspace behavior
 - Use [Features](features.md) for a capability map

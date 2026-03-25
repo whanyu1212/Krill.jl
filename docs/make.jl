@@ -24,6 +24,7 @@ makedocs(;
             "Architecture" => "guide/architecture.md",
             "Features" => "guide/features.md",
             "Security" => "guide/security.md",
+            "Deployment" => "guide/deployment.md",
         ],
         "Examples" => [
             "Runnable Example" => "examples/telegram.md",

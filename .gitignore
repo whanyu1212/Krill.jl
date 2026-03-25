@@ -37,6 +37,9 @@ node_modules/
 .env
 *.json
 
+# Build artifacts (sysimage)
+build/
+
 # Custom ignored folders
 refs/
 notes/
