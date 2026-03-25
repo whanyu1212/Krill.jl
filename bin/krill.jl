@@ -36,7 +36,16 @@ end
 
 # -- Load & run --------------------------------------------------------------
 
-config = load_config(config_path=config_path,
-                     project_root=joinpath(@__DIR__, ".."))
+@info "Loading config" path=config_path
+
+config = try
+    load_config(config_path=config_path,
+                project_root=joinpath(@__DIR__, ".."))
+catch e
+    @error "Failed to load config" exception=(e, catch_backtrace())
+    rethrow()
+end
+
+@info "Starting agent" channels=length(config.channels) provider=string(typeof(config.provider))
 
 start_agent!(config)
