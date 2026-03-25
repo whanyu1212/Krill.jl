@@ -12,6 +12,7 @@ spec:
         autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/cpu-throttling: "false"
     spec:
       serviceAccountName: hy-408@fleet-anagram-244304.iam.gserviceaccount.com
       timeoutSeconds: 900
@@ -24,6 +25,13 @@ spec:
             initialDelaySeconds: 0
             periodSeconds: 10
             failureThreshold: 60
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            periodSeconds: 30
+            failureThreshold: 3
             timeoutSeconds: 5
           resources:
             limits:
