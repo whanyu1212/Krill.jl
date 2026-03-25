@@ -11,6 +11,20 @@ using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 
 using Krill
+using HTTP
+
+# -- Health check server (for Cloud Run) ------------------------------------
+
+const HEALTH_PORT = parse(Int, get(ENV, "PORT", "0"))
+
+if HEALTH_PORT > 0
+    Threads.@spawn begin
+        HTTP.serve("0.0.0.0", HEALTH_PORT) do req
+            HTTP.Response(200, "ok")
+        end
+    end
+    @info "Health check listening" port=HEALTH_PORT
+end
 
 # -- CLI args ----------------------------------------------------------------
 

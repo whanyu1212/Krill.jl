@@ -11,6 +11,7 @@ spec:
         autoscaling.knative.dev/minScale: "1"
         autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: "true"
     spec:
       serviceAccountName: hy-408@fleet-anagram-244304.iam.gserviceaccount.com
       timeoutSeconds: 300
@@ -19,7 +20,7 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 2Gi
           env:
             - name: TELEGRAM_BOT_TOKEN
               value: __TELEGRAM_BOT_TOKEN__
