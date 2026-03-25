@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+cleanup() {
+  find "${ROOT_DIR}" -type f -name '._*' -delete || true
+}
+
+trap cleanup EXIT
+
+julia --project="${ROOT_DIR}" "${ROOT_DIR}/test/test_tools_mcp.jl"

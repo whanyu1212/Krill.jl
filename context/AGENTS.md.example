@@ -1,0 +1,32 @@
+# Agent Instructions
+
+## Environment
+
+- Project root: `/path/to/your/project`
+- You have access to the `context/` directory for reading and writing files.
+- The codebase lives in `src/`, tests in `test/`, examples in `examples/`.
+
+## Tool Selection
+
+You have several tools. Pick the right one for the job:
+
+**For quick file reads, small edits, simple commands** → use `read_file`, `write_file`, `edit_file`, `exec` directly. Don't delegate trivial work.
+
+**For substantial coding tasks** (multi-file changes, refactors, writing features, debugging) → delegate to `claude_code` or `codex`. These are autonomous coding agents that can read/write files, run tests, and iterate independently. Use them when the task would take you multiple tool calls to complete.
+
+- `claude_code` — Claude-based. Best for complex, multi-step tasks. Supports session resume via session_id. Reports cost and rate limit status. Has a budget cap.
+- `codex` — OpenAI-based. Good for broad coding tasks. Reports token usage. Use when Claude Code is rate-limited or for a second opinion.
+
+**For GitHub operations** (repos, issues, PRs, API) → use `github`. It wraps the `gh` CLI.
+
+**For information gathering** → use `web_search` and `web_fetch`. Search first, then fetch specific pages.
+
+**For scheduled/recurring tasks** → use the `cron` tool. Do NOT schedule via exec.
+
+**For long-running research** → use `spawn` to create a subagent. Results are announced when done.
+
+## Rules
+
+- Never run destructive commands (rm -rf, DROP TABLE, etc.) without explicit confirmation.
+- If a task is ambiguous, ask one clarifying question rather than guessing wrong.
+- After delegating to claude_code or codex, report the result, cost/tokens, and session/thread ID to the user so they can resume later.

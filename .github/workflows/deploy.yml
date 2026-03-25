@@ -1,0 +1,60 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+env:
+  PROJECT_ID: fleet-anagram-244304
+  REGION: us-central1
+  SERVICE_NAME: krill
+  IMAGE: us-central1-docker.pkg.dev/fleet-anagram-244304/krill/krill
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Ensure Artifact Registry repository exists
+        run: |
+          gcloud artifacts repositories describe krill \
+            --location=${{ env.REGION }} --quiet 2>/dev/null || \
+          gcloud artifacts repositories create krill \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="Krill agent Docker images"
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push image
+        run: |
+          docker build -t ${{ env.IMAGE }}:${{ github.sha }} -t ${{ env.IMAGE }}:latest .
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          # Inject the image SHA into cloudrun.yaml and deploy
+          sed "s|${{ env.IMAGE }}:latest|${{ env.IMAGE }}:${{ github.sha }}|" cloudrun.yaml \
+            | gcloud run services replace - --region ${{ env.REGION }}
+
+      - name: Show service URL
+        run: |
+          gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format "value(status.url)"
