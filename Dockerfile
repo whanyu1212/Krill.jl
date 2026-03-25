@@ -1,8 +1,10 @@
 # ── Stage 1: build sysimage with PackageCompiler ─────────────────────────────
 FROM julia:1.12.4-bookworm AS builder
 
-# Node.js — needed for MCP stdio servers (npx) during precompile
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+# Build tools (gcc for PackageCompiler) + Node.js (for MCP during precompile)
+RUN apt-get update && \
+    apt-get install -y gcc && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
