@@ -1,0 +1,22 @@
+# Secrets — never bake into image
+krill.toml
+.env
+
+# Dev/test artifacts
+test/
+docs/
+notes/
+refs/
+scripts/
+examples/
+Manifest*.toml
+*.jl.cov
+*.jl.mem
+
+# macOS junk
+.DS_Store
+._*
+
+# Git
+.git/
+.gitignore

@@ -1,0 +1,55 @@
+.jldocstring.custom-block {
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-1);
+  overflow: hidden;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--vp-c-bg-soft) 82%, transparent);
+}
+
+.jldocstring.custom-block summary {
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  margin: 0 0 8px;
+}
+
+.jldocstring.custom-block summary a {
+  pointer-events: none;
+  text-decoration: none;
+}
+
+.jldocstring.custom-block .source-link {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 999px;
+  text-decoration: none;
+  background-color: color-mix(in srgb, var(--vp-c-bg-elv) 90%, transparent);
+  float: right;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: all 0.25s ease;
+  padding: 0.1rem 0.35rem;
+}
+
+.jldocstring.custom-block .source-link a {
+  text-decoration: none;
+  color: var(--vp-c-text-2);
+}
+
+.jldocstring.custom-block .source-link a:hover {
+  text-decoration: underline;
+}
+
+.jldocstring.custom-block:hover .source-link {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .jldocstring.custom-block .source-link {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}

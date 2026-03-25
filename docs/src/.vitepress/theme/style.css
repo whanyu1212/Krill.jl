@@ -1,0 +1,387 @@
+:root {
+  --krill-ink: #14233b;
+  --krill-paper: #f6efe5;
+  --krill-blue: #4063d8;
+  --krill-red: #cb3c33;
+  --krill-green: #389826;
+  --krill-gold: #c58d16;
+
+  --vp-c-brand-1: var(--krill-blue);
+  --vp-c-brand-2: #2f55d4;
+  --vp-c-brand-3: #2344af;
+  --vp-c-brand-soft: rgba(64, 99, 216, 0.14);
+
+  --vp-font-family-base: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --vp-font-family-mono: 'JuliaMono', 'IBM Plex Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(
+    118deg,
+    var(--krill-red) 10%,
+    var(--krill-blue) 52%,
+    var(--krill-green) 100%
+  );
+  --vp-home-hero-image-background-image:
+    radial-gradient(circle at 18% 18%, rgba(64, 99, 216, 0.22), transparent 38%),
+    radial-gradient(circle at 82% 8%, rgba(203, 60, 51, 0.18), transparent 32%),
+    radial-gradient(circle at 70% 82%, rgba(56, 152, 38, 0.17), transparent 40%);
+  --vp-home-hero-image-filter: blur(64px);
+
+  --vp-button-brand-border: var(--vp-c-brand-1);
+  --vp-button-brand-text: var(--vp-c-white);
+  --vp-button-brand-bg: var(--vp-c-brand-1);
+  --vp-button-brand-hover-border: var(--vp-c-brand-2);
+  --vp-button-brand-hover-text: var(--vp-c-white);
+  --vp-button-brand-hover-bg: var(--vp-c-brand-2);
+}
+
+.dark {
+  --vp-c-brand-1: #82a0ff;
+  --vp-c-brand-2: #9ab1ff;
+  --vp-c-brand-3: #b2c4ff;
+  --vp-c-brand-soft: rgba(130, 160, 255, 0.16);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(64, 99, 216, 0.06), transparent 28%),
+    radial-gradient(circle at top right, rgba(203, 60, 51, 0.05), transparent 24%),
+    linear-gradient(180deg, rgba(246, 239, 229, 0.55), transparent 12rem);
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(64, 99, 216, 0.13), transparent 30%),
+    radial-gradient(circle at top right, rgba(56, 152, 38, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(20, 35, 59, 0.45), transparent 15rem);
+}
+
+.VPHero .name,
+.VPHero .text,
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc .custom-block-title {
+  letter-spacing: -0.02em;
+}
+
+.VPHero .text {
+  max-width: 12ch;
+}
+
+.VPHero .tagline {
+  max-width: 42rem;
+}
+
+.VPFeature {
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-divider) 72%, transparent);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.48));
+  box-shadow: 0 18px 40px -34px rgba(20, 35, 59, 0.45);
+}
+
+.dark .VPFeature {
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.65), rgba(15, 23, 42, 0.54));
+}
+
+.doc-section {
+  margin: 2.5rem 0;
+}
+
+.doc-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1.25rem 0 1.75rem;
+}
+
+.doc-card {
+  padding: 1.15rem 1.15rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--vp-c-divider);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 252, 0.72));
+  box-shadow: 0 16px 34px -30px rgba(15, 23, 42, 0.48);
+}
+
+.dark .doc-card {
+  background:
+    linear-gradient(180deg, rgba(30, 41, 59, 0.74), rgba(15, 23, 42, 0.65));
+}
+
+.doc-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+}
+
+.doc-card p:last-child,
+.doc-card ul:last-child {
+  margin-bottom: 0;
+}
+
+a.doc-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 20px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+a.doc-card-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 40px -28px rgba(15, 23, 42, 0.55);
+}
+
+a.doc-card-link:hover .doc-card {
+  border-color: var(--vp-c-brand-1);
+}
+
+a.doc-card-link .doc-card {
+  height: 100%;
+}
+
+.doc-card .card-icon {
+  font-size: 1.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1rem 0 1.4rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--vp-c-brand-1) 26%, var(--vp-c-divider));
+  background: color-mix(in srgb, var(--vp-c-brand-soft) 60%, transparent);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.stack-diagram {
+  margin: 1.25rem 0 1.75rem;
+  padding: 1rem 1.1rem;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #122033, #0b1524);
+  color: #e8eef9;
+  border: 1px solid rgba(138, 160, 190, 0.2);
+  box-shadow: 0 24px 55px -36px rgba(8, 15, 28, 0.85);
+  overflow-x: auto;
+}
+
+.stack-diagram code {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.92rem;
+  white-space: pre;
+}
+
+.signal-list {
+  margin: 1rem 0 1.75rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.signal-list li {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border-left: 4px solid var(--vp-c-brand-1);
+  background: color-mix(in srgb, var(--vp-c-brand-soft) 42%, transparent);
+}
+
+.kv-table th {
+  white-space: nowrap;
+}
+
+.lead {
+  font-size: 1.08rem;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+}
+
+/* ── Mermaid / DiagramViewer ── */
+
+/* Inline expand button — injected as a sibling before the .mermaid element */
+.dv-toolbar-inline {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1.5rem 0 -0.5rem;
+}
+
+/* Preview styling on the mermaid element itself */
+.mermaid.dv-preview {
+  margin: 0.5rem 0 1.75rem;
+  padding: 1rem;
+  border-radius: 22px;
+  background: linear-gradient(160deg, #0f1e33, #0b1524);
+  border: 1px solid rgba(138, 160, 190, 0.18);
+  box-shadow: 0 24px 55px -36px rgba(8, 15, 28, 0.85);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+:root:not(.dark) .mermaid.dv-preview {
+  background: linear-gradient(160deg, #f0f4fb, #e8eef8);
+  border-color: rgba(64, 99, 216, 0.14);
+  box-shadow: 0 18px 40px -30px rgba(20, 35, 59, 0.22);
+}
+
+/* Constrain inline preview height — click Expand for full size */
+.mermaid.dv-preview svg {
+  max-height: 380px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Shared button style */
+.dv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(138, 160, 190, 0.28);
+  background: rgba(64, 99, 216, 0.12);
+  color: #82a0ff;
+  font-size: 0.8rem;
+  font-family: var(--vp-font-family-mono);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.dv-btn:hover {
+  background: rgba(64, 99, 216, 0.24);
+  border-color: rgba(130, 160, 255, 0.5);
+  color: #b2c4ff;
+}
+
+:root:not(.dark) .dv-btn {
+  background: rgba(64, 99, 216, 0.08);
+  border-color: rgba(64, 99, 216, 0.22);
+  color: #4063d8;
+}
+
+:root:not(.dark) .dv-btn:hover {
+  background: rgba(64, 99, 216, 0.16);
+  color: #2f55d4;
+}
+
+/* Fullscreen overlay */
+.dv-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(8, 15, 28, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+:root:not(.dark) .dv-overlay {
+  background: rgba(20, 35, 59, 0.65);
+}
+
+.dv-modal {
+  width: min(96vw, 1200px);
+  height: min(90vh, 900px);
+  border-radius: 22px;
+  background: linear-gradient(160deg, #0d1e35, #0b1524);
+  border: 1px solid rgba(138, 160, 190, 0.22);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:root:not(.dark) .dv-modal {
+  background: linear-gradient(160deg, #f0f4fb, #e8eef8);
+  border-color: rgba(64, 99, 216, 0.18);
+  box-shadow: 0 30px 60px -20px rgba(20, 35, 59, 0.35);
+}
+
+.dv-modal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(138, 160, 190, 0.15);
+  flex-shrink: 0;
+}
+
+.dv-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dv-zoom-label {
+  min-width: 3.2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-family: var(--vp-font-family-mono);
+  color: #82a0ff;
+  font-weight: 600;
+}
+
+:root:not(.dark) .dv-zoom-label {
+  color: #4063d8;
+}
+
+.dv-close-btn {
+  margin-left: auto;
+}
+
+.dv-canvas {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dv-content {
+  padding: 1.5rem;
+  /* No transition/will-change — GPU compositing and interpolated frames both
+     cause softness on SVG. Transform updates are immediate and always sharp. */
+}
+
+/* Thin divider between ### subsections (Core Components) */
+.comp-divider {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--vp-c-divider) 55%, transparent);
+  margin: 1.1rem 0 0;
+}
+
+/* SVG font override */
+.mermaid svg text,
+.mermaid svg .label {
+  font-family: var(--vp-font-family-mono) !important;
+}
+
+@media (max-width: 640px) {
+  .doc-card {
+    padding: 1rem;
+  }
+
+  .stack-diagram {
+    padding: 0.9rem;
+  }
+
+  .mermaid-wrapper {
+    padding: 1rem 0.75rem;
+  }
+}
