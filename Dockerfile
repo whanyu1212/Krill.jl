@@ -11,6 +11,11 @@ RUN julia --project=. -e 'using Pkg; Pkg.instantiate()'
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM julia:1.12.4-bookworm
 
+# Node.js — needed for MCP stdio servers (npx)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Reuse precompiled depot from stage 1

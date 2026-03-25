@@ -114,21 +114,21 @@ history_summarization = false
 # MCP servers (add as many [[profile.mcp]] blocks as needed)
 # ---------------------------------------------------------------------------
 
-[[profile.mcp]]
-name      = "filesystem"
-transport = "stdio"
-command   = "npx"
-args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
+# [[profile.mcp]]
+# name      = "filesystem"
+# transport = "stdio"
+# command   = "npx"
+# args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
 
-[[profile.mcp]]
-name      = "github"
-transport = "streamable_http"
-url       = "https://api.githubcopilot.com/mcp/"
-[profile.mcp.headers]
-Authorization  = "Bearer $GH_PAT"
-X-MCP-Readonly = "true"
+# [[profile.mcp]]
+# name      = "github"
+# transport = "streamable_http"
+# url       = "https://api.githubcopilot.com/mcp/"
+# [profile.mcp.headers]
+# Authorization  = "Bearer $GH_PAT"
+# X-MCP-Readonly = "true"
 
-[[profile.mcp]]
-name      = "langchain"
-transport = "streamable_http"
-url       = "https://docs.langchain.com/mcp"
+# [[profile.mcp]]
+# name      = "langchain"
+# transport = "streamable_http"
+# url       = "https://docs.langchain.com/mcp"
