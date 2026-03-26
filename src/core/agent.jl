@@ -86,7 +86,7 @@ struct AgentHooks
     on_turn_start::Union{Nothing,Function}    # (msg, history) -> nothing
     on_turn_end::Union{Nothing,Function}      # (msg, history) -> nothing
     on_tool_call::Union{Nothing,Function}     # (tool_name, arguments) -> nothing
-    on_tool_result::Union{Nothing,Function}   # (tool_name, result_text) -> nothing
+    on_tool_result::Union{Nothing,Function}   # (tool_name, result_text) -> nothing  (fires on both success and error)
     should_interrupt::Union{Nothing,Function} # (tool_name, arguments) -> Bool
 end
 

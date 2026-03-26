@@ -102,9 +102,10 @@ sequenceDiagram
 
   P->>CH: raw event
   CH->>HUB: normalized message
+  HUB->>HUB: dedup check
   HUB->>SES: dequeue
-  SES->>SES: load history
-  SES->>LLM: prompt
+  SES->>SES: load history + memory
+  SES->>LLM: prompt (instructions + context)
   LLM-->>SES: response
 
   loop tool calls
@@ -114,7 +115,8 @@ sequenceDiagram
     LLM-->>SES: response
   end
 
-  SES->>SES: persist
+  SES->>SES: persist turns
+  SES->>SES: consolidate memory
   SES->>HUB: reply
   HUB->>MGR: dispatch
   MGR->>CH: send
@@ -142,12 +144,20 @@ sequenceDiagram
   }
 }}%%
 graph LR
+  subgraph NATIVE["Provider-native tools"]
+    NS["web search\nOpenAI · Gemini"]
+    NC["code interpreter\n(optional)"]
+  end
+
   subgraph LOCAL["Local built-ins"]
-    FT["file tools\nread · write · edit · list"]
-    WB["web tools\nsearch · fetch"]
+    FT["file tools\nread · write · edit · list · search"]
+    WF["web_fetch\nURL → markdown"]
     GH["github\ngh CLI wrapper"]
+    GW["google_workspace\ngws CLI wrapper"]
     EX["exec\n(optional)"]
     CC["claude_code / codex\n(optional)"]
+    CR["cron tools\nadd · list · remove"]
+    SP["spawn tools\nspawn · list · cancel"]
   end
 
   subgraph SKILLS["Skills"]
@@ -164,11 +174,16 @@ graph LR
   PC["PromptContext\nskill summaries +\nalways-on bodies"]
   SC["Session consumer"]
 
+  NS --> SC
+  NC --> SC
   FT --> TR
-  WB --> TR
+  WF --> TR
   GH --> TR
+  GW --> TR
   EX --> TR
   CC --> TR
+  CR --> TR
+  SP --> TR
   MS1 -->|mcp_name_tool| TR
   MS2 -->|mcp_name_tool| TR
   SK --> PC
@@ -176,6 +191,7 @@ graph LR
   TR --> SC
   PC --> SC
 
+  style NATIVE fill:#112240,stroke:#9558b2,stroke-width:1.5px,color:#c8d8f0
   style LOCAL fill:#112240,stroke:#4063d8,stroke-width:1.5px,color:#c8d8f0
   style SKILLS fill:#0d1e35,stroke:#389826,stroke-width:1.5px,color:#c8d8f0
   style MCP fill:#0b1c30,stroke:#c58d16,stroke-width:1.5px,color:#c8d8f0

@@ -23,15 +23,17 @@ makedocs(;
             "Configuration" => "guide/configuration.md",
             "Architecture" => "guide/architecture.md",
             "Features" => "guide/features.md",
+            "Agents & Subagents" => "guide/agents.md",
+            "Prompt Construction" => "guide/prompt_construction.md",
             "Security" => "guide/security.md",
             "Deployment" => "guide/deployment.md",
         ],
         "Examples" => [
-            "Runnable Example" => "examples/telegram.md",
             "Use Case Testing" => "examples/use_cases.md",
         ],
         "Reference" => "api/reference.md",
         "Roadmap" => "notes/roadmap.md",
+        "Acknowledgements" => "notes/acknowledgements.md",
     ],
 )
 

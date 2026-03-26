@@ -257,6 +257,7 @@ struct ToolResultEvent
     tool_name::String
     result::Any
     error::Union{Nothing,ErrorEnvelope}
+    duration_ms::Union{Nothing,Float64}
     timestamp::DateTime
 end
 
@@ -265,6 +266,7 @@ function ToolResultEvent(;
     tool_name::AbstractString,
     result::Any=nothing,
     error::Union{Nothing,ErrorEnvelope}=nothing,
+    duration_ms::Union{Nothing,Real}=nothing,
     version::Int=1,
     event_id::UUID=uuid4(),
     correlation_id::Union{Nothing,UUID}=nothing,
@@ -278,6 +280,7 @@ function ToolResultEvent(;
         String(tool_name),
         result,
         error,
+        duration_ms === nothing ? nothing : Float64(duration_ms),
         timestamp,
     )
 end

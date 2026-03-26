@@ -235,11 +235,60 @@ function _restore_placeholders(text::AbstractString, prefix::String, values::Vec
     return out
 end
 
+"""Convert a markdown table (header + separator + rows) into a monospace <pre> block."""
+function _replace_markdown_tables(text::AbstractString)
+    table_blocks = String[]
+    # Match contiguous runs of pipe-delimited lines (header, separator, data rows)
+    replaced = replace(String(text), r"(?m)((?:^[ \t]*\|.+\|[ \t]*$\n?){3,})" => block -> begin
+        lines = split(strip(String(block)), '\n')
+        # Parse cells from each line
+        parsed = Vector{Vector{String}}()
+        for line in lines
+            stripped = strip(line)
+            # Skip separator rows (|---|---|)
+            occursin(r"^\|[\s:|\-]+\|$", stripped) && continue
+            cells = [strip(c) for c in split(stripped, '|')]
+            # Remove empty first/last from leading/trailing |
+            !isempty(cells) && isempty(cells[1]) && popfirst!(cells)
+            !isempty(cells) && isempty(cells[end]) && pop!(cells)
+            push!(parsed, cells)
+        end
+        isempty(parsed) && return String(block)
+
+        # Calculate column widths
+        ncols = maximum(length.(parsed))
+        widths = zeros(Int, ncols)
+        for row in parsed
+            for (i, cell) in enumerate(row)
+                i <= ncols && (widths[i] = max(widths[i], length(cell)))
+            end
+        end
+
+        # Render aligned text
+        out = IOBuffer()
+        for (ri, row) in enumerate(parsed)
+            for ci in 1:ncols
+                cell = ci <= length(row) ? row[ci] : ""
+                padded = rpad(cell, widths[ci])
+                ci > 1 && print(out, "  ")
+                print(out, padded)
+            end
+            ri < length(parsed) && println(out)
+        end
+
+        rendered = "<pre>$(_escape_html(String(take!(out))))</pre>"
+        push!(table_blocks, rendered)
+        return "\0KRILLTABLE$(length(table_blocks))\0"
+    end)
+    return replaced, table_blocks
+end
+
 function _markdown_to_telegram_html(text::AbstractString)
     normalized = replace(String(text), "\r\n" => "\n")
     normalized = replace(normalized, '\r' => '\n')
 
-    with_blocks, code_blocks = _replace_markdown_code_blocks(normalized)
+    with_tables, table_blocks = _replace_markdown_tables(normalized)
+    with_blocks, code_blocks = _replace_markdown_code_blocks(with_tables)
     with_inline, inline_codes = _replace_markdown_inline_code(with_blocks)
 
     escaped = _escape_html(with_inline)
@@ -257,6 +306,7 @@ function _markdown_to_telegram_html(text::AbstractString)
 
     escaped = _restore_placeholders(escaped, "KRILLINLINECODE", inline_codes)
     escaped = _restore_placeholders(escaped, "KRILLCODEBLOCK", code_blocks)
+    escaped = _restore_placeholders(escaped, "KRILLTABLE", table_blocks)
     return escaped
 end
 

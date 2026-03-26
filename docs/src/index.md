@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: Krill.jl 🦐
+  name: "Krill.jl"
   text: Personal AI assistant runtime in Julia
-  tagline: A tiny Julia framework for building personal AI assistants across chat platforms, inspired by OpenClaw and nanobot.
+  tagline: 🦐 A tiny Julia framework for building personal AI assistants across chat platforms, inspired by OpenClaw and nanobot.
   actions:
     - theme: brand
       text: Get Started
@@ -43,10 +43,9 @@ features:
     details: Per-channel allow_from allowlists, exec denylist + URL scan, SSRF protection with DNS resolution and redirect validation, and symlink-safe workspace sandboxing.
 ---
 
-
 ## Current Scope
 
-<ul class="signal-list">
+<ul style="list-style: none; padding-left: 0;">
   <li><strong>Agent API:</strong> <code>Agent</code>, <code>AgentHooks</code>, <code>RetryConfig</code> structs — composable, testable, flat-kwarg and struct-based entry points</li>
   <li><strong>Agent capabilities:</strong> built-in tools, provider-native tools, MCP, skills, cron, subagents, prompt context, memory consolidation, history summarization</li>
   <li><strong>LLM providers:</strong> OpenAI Responses API (+ web search, code interpreter), Gemini native <code>generateContent</code> (+ Google Search, URL context, code execution), Gemini OpenAI-compat chat completions</li>

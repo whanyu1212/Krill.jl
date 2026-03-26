@@ -10,6 +10,7 @@ function register_builtin_tools!(
     enable_exec::Bool=false,
     exec_timeout_s::Real=60.0,
     exec_path_append::AbstractString="",
+    enable_web_search::Bool=true,
     web_search_max_results::Int=5,
     send_message_fn::Union{Nothing,Function}=nothing,
     restrict_to_workspace::Bool=false,
@@ -138,19 +139,24 @@ function register_builtin_tools!(
         execute=args -> _list_dir_impl(args, workspace; restrict_to_workspace=restrict_to_workspace),
     ))
 
-    push!(defs, ToolDef(
-        name="web_search",
-        description="Search the web and return result titles and URLs.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "query" => Dict{String,Any}("type" => "string", "description" => "Search query"),
-                "count" => Dict{String,Any}("type" => "integer", "description" => "Number of results (1-10)"),
-            ),
-            "required" => Any["query"],
-        ),
-        execute=args -> _web_search_impl(args; max_results=web_search_max_results),
-    ))
+    # Local DDG web_search is disabled — provider-native search (OpenAI/Gemini) is
+    # used instead. If native search returns poor results, the LLM should delegate
+    # deeper research to claude_code or codex.
+    # if enable_web_search
+    #     push!(defs, ToolDef(
+    #         name="web_search",
+    #         description="Search the web and return result titles and URLs.",
+    #         parameters=Dict{String,Any}(
+    #             "type" => "object",
+    #             "properties" => Dict{String,Any}(
+    #                 "query" => Dict{String,Any}("type" => "string", "description" => "Search query"),
+    #                 "count" => Dict{String,Any}("type" => "integer", "description" => "Number of results (1-10)"),
+    #             ),
+    #             "required" => Any["query"],
+    #         ),
+    #         execute=args -> _web_search_impl(args; max_results=web_search_max_results),
+    #     ))
+    # end
 
     push!(defs, ToolDef(
         name="web_fetch",
@@ -185,29 +191,31 @@ function register_builtin_tools!(
         execute=args -> _github_impl(args),
     ))
 
-    push!(defs, ToolDef(
-        name="message",
-        description="Send a message to a chat.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "chat_id" => Dict{String,Any}(
-                    "type" => "string",
-                    "description" => "Target chat identifier",
+    if send_message_fn !== nothing
+        push!(defs, ToolDef(
+            name="message",
+            description="Send a message to a chat.",
+            parameters=Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "chat_id" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Target chat identifier",
+                    ),
+                    "text" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Message text",
+                    ),
+                    "disable_web_page_preview" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "Disable URL preview in the sent message",
+                    ),
                 ),
-                "text" => Dict{String,Any}(
-                    "type" => "string",
-                    "description" => "Message text",
-                ),
-                "disable_web_page_preview" => Dict{String,Any}(
-                    "type" => "boolean",
-                    "description" => "Disable URL preview in the sent message",
-                ),
+                "required" => Any["chat_id", "text"],
             ),
-            "required" => Any["chat_id", "text"],
-        ),
-        execute=args -> _message_tool_impl(args; send_message_fn=send_message_fn),
-    ))
+            execute=args -> _message_tool_impl(args; send_message_fn=send_message_fn),
+        ))
+    end
 
     if enable_exec
         push!(defs, ToolDef(

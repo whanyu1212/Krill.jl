@@ -14,6 +14,7 @@ using ..Core: InboundMessage, OutboundMessage, message_text,
     MemoryStore,
     ToolRegistry,
     ToolDef,
+    register_tool!,
     SkillDef, discover_skills, skills_summary, load_always_skills, register_read_skill_tool!,
     DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_builder,
     AbstractLLMProvider, OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider, make_llm_processor,
@@ -349,12 +350,16 @@ function RuntimeState(
             nothing
         end
 
+        # Disable local DDG web_search when provider-native search is available
+        _has_provider_search = agent.llm_tools !== nothing
+
         builtin_tool_defs = register_builtin_tools!(
             resolved_tool_registry;
             workspace=workspace,
             enable_exec=agent.builtin_tools.enable_exec,
             exec_timeout_s=Float64(agent.builtin_tools.exec_timeout_s),
             exec_path_append=agent.builtin_tools.exec_path_append,
+            enable_web_search=!_has_provider_search,
             web_search_max_results=agent.builtin_tools.web_search_max_results,
             restrict_to_workspace=agent.builtin_tools.restrict_to_workspace,
             send_message_fn=send_tool_message,
@@ -407,6 +412,13 @@ function RuntimeState(
     if agent.subagents.enable
         resolved_tool_registry === nothing && (resolved_tool_registry = ToolRegistry())
 
+        # Capture references needed by the closure. Skills, MCP tools, and
+        # builtin_skill_defs are populated by earlier blocks and may still be
+        # empty vectors — that's fine; the closure reads them at spawn time.
+        _sub_discovered_skills = discovered_skills
+        _sub_builtin_skill_defs = builtin_skill_defs
+        _sub_mcp_tool_defs = mcp_tool_defs
+
         subagent_processor_factory = () -> begin
             sub_registry = ToolRegistry()
             sub_tool_defs = register_builtin_tools!(
@@ -415,15 +427,46 @@ function RuntimeState(
                 enable_exec=agent.builtin_tools.enable_exec,
                 exec_timeout_s=Float64(agent.builtin_tools.exec_timeout_s),
                 exec_path_append=agent.builtin_tools.exec_path_append,
+                enable_web_search=!_has_provider_search,
                 web_search_max_results=agent.builtin_tools.web_search_max_results,
                 restrict_to_workspace=agent.builtin_tools.restrict_to_workspace,
-                send_message_fn=nothing,
+                send_message_fn=nothing,  # subagents don't send messages directly
+                enable_claude_code=agent.claude_code.enable,
+                claude_code_model=agent.claude_code.model,
+                claude_code_timeout_s=Float64(agent.claude_code.timeout_s),
+                claude_code_max_budget=agent.claude_code.max_budget,
+                claude_code_permission_mode=agent.claude_code.permission_mode,
+                claude_code_progress_fn=nothing,
+                claude_code_progress_interval_s=Float64(agent.claude_code.progress_interval_s),
+                enable_codex=agent.codex.enable,
+                codex_model=agent.codex.model,
+                codex_timeout_s=Float64(agent.codex.timeout_s),
+                codex_sandbox_mode=agent.codex.sandbox_mode,
+                codex_progress_fn=nothing,
+                codex_progress_interval_s=Float64(agent.codex.progress_interval_s),
+                enable_google_workspace=agent.enable_google_workspace,
                 replace=false,
             )
+
+            # Merge tools: provider-native → builtins → skills → MCP (no spawn, no cron)
+            sub_tools = agent.llm_tools
+            sub_tools = _merge_tool_items(sub_tools, Any[sub_tool_defs...])
+            sub_tools = _merge_tool_items(sub_tools, Any[_sub_builtin_skill_defs...])
+            sub_tools = _merge_tool_items(sub_tools, Any[_sub_mcp_tool_defs...])
+
+            # Register MCP tools into subagent registry so dispatch works
+            for td in _sub_mcp_tool_defs
+                register_tool!(sub_registry, td; replace=true)
+            end
+            # Register skill tools into subagent registry
+            for td in _sub_builtin_skill_defs
+                register_tool!(sub_registry, td; replace=true)
+            end
+
             make_llm_processor(provider;
                 system_prompt=_subagent_system_prompt(workspace),
                 max_context_tokens=agent.max_context_tokens,
-                tools=Any[sub_tool_defs...],
+                tools=sub_tools,
                 tool_registry=sub_registry,
                 max_tool_iterations=agent.subagents.max_iterations,
                 max_tool_output_chars=agent.max_tool_output_chars,
@@ -815,11 +858,12 @@ function _append_prompt_suffix(base_prompt, suffix::AbstractString)
 end
 
 function _subagent_system_prompt(workspace::AbstractString)
-    return """You are a focused subagent executing a specific task. You have access to file operations, web search, and code execution tools.
+    return """You are a focused subagent executing a specific task. You have access to file operations, web search, shell exec, GitHub, Google Workspace, MCP tools, and coding agents (claude_code, codex).
 
 Rules:
 - Complete the assigned task thoroughly and report your findings clearly.
 - Be concise but complete in your final response.
+- Use the provider's built-in web search for research. If results are insufficient, delegate deeper research to claude_code or codex.
 - You cannot spawn further subagents, send messages, or schedule cron jobs.
 - Working directory: $(workspace)"""
 end
