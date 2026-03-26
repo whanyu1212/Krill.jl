@@ -46,18 +46,18 @@ Channel (Telegram/Discord)
 ### Key Modules
 
 - **`src/runtime.jl`** — `RuntimeState` wires hub, channels, consumer, store, cron, MCP, subagents. `start!()` boots everything, `shutdown!()` tears down.
-- **`src/core/agent.jl`** — `Agent` struct groups all config. `AgentHooks` provides callbacks (`on_tool_call`, `on_tool_result`, `should_interrupt`). Nested config structs: `MemoryConfig`, `BuiltinToolsConfig`, `SkillsConfig`, etc.
-- **`src/core/llm/`** — LLM abstraction layer:
+- **`src/agent.jl`** — `Agent` struct groups all config. `AgentHooks` provides callbacks (`on_tool_call`, `on_tool_result`, `should_interrupt`). Nested config structs: `MemoryConfig`, `BuiltinToolsConfig`, `SkillsConfig`, etc.
+- **`src/llm/`** — LLM abstraction layer:
   - `providers.jl` — `OpenAIProvider` (Responses API), `GeminiProvider` (native), `GeminiOpenAICompatProvider`
   - `tool_loop.jl` — Agentic loop with tool dispatch, caching, truncation, retry
   - `parsing.jl` — Converts between OpenAI and Gemini formats (tool schemas, responses)
   - `processor.jl` — `make_llm_processor()` factory creates the session processor function
-- **`src/core/types.jl`** — `InboundMessage`, `OutboundMessage`, `ContentPart` variants, `ToolCallEvent`/`ToolResultEvent`, `ErrorEnvelope`
-- **`src/core/tools.jl`** — `ToolDef` (JSON schema + execute fn), `ToolRegistry`, `dispatch_tool()`
-- **`src/core/builtin_tools/`** — All built-in tool implementations. `registration.jl` registers them into the registry.
-- **`src/core/cron.jl`** — `CronService` runs a background tick loop, fires due jobs by injecting synthetic `InboundMessage` into the hub. Three schedule types: `AtSchedule`, `IntervalSchedule`, `CronSchedule`.
-- **`src/core/mcp.jl`** — MCP client (stdio/HTTP transports). Tools registered as `{server}_{tool}` to avoid collisions.
-- **`src/core/skills.jl`** — Discovers `SKILL.md` files from `context/skills/`. Skills with `always: true` in frontmatter are auto-injected into every system prompt.
+- **`src/transport/types.jl`** — `InboundMessage`, `OutboundMessage`, `ContentPart` variants, `ToolCallEvent`/`ToolResultEvent`, `ErrorEnvelope`
+- **`src/tools/registry.jl`** — `ToolDef` (JSON schema + execute fn), `ToolRegistry`, `dispatch_tool()`
+- **`src/tools/builtin/`** — All built-in tool implementations. `registration.jl` registers them into the registry.
+- **`src/scheduling/cron.jl`** — `CronService` runs a background tick loop, fires due jobs by injecting synthetic `InboundMessage` into the hub. Three schedule types: `AtSchedule`, `IntervalSchedule`, `CronSchedule`.
+- **`src/tools/mcp.jl`** — MCP client (stdio/HTTP transports). Tools registered as `{server}_{tool}` to avoid collisions.
+- **`src/tools/skills.jl`** — Discovers `SKILL.md` files from `context/skills/`. Skills with `always: true` in frontmatter are auto-injected into every system prompt.
 - **`src/config/config.jl`** — `load_config()` parses `krill.toml`, expands `$ENV_VAR` references from environment or `.env`.
 
 ### Configuration

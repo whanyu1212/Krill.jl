@@ -671,8 +671,8 @@
 end
 
 @testset "Krill.jl HTML-to-markdown conversion" begin
-    html_to_md = Krill.Core.BuiltinTools._html_to_markdown
-    decode_entities = Krill.Core.BuiltinTools._decode_html_entities
+    html_to_md = Krill.BuiltinTools._html_to_markdown
+    decode_entities = Krill.BuiltinTools._decode_html_entities
 
     @testset "strips script, style, noscript tags" begin
         html = """<p>Hello</p><script>alert('xss')</script><style>body{}</style><noscript>Enable JS</noscript><p>world</p>"""

@@ -319,7 +319,7 @@ end
         data: {"jsonrpc":"2.0","id":1,"result":{"tools":[]}}
 
         """
-        parsed = Krill.Core.MCP._parse_sse_rpc(body)
+        parsed = Krill.MCP._parse_sse_rpc(body)
         @test parsed["id"] == 1
         @test haskey(parsed, "result")
     end
@@ -331,13 +331,13 @@ end
         data: [DONE]
 
         """
-        parsed = Krill.Core.MCP._parse_sse_rpc(body)
+        parsed = Krill.MCP._parse_sse_rpc(body)
         @test parsed["id"] == 42
     end
 
     @testset "parse_sse_rpc handles trailing data without blank line" begin
         body = "data: {\"jsonrpc\":\"2.0\",\"id\":99,\"result\":{}}"
-        parsed = Krill.Core.MCP._parse_sse_rpc(body)
+        parsed = Krill.MCP._parse_sse_rpc(body)
         @test parsed["id"] == 99
     end
 
@@ -348,20 +348,20 @@ end
         data: {"jsonrpc":"2.0","id":5,"result":{"value":"real"}}
 
         """
-        parsed = Krill.Core.MCP._parse_sse_rpc(body)
+        parsed = Krill.MCP._parse_sse_rpc(body)
         @test parsed["id"] == 5
         @test parsed["result"]["value"] == "real"
     end
 
     @testset "parse_sse_rpc raises on empty stream" begin
-        @test_throws ErrorException Krill.Core.MCP._parse_sse_rpc("")
+        @test_throws ErrorException Krill.MCP._parse_sse_rpc("")
     end
 end
 
 @testset "Krill.jl C.3 MCP HTTP retry constants" begin
-    @test Krill.Core.MCP._MCP_HTTP_MAX_RETRIES == 3
-    @test Krill.Core.MCP._MCP_HTTP_RETRY_BASE_DELAY == 0.5
-    @test 429 in Krill.Core.MCP._MCP_HTTP_RETRIABLE_STATUS
-    @test 503 in Krill.Core.MCP._MCP_HTTP_RETRIABLE_STATUS
-    @test 200 ∉ Krill.Core.MCP._MCP_HTTP_RETRIABLE_STATUS
+    @test Krill.MCP._MCP_HTTP_MAX_RETRIES == 3
+    @test Krill.MCP._MCP_HTTP_RETRY_BASE_DELAY == 0.5
+    @test 429 in Krill.MCP._MCP_HTTP_RETRIABLE_STATUS
+    @test 503 in Krill.MCP._MCP_HTTP_RETRIABLE_STATUS
+    @test 200 ∉ Krill.MCP._MCP_HTTP_RETRIABLE_STATUS
 end

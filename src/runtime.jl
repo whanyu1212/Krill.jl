@@ -2,30 +2,30 @@ module RuntimeModule
 
 using Dates
 
-using ..Core: InboundMessage, OutboundMessage, message_text,
-    MessageHubState, try_publish_inbound!,
-    ChannelManagerState, register_sender!, start_dispatch!, stop_dispatch!, dispatch_stats,
-    BoundedDedup, seen!,
-    AbstractChannel, ChannelState, channel_name, make_sender,
+using ..Types: InboundMessage, OutboundMessage, message_text
+using ..MessageHub: MessageHubState, try_publish_inbound!
+using ..ChannelManager: ChannelManagerState, register_sender!, start_dispatch!, stop_dispatch!, dispatch_stats
+using ..Dedup: BoundedDedup, seen!
+using ..ChannelInterface: AbstractChannel, ChannelState, channel_name, make_sender,
     register_channel!, start_channel!, stop_channel!, send_typing, send_direct,
-    make_inbound_handler,
-    run_echo_loop!,
-    SessionStore, run_session_loop!, echo_processor, SessionCancelScope, is_cancelled, clear_cancel!,
-    MemoryStore,
-    ToolRegistry,
-    ToolDef,
-    register_tool!, get_tool,
-    SkillDef, discover_skills, skills_summary, load_always_skills, register_read_skill_tool!,
-    DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_builder,
-    AbstractLLMProvider, OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider, make_llm_processor,
-    RetryConfig, AgentHooks, Agent,
+    make_inbound_handler
+using ..Echo: run_echo_loop!
+using ..Sessions: SessionStore
+using ..SessionConsumer: run_session_loop!, echo_processor, SessionCancelScope, is_cancelled, clear_cancel!
+using ..Memory: MemoryStore
+using ..Tools: ToolRegistry, ToolDef, register_tool!, get_tool
+using ..Skills: SkillDef, discover_skills, skills_summary, load_always_skills, register_read_skill_tool!
+using ..PromptContext: DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_builder
+using ..LLM: AbstractLLMProvider, OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider, make_llm_processor
+using ..AgentModule: RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig, ClaudeCodeConfig, CodexConfig,
-    PromptContextConfig, SubagentConfig,
-    make_memory_consolidator,
-    register_builtin_tools!, register_cron_tools!, set_cron_context!,
-    CronService, CronJob, add_job!, Cron,
-    SubagentManager, register_spawn_tools!, set_spawn_context!, cancel_subagents!, subagent_count,
-    MCPServer, MCPConnectionSet, connect, connect_mcp_servers!, close!
+    PromptContextConfig, SubagentConfig
+using ..MemoryConsolidation: make_memory_consolidator
+using ..BuiltinTools: register_builtin_tools!, register_cron_tools!, set_cron_context!
+using ..Cron
+using ..Cron: CronService, CronJob, add_job!
+using ..Subagent: SubagentManager, register_spawn_tools!, set_spawn_context!, cancel_subagents!, subagent_count
+using ..MCP: MCPServer, MCPConnectionSet, connect, connect_mcp_servers!, close!
 
 using ..Channels.Telegram: TelegramClient, TelegramChannel, TelegramWebhookChannel,
     run_polling, normalize_update, make_telegram_sender, send_chat_action, send_message

@@ -1,126 +1,137 @@
 module Krill
 
-include("core/core.jl")
+# ─── Transport ────────────────────────────────────────────────────
+include("transport/types.jl")
+include("transport/message_hub.jl")
+include("transport/manager.jl")
+include("transport/dedup.jl")
+include("transport/channels.jl")
+include("transport/durable_queue.jl")
+
+# ─── Sessions & memory ───────────────────────────────────────────
+include("sessions/sessions.jl")
+include("sessions/memory.jl")
+include("sessions/echo.jl")
+include("sessions/consumer.jl")
+
+# ─── Tools, skills, MCP ─────────────────────────────────────────
+include("tools/registry.jl")
+include("tools/skills.jl")
+
+# ─── Prompt context ──────────────────────────────────────────────
+include("prompt_context.jl")
+
+# ─── Scheduling (cron before builtin_tools — builtin_tools uses Cron) ─
+include("scheduling/cron.jl")
+
+# ─── Builtin tools & MCP (depend on Tools + Cron) ───────────────
+include("tools/builtin/builtin_tools.jl")
+include("tools/mcp.jl")
+
+# ─── LLM providers ──────────────────────────────────────────────
+include("llm/llm.jl")
+
+# ─── Memory consolidation (depends on LLM + Sessions) ───────────
+include("sessions/memory_consolidation.jl")
+
+# ─── Subagents (depends on LLM + Tools) ─────────────────────────
+include("scheduling/subagent.jl")
+
+# ─── Agent config (depends on everything above) ─────────────────
+include("agent.jl")
+
+# ─── Channels ────────────────────────────────────────────────────
 include("channels/channels.jl")
+
+# ─── Runtime ─────────────────────────────────────────────────────
 include("runtime.jl")
+
+# ─── Config ──────────────────────────────────────────────────────
 include("config/config.jl")
 
-# ─── Core submodules ────────────────────────────────────────────────
-using .Core: Types,
-    MessageHub,
-    ChannelManager,
-    Dedup,
-    ChannelInterface,
-    DurableQueue,
-    Sessions,
-    Memory,
-    Echo,
-    SessionConsumer,
-    Tools,
-    Skills,
-    PromptContext,
-    BuiltinTools,
-    MCP,
-    LLM,
-    MemoryConsolidation,
-    Cron,
-    Subagent,
-    AgentModule
+# ─── Re-exports from submodules ──────────────────────────────────
 
-# ─── Types ──────────────────────────────────────────────────────────
-using .Core: ContentPart, TextPart, BinaryPart, ToolCallPart, ToolResultPart,
+using .Types: ContentPart, TextPart, BinaryPart, ToolCallPart, ToolResultPart,
     DeliveryPolicy, ErrorEnvelope, MCPConnectionError, MemoryConsolidationError,
     InboundMessage, OutboundMessage,
     ToolCallEvent, ToolResultEvent,
     message_text
 
-# ─── Message hub ────────────────────────────────────────────────────
-using .Core: MessageHubState,
+using .MessageHub: MessageHubState,
     publish_inbound!, publish_outbound!,
     try_publish_inbound!, try_publish_outbound!,
     take_inbound!, take_outbound!,
     try_take_inbound!, try_take_outbound!
 
-# ─── Channel manager & dispatch ─────────────────────────────────────
-using .Core: AbstractChannel, ChannelState,
-    channel_name, make_sender, normalize,
-    start_channel!, stop_channel!, send_typing, send_direct,
-    register_channel!, make_inbound_handler,
-    ChannelManagerState, DispatchEvent,
+using .ChannelManager: ChannelManagerState, DispatchEvent,
     register_sender!, start_dispatch!, stop_dispatch!,
     dispatch_stats, dead_letters, flush_dead_letters!
 
-# ─── Dedup ──────────────────────────────────────────────────────────
-using .Core: BoundedDedup, seen!, has_seen
+using .Dedup: BoundedDedup, seen!, has_seen
 
-# ─── Sessions & memory ──────────────────────────────────────────────
-using .Core: SessionStore, TurnRecord,
+using .ChannelInterface: AbstractChannel, ChannelState,
+    channel_name, make_sender, normalize,
+    start_channel!, stop_channel!, send_typing, send_direct,
+    register_channel!, make_inbound_handler
+
+using .Sessions: SessionStore, TurnRecord,
     get_session_lock!, load_history, append_turn!, save_history,
-    session_dir, sanitize_session_key,
-    MemoryStore, MemoryState,
+    session_dir, sanitize_session_key
+
+using .Memory: MemoryStore, MemoryState,
     memory_dir, memory_path, history_path, memory_state_path,
     load_memory, save_memory!, append_history!,
     load_memory_state, save_memory_state!
 
-# ─── Echo & session consumer ────────────────────────────────────────
-using .Core:
-    run_echo_loop!, run_session_loop!, echo_processor,
+using .Echo: run_echo_loop!
+
+using .SessionConsumer:
+    run_session_loop!, echo_processor,
     SessionCancelScope, request_cancel!, is_cancelled, clear_cancel!
 
-# ─── Tools ──────────────────────────────────────────────────────────
-using .Core: AbstractToolDef, ToolDef, ToolRegistry,
+using .Tools: AbstractToolDef, ToolDef, ToolRegistry,
     ToolNotFoundError, ToolValidationError, ToolExecutionError,
     register_tool!, unregister_tool!, get_tool, has_tool,
-    tool_names, tools_schema, dispatch_tool, @tool,
-    register_builtin_tools!
+    tool_names, tools_schema, dispatch_tool, @tool
 
-# ─── Skills ─────────────────────────────────────────────────────────
-using .Core: SkillDef,
+using .Skills: SkillDef,
     discover_skills, read_skill, skills_summary,
     load_always_skills, register_read_skill_tool!
 
-# ─── Prompt context ─────────────────────────────────────────────────
-using .Core: BootstrapDoc, DEFAULT_BOOTSTRAP_DOCS,
+using .PromptContext: BootstrapDoc, DEFAULT_BOOTSTRAP_DOCS,
     RUNTIME_CONTEXT_MARKER, TOOL_OUTPUT_SAFETY_NOTICE,
     load_bootstrap_docs, render_runtime_metadata,
     compose_instructions, make_prompt_builder
 
-# ─── MCP ────────────────────────────────────────────────────────────
-using .Core: MCPServer
+using .BuiltinTools: register_builtin_tools!, register_cron_tools!, set_cron_context!
 
-# ─── LLM ────────────────────────────────────────────────────────────
-using .Core: AbstractLLMProvider,
+using .MCP: MCPServer
+
+using .LLM: AbstractLLMProvider,
     OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider,
     OpenAIAPIError, LLMToolCall, LLMUsage, LLMResponse,
     build_context, chat_completion, make_llm_processor
 
-# ─── Memory consolidation ──────────────────────────────────────────
-using .Core: MemoryConsolidatorConfig,
+using .MemoryConsolidation: MemoryConsolidatorConfig,
     estimate_turn_tokens, estimate_turns_tokens,
     consolidate_session_memory!, make_memory_consolidator
 
-# ─── Cron ───────────────────────────────────────────────────────────
-using .Core: CronJob, CronService,
+using .Cron: CronJob, CronService,
     add_job!, remove_job!, list_jobs, get_job,
     is_due, parse_schedule, parse_cron,
-    save_jobs!, load_jobs!,
-    register_cron_tools!, set_cron_context!
+    save_jobs!, load_jobs!
 
-# ─── Subagents ──────────────────────────────────────────────────────
-using .Core: SubagentTask, SubagentManager,
+using .Subagent: SubagentTask, SubagentManager,
     spawn_subagent!, cancel_subagents!, list_subagents, subagent_count,
     register_spawn_tools!, set_spawn_context!
 
-# ─── Durable queue ──────────────────────────────────────────────────
-using .Core: DurableQueueState,
+using .DurableQueue: DurableQueueState,
     enqueue!, ack!, replay, compact!, queue_stats
 
-# ─── Agent & config structs ─────────────────────────────────────────
-using .Core: RetryConfig, AgentHooks, Agent,
+using .AgentModule: RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
     ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig
 
-# ─── Channels ───────────────────────────────────────────────────────
 using .Channels: Telegram, TelegramClient, TelegramAPIError,
     TelegramChannel, TelegramWebhookChannel,
     get_updates, send_message, run_polling,
@@ -129,21 +140,19 @@ using .Channels: Telegram, TelegramClient, TelegramAPIError,
     Discord, DiscordClient, DiscordAPIError, DiscordChannel,
     discord_send_message, discord_trigger_typing
 
-# ─── Runtime ────────────────────────────────────────────────────────
 using .RuntimeModule: RuntimeState, start!, shutdown!, status
 
-# ─── Config ─────────────────────────────────────────────────────────
 using .Config: KrillConfig, load_config, start_agent!,
     load_dotenv!, expand_env, expand_env_deep!,
     get_cfg, make_provider, provider_tools, provider_include_fields,
     make_mcp_servers, build_channels
 
 # ═══════════════════════════════════════════════════════════════════
-# Exports — grouped by category
+# Exports
 # ═══════════════════════════════════════════════════════════════════
 
 export # ─── Submodules ───
-    Core, Types, MessageHub, ChannelManager, Dedup, ChannelInterface,
+    Types, MessageHub, ChannelManager, Dedup, ChannelInterface,
     Sessions, Memory, Echo, SessionConsumer, Tools, Skills,
     PromptContext, BuiltinTools, MCP, LLM, MemoryConsolidation,
     Cron, Subagent, AgentModule, DurableQueue,

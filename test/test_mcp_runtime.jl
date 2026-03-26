@@ -1,6 +1,6 @@
 if !KRILL_FAST_TESTS
     # --- In-process mock MCP client (no subprocess) ---
-    const _MCPMod = Krill.Core.MCP
+    const _MCPMod = Krill.MCP
 
     mutable struct MockMCPClient <: _MCPMod.AbstractMCPClient
         server::_MCPMod.MCPServer

@@ -5,11 +5,11 @@ using HTTP.WebSockets
 using JSON3
 using Dates
 using UUIDs
-using ...Core.Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
-using ...Core.MessageHub: MessageHubState
-using ...Core.Dedup: BoundedDedup
-using ...Core.ChannelInterface: AbstractChannel, make_inbound_handler
-import ...Core.ChannelInterface:
+using ...Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
+using ...MessageHub: MessageHubState
+using ...Dedup: BoundedDedup
+using ...ChannelInterface: AbstractChannel, make_inbound_handler
+import ...ChannelInterface:
     channel_name, make_sender, normalize,
     start_channel!, stop_channel!, send_typing, send_direct, is_allowed
 

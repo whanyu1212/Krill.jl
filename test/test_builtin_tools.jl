@@ -153,7 +153,7 @@ end
 
     @testset "web_fetch can retry without certificate verification when enabled" begin
         cert_err = ErrorException("unable to get local issuer certificate")
-        @test Krill.Core.BuiltinTools._is_certificate_error(cert_err)
+        @test Krill.BuiltinTools._is_certificate_error(cert_err)
 
         withenv("KRILL_WEB_FETCH_ALLOW_INSECURE" => "1") do
             calls = Ref(0)
@@ -165,7 +165,7 @@ end
                 return HTTP.Response(200, "Fetched via insecure path")
             end
 
-            result = Krill.Core.BuiltinTools._web_fetch_impl(
+            result = Krill.BuiltinTools._web_fetch_impl(
                 Dict{String,Any}("url" => "https://example.com");
                 request_fn = mock_request,
             )
@@ -183,7 +183,7 @@ end
                 return HTTP.Response(200, "unexpected")
             end
 
-            result = Krill.Core.BuiltinTools._web_fetch_impl(
+            result = Krill.BuiltinTools._web_fetch_impl(
                 Dict{String,Any}("url" => "https://example.com");
                 request_fn = mock_request,
             )

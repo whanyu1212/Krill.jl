@@ -2,14 +2,14 @@
 
 ## Project Structure & Module Organization
 - `bin/krill.jl` is the runtime entry point.
-- `src/Krill.jl` is the package entry point and re-exports APIs from `src/core/`, `src/channels/`, `src/runtime.jl`, and `src/config/`.
-- `src/config/` handles config loading and runtime wiring (`config.jl`, `provider.jl`, `channels_config.jl`, `mcp_config.jl`, `dotenv.jl`, `env_expand.jl`).
-- `src/core/` contains the runtime internals:
-  - transport/runtime primitives (`types.jl`, `message_hub.jl`, `manager.jl`, `dedup.jl`, `channels.jl`, `durable_queue.jl`)
-  - persistence and flow (`sessions.jl`, `memory.jl`, `session_consumer.jl`, `echo.jl`)
-  - orchestration layers (`agent.jl`, `tools.jl`, `skills.jl`, `prompt_context.jl`, `memory_consolidation.jl`, `mcp.jl`, `cron.jl`, `subagent.jl`)
-  - built-in tools split under `src/core/builtin_tools/` (`file_tools.jl`, `web_tools.jl`, `shell_tools.jl`, `github_tools.jl`, `google_tools.jl`, `claude_code_tools.jl`, `codex_tools.jl`, `message_tools.jl`, `cron_tools.jl`, `registration.jl`)
-  - LLM stack under `src/core/llm/` (`providers.jl`, `api.jl`, `context.jl`, `parsing.jl`, `chat_completion.jl`, `tool_loop.jl`, `processor.jl`)
+- `src/Krill.jl` is the package entry point — includes all submodules directly (no `Core` wrapper).
+- `src/transport/` — message plumbing (`types.jl`, `message_hub.jl`, `manager.jl`, `dedup.jl`, `channels.jl`, `durable_queue.jl`)
+- `src/sessions/` — persistence (`sessions.jl`, `memory.jl`, `memory_consolidation.jl`, `consumer.jl`, `echo.jl`)
+- `src/tools/` — tool system (`registry.jl`, `skills.jl`, `mcp.jl`, `builtin/` with file/web/shell/github/google/claude_code/codex/message/cron tools + registration)
+- `src/scheduling/` — cron and subagents (`cron.jl`, `subagent.jl`)
+- `src/llm/` — LLM providers (`providers.jl`, `api.jl`, `context.jl`, `parsing.jl`, `chat_completion.jl`, `tool_loop.jl`, `processor.jl`)
+- `src/agent.jl` + `src/prompt_context.jl` — agent config and prompt composition (top-level)
+- `src/config/` — config loading and runtime wiring
 - `src/channels/` includes Telegram (polling + webhook) and Discord integrations.
 - `src/runtime.jl` wires channels, tool registries, prompt context, MCP, cron, subagents, memory, and LLM processors into `RuntimeState`.
 - `context/` is the prompt workspace (`AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`, `skills/`).
@@ -69,10 +69,10 @@
 - If file tools are enabled, prefer `llm.builtin_restrict_to_workspace = true` unless cross-directory access is explicitly required.
 
 ## Prompt Context Notes
-- Prompt composition is already implemented in `src/core/prompt_context.jl` and wired from `RuntimeState`; extend the composed builder instead of collapsing back to one static prompt string.
+- Prompt composition is implemented in `src/prompt_context.jl` and wired from `RuntimeState`; extend the composed builder instead of collapsing back to one static prompt string.
 - Bootstrap docs are loaded from the workspace in order `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md`; missing files are skipped.
 - Skills support both discovery-on-demand (`read_skill`) and always-on injection via `always: true` frontmatter plus availability checks (`requires_bins`, `requires_env`).
 - Session history persists under `<data_dir>/sessions/<session>/history.jsonl`.
-- Session memory persists under `<data_dir>/memory/<session>/` as `MEMORY.md`, `HISTORY.md`, and `state.json`, with LLM-driven consolidation in `src/core/memory_consolidation.jl`.
+- Session memory persists under `<data_dir>/memory/<session>/` as `MEMORY.md`, `HISTORY.md`, and `state.json`, with LLM-driven consolidation in `src/sessions/memory_consolidation.jl`.
 - Cron jobs persist under `<data_dir>/cron/jobs.json`; outbound dead letters persist under `<data_dir>/dead_letters.jsonl`.
-- MCP tools are namespaced as `mcp_<server>_<tool>` via `src/core/mcp.jl`.
+- MCP tools are namespaced as `mcp_<server>_<tool>` via `src/tools/mcp.jl`.

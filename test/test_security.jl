@@ -2,11 +2,11 @@ using Krill
 using Test
 using Sockets
 
-const _check_exec_denylist = Krill.Core.BuiltinTools._check_exec_denylist
-const _check_exec_urls = Krill.Core.BuiltinTools._check_exec_urls
-const _is_forbidden_ip = Krill.Core.BuiltinTools._is_forbidden_ip
-const _validate_http_url = Krill.Core.BuiltinTools._validate_http_url
-const _resolve_path = Krill.Core.BuiltinTools._resolve_path
+const _check_exec_denylist = Krill.BuiltinTools._check_exec_denylist
+const _check_exec_urls = Krill.BuiltinTools._check_exec_urls
+const _is_forbidden_ip = Krill.BuiltinTools._is_forbidden_ip
+const _validate_http_url = Krill.BuiltinTools._validate_http_url
+const _resolve_path = Krill.BuiltinTools._resolve_path
 
 @testset "Exec command denylist" begin
     @testset "blocks rm -rf variants" begin
