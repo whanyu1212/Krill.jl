@@ -43,8 +43,6 @@ jobs:
 
       - name: Build docs
         run: julia --project=docs docs/make.jl
-        env:
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
