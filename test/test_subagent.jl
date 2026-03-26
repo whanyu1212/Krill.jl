@@ -536,3 +536,75 @@ end
         @test s["subagents_enabled"] == false
     end
 end
+
+# ============================================================================
+# Concurrent stress test
+# ============================================================================
+
+@testset "Concurrent subagent stress" begin
+    @testset "many rapid spawns complete without corruption" begin
+        published = InboundMessage[]
+        completed = Threads.Atomic{Int}(0)
+
+        mgr, _ = make_test_manager(
+            published = published,
+            max_concurrent = 10,
+            processor_factory = () -> (msg, hist) -> begin
+                Threads.atomic_add!(completed, 1)
+                return (text = "done: $(Krill.message_text(msg))", usage = nothing)
+            end,
+        )
+
+        # Spawn 10 subagents as fast as possible
+        task_ids = String[]
+        for i in 1:10
+            result = spawn_subagent!(mgr, "stress task $i";
+                origin_channel = :test,
+                origin_session_key = "stress_sess",
+                origin_chat_id = "stress_chat",
+            )
+            @test contains(result, "started")
+            push!(task_ids, first(keys(filter(kv -> !(kv.first in task_ids[1:end]), mgr.tasks))))
+        end
+
+        # Wait for all to complete
+        for tid in task_ids
+            wait_for_task(mgr, tid; timeout_s = 15.0)
+        end
+
+        @test completed[] == 10
+        @test subagent_count(mgr) == 10
+        all_tasks = list_subagents(mgr)
+        @test all(t -> t.status === :completed, all_tasks)
+        @test all(t -> startswith(t.result, "done:"), all_tasks)
+    end
+
+    @testset "concurrent limit enforced under rapid spawning" begin
+        barrier = Threads.Event()
+        mgr, _ = make_test_manager(
+            max_concurrent = 3,
+            processor_factory = () -> (msg, hist) -> begin
+                wait(barrier)  # block until released
+                return (text = "ok", usage = nothing)
+            end,
+        )
+
+        # Fill up the limit
+        for i in 1:3
+            spawn_subagent!(mgr, "blocking $i"; origin_session_key = "s", origin_chat_id = "c")
+        end
+        sleep(0.1)  # let them start
+
+        # 4th should be rejected
+        result = spawn_subagent!(mgr, "rejected"; origin_session_key = "s", origin_chat_id = "c")
+        @test contains(result, "maximum concurrent limit")
+
+        # Release blocked tasks
+        notify(barrier)
+        for (tid, _) in mgr.tasks
+            wait_for_task(mgr, tid; timeout_s = 10.0)
+        end
+
+        @test subagent_count(mgr) == 3
+    end
+end

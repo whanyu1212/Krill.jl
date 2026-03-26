@@ -38,7 +38,7 @@ MemoryState(last_consolidated::Int) = MemoryState(last_consolidated, 0)
 Persists per-session memory files under:
 `workspace/memory/<sanitized_session_key>/`.
 """
-mutable struct MemoryStore
+struct MemoryStore
     workspace::String
 end
 

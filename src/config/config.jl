@@ -21,6 +21,106 @@ export KrillConfig, load_config, start_agent!,
     get_cfg, make_provider, provider_tools, provider_include_fields,
     make_mcp_servers, build_channels
 
+# ─── Config validation ───────────────────────────────────────────────
+
+struct ConfigError <: Exception
+    errors::Vector{String}
+end
+
+function Base.showerror(io::IO, err::ConfigError)
+    println(io, "Invalid krill.toml configuration:")
+    for e in err.errors
+        println(io, "  - ", e)
+    end
+end
+
+"""
+    _validate_config(cfg::Dict)
+
+Validate the raw parsed config dict. Throws `ConfigError` with all issues
+found, so the user sees every problem at once instead of fixing them one at a time.
+"""
+function _validate_config(cfg::Dict)
+    errors = String[]
+
+    # [provider] section
+    if !haskey(cfg, "provider") || !(cfg["provider"] isa Dict)
+        push!(errors, "[provider] section is missing")
+    else
+        p = cfg["provider"]
+        name = get(p, "name", "")
+        if isempty(name)
+            push!(errors, "[provider] name is required (\"openai\" or \"gemini\")")
+        elseif !(lowercase(name) in ("openai", "gemini"))
+            push!(errors, "[provider] name \"$name\" is not supported — expected \"openai\" or \"gemini\"")
+        end
+        api_key = get(p, "api_key", "")
+        if isempty(api_key)
+            env_key = lowercase(get(p, "name", "")) == "gemini" ? "GEMINI_API_KEY" : "OPENAI_API_KEY"
+            if isempty(get(ENV, env_key, ""))
+                push!(errors, "[provider] api_key is empty and $env_key is not set in environment")
+            end
+        end
+    end
+
+    # At least one channel enabled
+    tg_enabled = get(get(cfg, "telegram", Dict()), "enabled", false) === true
+    dc_enabled = get(get(cfg, "discord", Dict()), "enabled", false) === true
+    if !tg_enabled && !dc_enabled
+        push!(errors, "No channels enabled — set enabled = true under [telegram] or [discord]")
+    end
+
+    # Channel tokens
+    if tg_enabled
+        token = get(get(cfg, "telegram", Dict()), "bot_token", "")
+        if isempty(token)
+            push!(errors, "[telegram] bot_token is empty")
+        end
+    end
+    if dc_enabled
+        token = get(get(cfg, "discord", Dict()), "bot_token", "")
+        if isempty(token)
+            push!(errors, "[discord] bot_token is empty")
+        end
+    end
+
+    # [profile.tools] type checks
+    tc = get(get(cfg, "profile", Dict()), "tools", nothing)
+    if tc isa Dict
+        bool_keys = ("provider_builtins", "local_builtins", "builtin_skills", "memory",
+            "memory_consolidation", "cron", "subagents", "exec", "claude_code",
+            "codex", "google_workspace", "history_summarization")
+        for k in bool_keys
+            v = get(tc, k, nothing)
+            if v !== nothing && !(v isa Bool)
+                push!(errors, "[profile.tools] $k must be a boolean, got $(typeof(v))")
+            end
+        end
+    end
+
+    # [[profile.mcp]] entries
+    mcp_entries = get(get(cfg, "profile", Dict()), "mcp", nothing)
+    if mcp_entries isa Vector
+        for (i, entry) in enumerate(mcp_entries)
+            entry isa Dict || continue
+            name = get(entry, "name", "")
+            isempty(name) && push!(errors, "[[profile.mcp]] entry $i missing name")
+            transport = get(entry, "transport", "")
+            if !isempty(name) && isempty(transport)
+                push!(errors, "[[profile.mcp]] \"$name\" missing transport")
+            end
+            if transport == "stdio" && isempty(get(entry, "command", ""))
+                push!(errors, "[[profile.mcp]] \"$name\" (stdio) missing command")
+            end
+            if transport in ("streamable_http", "sse") && isempty(get(entry, "url", ""))
+                push!(errors, "[[profile.mcp]] \"$name\" ($transport) missing url")
+            end
+        end
+    end
+
+    isempty(errors) || throw(ConfigError(errors))
+end
+
 """
     KrillConfig
 
@@ -60,6 +160,9 @@ function load_config(;
     isfile(config_path) ||
         error("krill.toml not found at $config_path — copy krill.toml.example and fill in your tokens")
     cfg = expand_env_deep!(TOML.parsefile(config_path))
+
+    # Validate before constructing anything — fail fast with all issues at once
+    _validate_config(cfg)
 
     # Resolve components
     provider = make_provider(cfg)

@@ -816,3 +816,45 @@ function _extract_gemini_tool_calls(parsed)
     end
     return calls
 end
+
+# ─── Provider-dispatched extraction ──────────────────────────────────
+# Unified interface: dispatch on provider type to call the correct format-specific extractor.
+
+_extract_text(::OpenAIProvider, parsed) = _extract_output_text(parsed)
+_extract_text(::GeminiOpenAICompatProvider, parsed) = _extract_chat_output_text(parsed)
+_extract_text(::GeminiProvider, parsed) = _extract_gemini_output_text(parsed)
+
+_extract_response_usage(::OpenAIProvider, parsed) = _extract_usage(parsed)
+_extract_response_usage(::GeminiOpenAICompatProvider, parsed) = _extract_chat_usage(parsed)
+_extract_response_usage(::GeminiProvider, parsed) = _extract_gemini_usage(parsed)
+
+_extract_tool_calls(::OpenAIProvider, parsed) = _extract_responses_tool_calls(parsed)
+_extract_tool_calls(::GeminiOpenAICompatProvider, parsed) = _extract_chat_tool_calls(parsed)
+_extract_tool_calls(::GeminiProvider, parsed) = _extract_gemini_tool_calls(parsed)
+
+function _extract_response_id(::OpenAIProvider, parsed)
+    haskey(parsed, :id) ? String(parsed[:id]) : nothing
+end
+function _extract_response_id(::GeminiProvider, parsed)
+    haskey(parsed, :responseId) ? String(parsed[:responseId]) :
+    (haskey(parsed, :id) ? String(parsed[:id]) : nothing)
+end
+function _extract_response_id(::GeminiOpenAICompatProvider, parsed)
+    haskey(parsed, :id) ? String(parsed[:id]) : nothing
+end
+
+"""Parse JSON response body and build an LLMResponse using provider-dispatched extractors."""
+function _parse_and_build_response(provider::AbstractLLMProvider, body::AbstractString, endpoint_label::String)
+    parsed = try
+        JSON3.read(body)
+    catch e
+        throw(OpenAIAPIError(endpoint_label, "Invalid JSON response: $(sprint(showerror, e))", 0, false))
+    end
+    return LLMResponse(
+        _extract_text(provider, parsed),
+        _extract_response_usage(provider, parsed),
+        parsed,
+        _extract_tool_calls(provider, parsed),
+        _extract_response_id(provider, parsed),
+    )
+end

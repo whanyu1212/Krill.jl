@@ -93,6 +93,36 @@ struct DeliveryPolicy
 end
 
 """
+    MCPConnectionError <: Exception
+
+Error raised when connecting to an MCP server fails.
+"""
+struct MCPConnectionError <: Exception
+    server_name::String
+    message::String
+end
+
+function Base.showerror(io::IO, err::MCPConnectionError)
+    print(io, "MCP connection failed for \"", err.server_name, "\": ", err.message)
+end
+
+"""
+    MemoryConsolidationError <: Exception
+
+Error raised when LLM-driven memory consolidation fails.
+"""
+struct MemoryConsolidationError <: Exception
+    session_key::String
+    message::String
+    failures::Int
+end
+
+function Base.showerror(io::IO, err::MemoryConsolidationError)
+    print(io, "Memory consolidation failed for session \"", err.session_key,
+        "\" (attempt ", err.failures, "): ", err.message)
+end
+
+"""
     ErrorEnvelope(code, message, retriable, details)
 
 Structured error representation propagated through the runtime.

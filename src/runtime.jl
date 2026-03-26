@@ -14,7 +14,7 @@ using ..Core: InboundMessage, OutboundMessage, message_text,
     MemoryStore,
     ToolRegistry,
     ToolDef,
-    register_tool!,
+    register_tool!, get_tool,
     SkillDef, discover_skills, skills_summary, load_always_skills, register_read_skill_tool!,
     DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_builder,
     AbstractLLMProvider, OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider, make_llm_processor,
@@ -52,7 +52,7 @@ function _mcp_registered_tool_defs(
     defs = ToolDef[]
     for names in values(mcp_connections.registered_tools)
         for name in names
-            tool = get(registry.tools, name, nothing)
+            tool = get_tool(registry, name)
             tool === nothing || push!(defs, tool)
         end
     end

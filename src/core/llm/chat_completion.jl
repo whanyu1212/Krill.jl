@@ -66,17 +66,7 @@ function chat_completion(
     end
 
     body = _post_responses(provider, payload; retry_config = retry_config)
-    parsed = try
-        JSON3.read(body)
-    catch e
-        throw(OpenAIAPIError("POST /responses", "Invalid JSON response: $(sprint(showerror, e))", 0, false))
-    end
-
-    text = _extract_output_text(parsed)
-    usage = _extract_usage(parsed)
-    tool_calls = _extract_responses_tool_calls(parsed)
-    response_id = haskey(parsed, :id) ? String(parsed[:id]) : nothing
-    return LLMResponse(text, usage, parsed, tool_calls, response_id)
+    return _parse_and_build_response(provider, body, "POST /responses")
 end
 
 function chat_completion(
@@ -152,26 +142,7 @@ function chat_completion(
     )
 
     body = _post_generate_content(provider, effective_model, payload; retry_config = retry_config)
-    parsed = try
-        JSON3.read(body)
-    catch e
-        throw(
-            OpenAIAPIError(
-                "POST /models/$(effective_model):generateContent",
-                "Invalid JSON response: $(sprint(showerror, e))",
-                0,
-                false,
-            ),
-        )
-    end
-
-    text = _extract_gemini_output_text(parsed)
-    usage = _extract_gemini_usage(parsed)
-    tool_calls = _extract_gemini_tool_calls(parsed)
-    response_id =
-        haskey(parsed, :responseId) ? String(parsed[:responseId]) :
-        (haskey(parsed, :id) ? String(parsed[:id]) : nothing)
-    return LLMResponse(text, usage, parsed, tool_calls, response_id)
+    return _parse_and_build_response(provider, body, "POST /models/$(effective_model):generateContent")
 end
 
 function chat_completion(
@@ -228,15 +199,5 @@ function chat_completion(
     end
 
     body = _post_chat_completions(provider, payload; retry_config = retry_config)
-    parsed = try
-        JSON3.read(body)
-    catch e
-        throw(OpenAIAPIError("POST /chat/completions", "Invalid JSON response: $(sprint(showerror, e))", 0, false))
-    end
-
-    text = _extract_chat_output_text(parsed)
-    usage = _extract_chat_usage(parsed)
-    tool_calls = _extract_chat_tool_calls(parsed)
-    response_id = haskey(parsed, :id) ? String(parsed[:id]) : nothing
-    return LLMResponse(text, usage, parsed, tool_calls, response_id)
+    return _parse_and_build_response(provider, body, "POST /chat/completions")
 end

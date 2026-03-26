@@ -1,3 +1,19 @@
+"""
+    _safe_call(fn, label, default, args...)
+
+Call a nullable callback safely. Returns `default` if `fn` is nothing or throws.
+Logs a warning with `label` on failure.
+"""
+function _safe_call(fn, label::String, default, args...)
+    fn === nothing && return default
+    try
+        return fn(args...)
+    catch e
+        @warn "$label failed" exception=(e, catch_backtrace())
+        return default
+    end
+end
+
 function _log_llm_response(provider::AbstractLLMProvider, response::LLMResponse, session_key::String)
     u = response.usage
     if u !== nothing
@@ -108,15 +124,10 @@ function _execute_tool_calls(
 
     for call in calls
         # should_interrupt gate: stop tool loop before dispatching this call
-        if hooks !== nothing && hooks.should_interrupt !== nothing
-            try
-                if hooks.should_interrupt(call.name, call.arguments)
-                    interrupted = true
-                    break
-                end
-            catch e
-                @warn "should_interrupt hook failed" tool=call.name exception=(e, catch_backtrace())
-            end
+        if hooks !== nothing &&
+            _safe_call(hooks.should_interrupt, "should_interrupt hook", false, call.name, call.arguments)
+            interrupted = true
+            break
         end
 
         tool = get_tool(registry, call.name)
@@ -150,21 +161,11 @@ function _execute_tool_calls(
                 result_text, is_error = cached
                 @debug "tool cache hit" tool=call.name
             else
-                if tool_progress !== nothing
-                    try
-                        tool_progress(call.name, call.arguments)
-                    catch e
-                        @warn "tool progress hook failed" tool=call.name exception=(e, catch_backtrace())
-                    end
-                end
+                _safe_call(tool_progress, "tool progress hook", nothing, call.name, call.arguments)
 
                 # on_tool_call hook
-                if hooks !== nothing && hooks.on_tool_call !== nothing
-                    try
-                        hooks.on_tool_call(call.name, call.arguments)
-                    catch e
-                        @warn "on_tool_call hook failed" tool=call.name exception=(e, catch_backtrace())
-                    end
+                if hooks !== nothing
+                    _safe_call(hooks.on_tool_call, "on_tool_call hook", nothing, call.name, call.arguments)
                 end
 
                 t0 = time()
@@ -180,12 +181,8 @@ function _execute_tool_calls(
                     )
 
                     # on_tool_result hook
-                    if hooks !== nothing && hooks.on_tool_result !== nothing
-                        try
-                            hooks.on_tool_result(call.name, result_text)
-                        catch e
-                            @warn "on_tool_result hook failed" tool=call.name exception=(e, catch_backtrace())
-                        end
+                    if hooks !== nothing
+                        _safe_call(hooks.on_tool_result, "on_tool_result hook", nothing, call.name, result_text)
                     end
                 catch e
                     duration_ms = (time() - t0) * 1000.0
@@ -211,12 +208,8 @@ function _execute_tool_calls(
                     )
 
                     # on_tool_result hook (also fires on errors)
-                    if hooks !== nothing && hooks.on_tool_result !== nothing
-                        try
-                            hooks.on_tool_result(call.name, result_text)
-                        catch e2
-                            @warn "on_tool_result hook failed" tool=call.name exception=(e2, catch_backtrace())
-                        end
+                    if hooks !== nothing
+                        _safe_call(hooks.on_tool_result, "on_tool_result hook", nothing, call.name, result_text)
                     end
                 end
 
@@ -465,21 +458,11 @@ function _chat_with_tool_loop(
     )
     _log_llm_response(provider, response, session_key)
 
-    if stop_check !== nothing
-        try
-            stop_check() && return (
-                LLMResponse(
-                    "Stopped by user request.",
-                    response.usage,
-                    response.raw,
-                    LLMToolCall[],
-                    response.response_id,
-                ),
-                tool_events,
-            )
-        catch e
-            @warn "stop_check callback failed" exception=(e, catch_backtrace())
-        end
+    if _safe_call(stop_check, "stop_check callback", false)
+        return LLMResponse(
+            "Stopped by user request.", response.usage, response.raw,
+            LLMToolCall[], response.response_id,
+        ), tool_events
     end
 
     tool_registry === nothing && return response, tool_events
@@ -488,199 +471,25 @@ function _chat_with_tool_loop(
     # Per-turn tool result cache: avoids re-executing identical tool calls
     tool_cache = Dict{UInt64,Tuple{String,Bool}}()
 
-    # OpenAI structured continuation:
-    # send function_call_output with previous_response_id on each loop step.
-    # Reference:
-    # https://platform.openai.com/docs/guides/function-calling
-    if provider isa OpenAIProvider
-        current = response
-        for iteration in 1:max_tool_iterations
-            isempty(current.tool_calls) && return current, tool_events
+    # Shared chat_completion kwargs used in continuation calls
+    _cc_kwargs = (;
+        reasoning = reasoning,
+        tools = tools,
+        tool_choice = tool_choice,
+        include = include,
+        max_output_tokens = max_output_tokens,
+        temperature = temperature,
+        top_p = top_p,
+        stream = false,
+        parallel_tool_calls = parallel_tool_calls,
+        metadata = metadata,
+        retry_config = retry_config,
+    )
 
-            exec_result = _execute_tool_calls(
-                tool_registry,
-                current.tool_calls;
-                max_tool_output_chars = max_tool_output_chars,
-                tool_progress = tool_progress,
-                allowed_tools = allowed_tools,
-                session_key = session_key,
-                tool_cache = tool_cache,
-                hooks = hooks,
-            )
-            append!(tool_events, exec_result.events)
-
-            if exec_result.interrupted
-                return current, tool_events
-            end
-
-            if exec_result.return_direct_text !== nothing
-                synthetic = LLMResponse(
-                    exec_result.return_direct_text,
-                    current.usage,
-                    current.raw,
-                    LLMToolCall[],
-                    current.response_id,
-                )
-                return synthetic, tool_events
-            end
-
-            if stop_check !== nothing
-                try
-                    stop_check() && return (
-                        LLMResponse(
-                            "Stopped by user request.",
-                            current.usage,
-                            current.raw,
-                            LLMToolCall[],
-                            current.response_id,
-                        ),
-                        tool_events,
-                    )
-                catch e
-                    @warn "stop_check callback failed" exception=(e, catch_backtrace())
-                end
-            end
-
-            if iteration >= max_tool_iterations
-                synthetic = LLMResponse(
-                    _tool_loop_fallback_text(current, max_tool_iterations),
-                    current.usage,
-                    current.raw,
-                    LLMToolCall[],
-                    current.response_id,
-                )
-                return synthetic, tool_events
-            end
-
-            if current.response_id === nothing
-                @warn "provider returned tool calls without response_id; stopping tool loop"
-                return current, tool_events
-            end
-
-            current = chat_completion(
-                provider,
-                exec_result.openai_outputs;
-                instructions = nothing,
-                reasoning = reasoning,
-                tools = tools,
-                tool_choice = tool_choice,
-                include = include,
-                max_output_tokens = max_output_tokens,
-                temperature = temperature,
-                top_p = top_p,
-                stream = false,
-                parallel_tool_calls = parallel_tool_calls,
-                metadata = metadata,
-                previous_response_id = current.response_id,
-                retry_config = retry_config,
-            )
-            _log_llm_response(provider, current, session_key)
-        end
-        return response, tool_events
-    end
-
-    # Gemini native structured continuation:
-    # append model functionCall parts and user functionResponse parts to contents.
-    # References:
-    # https://ai.google.dev/gemini-api/docs/function-calling
-    # https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta
-    if provider isa GeminiProvider
-        messages = Any[input_messages...]
-        current = response
-        for iteration in 1:max_tool_iterations
-            isempty(current.tool_calls) && return current, tool_events
-
-            exec_result = _execute_tool_calls(
-                tool_registry,
-                current.tool_calls;
-                max_tool_output_chars = max_tool_output_chars,
-                tool_progress = tool_progress,
-                allowed_tools = allowed_tools,
-                session_key = session_key,
-                tool_cache = tool_cache,
-                hooks = hooks,
-            )
-            append!(tool_events, exec_result.events)
-
-            if exec_result.interrupted
-                return current, tool_events
-            end
-
-            if exec_result.return_direct_text !== nothing
-                synthetic = LLMResponse(
-                    exec_result.return_direct_text,
-                    current.usage,
-                    current.raw,
-                    LLMToolCall[],
-                    current.response_id,
-                )
-                return synthetic, tool_events
-            end
-
-            if stop_check !== nothing
-                try
-                    stop_check() && return (
-                        LLMResponse(
-                            "Stopped by user request.",
-                            current.usage,
-                            current.raw,
-                            LLMToolCall[],
-                            current.response_id,
-                        ),
-                        tool_events,
-                    )
-                catch e
-                    @warn "stop_check callback failed" exception=(e, catch_backtrace())
-                end
-            end
-
-            if iteration >= max_tool_iterations
-                synthetic = LLMResponse(
-                    _tool_loop_fallback_text(current, max_tool_iterations),
-                    current.usage,
-                    current.raw,
-                    LLMToolCall[],
-                    current.response_id,
-                )
-                return synthetic, tool_events
-            end
-
-            fc_parts = _gemini_raw_function_call_parts(current.raw, current.tool_calls)
-            isempty(fc_parts) || push!(messages, Dict{String,Any}(
-                "role" => "assistant",
-                "content" => fc_parts,
-            ))
-
-            fr_parts = _tool_events_to_function_response_parts(exec_result.events)
-            isempty(fr_parts) || push!(messages, Dict{String,Any}(
-                "role" => "user",
-                "content" => fr_parts,
-            ))
-
-            current = chat_completion(
-                provider,
-                messages;
-                instructions = instructions,
-                reasoning = reasoning,
-                tools = tools,
-                tool_choice = tool_choice,
-                include = include,
-                max_output_tokens = max_output_tokens,
-                temperature = temperature,
-                top_p = top_p,
-                stream = false,
-                parallel_tool_calls = parallel_tool_calls,
-                metadata = metadata,
-                retry_config = retry_config,
-            )
-            _log_llm_response(provider, current, session_key)
-        end
-        return response, tool_events
-    end
-
-    # Fallback for providers that don't yet have native tool-result continuation wiring.
-    messages = Any[input_messages...]
+    # Provider-specific state for continuation
+    _continuation_messages = provider isa OpenAIProvider ? nothing : Any[input_messages...]
     current = response
+
     for iteration in 1:max_tool_iterations
         isempty(current.tool_calls) && return current, tool_events
 
@@ -701,73 +510,90 @@ function _chat_with_tool_loop(
         end
 
         if exec_result.return_direct_text !== nothing
-            synthetic = LLMResponse(
-                exec_result.return_direct_text,
-                current.usage,
-                current.raw,
-                LLMToolCall[],
-                current.response_id,
-            )
-            return synthetic, tool_events
+            return LLMResponse(
+                exec_result.return_direct_text, current.usage, current.raw,
+                LLMToolCall[], current.response_id,
+            ), tool_events
         end
 
-        if stop_check !== nothing
-            try
-                stop_check() && return (
-                    LLMResponse(
-                        "Stopped by user request.",
-                        current.usage,
-                        current.raw,
-                        LLMToolCall[],
-                        current.response_id,
-                    ),
-                    tool_events,
-                )
-            catch e
-                @warn "stop_check callback failed" exception=(e, catch_backtrace())
-            end
+        if _safe_call(stop_check, "stop_check callback", false)
+            return LLMResponse(
+                "Stopped by user request.", current.usage, current.raw,
+                LLMToolCall[], current.response_id,
+            ), tool_events
         end
 
         if iteration >= max_tool_iterations
-            synthetic = LLMResponse(
+            return LLMResponse(
                 _tool_loop_fallback_text(current, max_tool_iterations),
-                current.usage,
-                current.raw,
-                LLMToolCall[],
-                current.response_id,
-            )
-            return synthetic, tool_events
+                current.usage, current.raw, LLMToolCall[], current.response_id,
+            ), tool_events
         end
 
-        push!(
-            messages,
-            Dict{String,Any}(
-                "role" => "user",
-                "content" => Any[Dict{String,Any}(
-                    "type" => "input_text",
-                    "text" => _tool_events_to_text(exec_result.events),
-                )],
-            ),
-        )
+        # OpenAI requires response_id for continuation; bail if missing
+        if provider isa OpenAIProvider && current.response_id === nothing
+            @warn "provider returned tool calls without response_id; stopping tool loop"
+            return current, tool_events
+        end
 
-        current = chat_completion(
-            provider,
-            messages;
-            instructions = instructions,
-            reasoning = reasoning,
-            tools = tools,
-            tool_choice = tool_choice,
-            include = include,
-            max_output_tokens = max_output_tokens,
-            temperature = temperature,
-            top_p = top_p,
-            stream = false,
-            parallel_tool_calls = parallel_tool_calls,
-            metadata = metadata,
-            retry_config = retry_config,
+        # Provider-specific continuation strategy
+        current = _continue_after_tool_calls(
+            provider, current, exec_result, _continuation_messages,
+            instructions, _cc_kwargs,
         )
         _log_llm_response(provider, current, session_key)
     end
 
     return response, tool_events
+end
+
+# ─── Provider-specific continuation strategies ───────────────────────
+
+# OpenAI: send function_call_output with previous_response_id
+function _continue_after_tool_calls(
+    provider::OpenAIProvider, current::LLMResponse, exec_result, _messages,
+    instructions, cc_kwargs,
+)
+    return chat_completion(
+        provider, exec_result.openai_outputs;
+        instructions = nothing,
+        previous_response_id = current.response_id,
+        cc_kwargs...,
+    )
+end
+
+# Gemini native: append functionCall + functionResponse parts to message history
+function _continue_after_tool_calls(
+    provider::GeminiProvider, current::LLMResponse, exec_result, messages,
+    instructions, cc_kwargs,
+)
+    fc_parts = _gemini_raw_function_call_parts(current.raw, current.tool_calls)
+    isempty(fc_parts) || push!(messages, Dict{String,Any}(
+        "role" => "assistant",
+        "content" => fc_parts,
+    ))
+
+    fr_parts = _tool_events_to_function_response_parts(exec_result.events)
+    isempty(fr_parts) || push!(messages, Dict{String,Any}(
+        "role" => "user",
+        "content" => fr_parts,
+    ))
+
+    return chat_completion(provider, messages; instructions = instructions, cc_kwargs...)
+end
+
+# Fallback (GeminiOpenAICompat and others): append tool results as text
+function _continue_after_tool_calls(
+    provider::AbstractLLMProvider, current::LLMResponse, exec_result, messages,
+    instructions, cc_kwargs,
+)
+    push!(messages, Dict{String,Any}(
+        "role" => "user",
+        "content" => Any[Dict{String,Any}(
+            "type" => "input_text",
+            "text" => _tool_events_to_text(exec_result.events),
+        )],
+    ))
+
+    return chat_completion(provider, messages; instructions = instructions, cc_kwargs...)
 end

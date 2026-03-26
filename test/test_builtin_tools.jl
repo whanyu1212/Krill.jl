@@ -60,9 +60,11 @@ end
         @test "write_file" in names
         @test "edit_file" in names
         @test "list_dir" in names
-        @test "web_search" in names
         @test "web_fetch" in names
-        @test "message" in names
+        # web_search is commented out (provider-native search used instead)
+        @test !("web_search" in names)
+        # message is only registered when send_message_fn is provided
+        @test !("message" in names)
         @test !("exec" in names)
         @test !has_tool(registry, "exec")
     end
@@ -193,77 +195,36 @@ end
 
     @testset "RuntimeState injects built-in function schemas for LLM" begin
         captured_payload = Ref{Any}(nothing)
+        sent_once = Ref(false)
 
-        mock_telegram_request = function (method, url, headers, body)
-            payload = JSON3.read(String(body))
-            if occursin("getUpdates", url)
-                return HTTP.Response(
-                    200,
-                    JSON3.write(
-                        Dict(
-                            "ok" => true,
-                            "result" => Any[
-                                Dict(
-                                "update_id" => 6100,
-                                "message" => Dict(
-                                    "message_id" => 1,
-                                    "text" => "hello",
-                                    "chat" => Dict("id" => 7),
-                                    "from" => Dict("id" => 7),
-                                ),
-                            ),
-                            ],
-                        ),
-                    ),
-                )
-            elseif occursin("sendChatAction", url)
-                return HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => true)))
-            elseif occursin("sendMessage", url)
-                return HTTP.Response(200, JSON3.write(Dict(
-                    "ok" => true,
-                    "result" => Dict("message_id" => 999),
-                )))
+        # Only send the update on the first getUpdates call so the test doesn't loop
+        on_message = () -> begin
+            if !sent_once[]
+                sent_once[] = true
+                return Any[make_telegram_update(; text = "hello", update_id = 6100, chat_id = 7, user_id = 7)]
             end
-            return HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
-        end
-
-        mock_openai_request = function (method, url, headers, body)
-            payload = JSON3.read(String(body))
-            captured_payload[] = payload
-            return HTTP.Response(
-                200,
-                JSON3.write(
-                    Dict(
-                        "id" => "resp_builtin_tools",
-                        "output_text" => "ok",
-                        "usage" => Dict(
-                            "input_tokens" => 10,
-                            "output_tokens" => 2,
-                            "total_tokens" => 12,
-                        ),
-                    ),
-                ),
-            )
+            return Any[]
         end
 
         client = TelegramClient("token";
             base_url = "https://example.test/botTOKEN",
-            request = mock_telegram_request,
+            request = make_mock_telegram_request(; on_message = on_message),
         )
-        provider = OpenAIProvider(
-            api_key = "test-key",
-            base_url = "https://example.openai.test/v1",
-            request = mock_openai_request,
-            max_retries = 0,
-        )
+        provider = make_mock_openai_provider(; captured = captured_payload)
 
-        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01);
+        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01, allow_from = ["*"]);
             workspace = mktempdir(),
             llm_provider = provider,
         )
 
         start!(runtime)
-        sleep(0.35)
+
+        # Wait for the LLM call to happen instead of a fixed sleep
+        deadline = time() + 10.0
+        while captured_payload[] === nothing && time() < deadline
+            sleep(0.05)
+        end
+
         shutdown!(runtime)
 
         payload = captured_payload[]
@@ -279,9 +240,8 @@ end
         @test "write_file" in tool_names
         @test "edit_file" in tool_names
         @test "list_dir" in tool_names
-        @test "web_search" in tool_names
         @test "web_fetch" in tool_names
-        @test "message" in tool_names
+        @test !("web_search" in tool_names)
         @test !("exec" in tool_names)
     end
 end

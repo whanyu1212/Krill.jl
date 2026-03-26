@@ -2,7 +2,7 @@ module MemoryConsolidation
 
 using Dates
 
-using ..Types: InboundMessage
+using ..Types: InboundMessage, MemoryConsolidationError
 using ..Sessions: TurnRecord
 using ..Memory:
     MemoryStore, MemoryState, load_memory, save_memory!, append_history!, load_memory_state, save_memory_state!
@@ -245,13 +245,14 @@ function consolidate_session_memory!(
     catch err
         new_failures = failures + 1
         save_memory_state!(memory_store, session_key, MemoryState(last, new_failures))
-        @warn "memory consolidation LLM call failed" session_key=session_key failures=new_failures max_failures=config.max_failures error=err
+        mce = MemoryConsolidationError(session_key, sprint(showerror, err), new_failures)
+        @warn "memory consolidation LLM call failed" session_key=session_key failures=new_failures max_failures=config.max_failures exception=(err, catch_backtrace())
         return (
             consolidated = false,
             reason = :llm_error,
             token_estimate = token_estimate,
             last_consolidated = last,
-            error = err,
+            error = mce,
         )
     end
 

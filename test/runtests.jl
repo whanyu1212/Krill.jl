@@ -6,6 +6,9 @@ using Dates
 
 const KRILL_FAST_TESTS = get(ENV, "KRILL_FAST_TESTS", "0") == "1"
 
+# ─── Shared test helpers ──────────────────────────────────────────
+include("test_helpers.jl")
+
 # ─── Telegram ─────────────────────────────────────────────────────
 include("test_telegram_connector.jl")
 include("test_normalize.jl")

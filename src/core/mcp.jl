@@ -3,6 +3,7 @@ module MCP
 using HTTP
 using JSON3
 
+using ..Types: MCPConnectionError
 using ..Tools: ToolDef, ToolRegistry, register_tool!
 
 export MCPServer,
@@ -879,7 +880,9 @@ function connect_mcp_servers!(
             registered_tools[server.name] = names
             push!(clients, client)
         catch e
-            failed_servers[server.name] = sprint(showerror, e)
+            msg = sprint(showerror, e)
+            failed_servers[server.name] = msg
+            @warn "MCP server connection failed" server=server.name exception=(e, catch_backtrace())
             client === nothing || (
                 try
                     close!(client)
