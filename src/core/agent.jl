@@ -82,12 +82,18 @@ by default — close over shared mutable state with care in concurrent sessions.
 When `should_interrupt` returns `true`, remaining tool calls in the current LLM batch
 are silently skipped and the loop exits with the current response text.
 """
+# Hook type aliases — Julia doesn't enforce signatures, but these document intent.
+const TurnHook = Union{Nothing,Function}       # (msg::InboundMessage, history::Vector{TurnRecord}) -> nothing
+const ToolCallHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> nothing
+const ToolResultHook = Union{Nothing,Function}  # (tool_name::String, result_text::String) -> nothing
+const InterruptHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> Bool
+
 struct AgentHooks
-    on_turn_start::Union{Nothing,Function}    # (msg, history) -> nothing
-    on_turn_end::Union{Nothing,Function}      # (msg, history) -> nothing
-    on_tool_call::Union{Nothing,Function}     # (tool_name, arguments) -> nothing
-    on_tool_result::Union{Nothing,Function}   # (tool_name, result_text) -> nothing  (fires on both success and error)
-    should_interrupt::Union{Nothing,Function} # (tool_name, arguments) -> Bool
+    on_turn_start::TurnHook
+    on_turn_end::TurnHook
+    on_tool_call::ToolCallHook
+    on_tool_result::ToolResultHook   # fires on both success and error
+    should_interrupt::InterruptHook
 end
 
 function AgentHooks(;

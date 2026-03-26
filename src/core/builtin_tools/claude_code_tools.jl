@@ -13,7 +13,8 @@ function _parse_stream_json_result(lines::Vector{String})
             if get(event, :type, nothing) == "rate_limit_event"
                 rate_limit_info = get(event, :rate_limit_info, nothing)
             end
-        catch _
+        catch e
+            @debug "claude_code: skipping unparseable stream line" line=stripped exception=e
         end
     end
 
@@ -55,7 +56,8 @@ function _parse_stream_json_result(lines::Vector{String})
                 end
             end
             return join(parts, " ")
-        catch _
+        catch e
+            @debug "claude_code: skipping unparseable result line" line=line exception=e
             continue
         end
     end
@@ -89,7 +91,8 @@ function _extract_progress_event(line::AbstractString)
             end
             return nothing
         end
-    catch _
+    catch e
+        @debug "claude_code: skipping unparseable progress line" exception=e
     end
     return nothing
 end

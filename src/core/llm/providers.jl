@@ -71,6 +71,27 @@ struct GeminiOpenAICompatProvider <: AbstractLLMProvider
     extra_body::Union{Nothing,Dict{String,Any}}
 end
 
+function _validate_provider_args(api_key, env_name, max_retries, retry_base_seconds)
+    isempty(api_key) && throw(ArgumentError("Missing $env_name (or pass api_key explicitly)"))
+    max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
+    retry_base_seconds < 0 && throw(ArgumentError("retry_base_seconds must be >= 0"))
+end
+
+function OpenAIProvider(;
+    api_key::AbstractString = get(ENV, "OPENAI_API_KEY", ""),
+    base_url::AbstractString = "https://api.openai.com/v1",
+    model::AbstractString = "gpt-5.4-mini",
+    request::Function = HTTP.request,
+    max_retries::Int = 3,
+    retry_base_seconds::Real = 0.5,
+)
+    _validate_provider_args(api_key, "OPENAI_API_KEY", max_retries, retry_base_seconds)
+    return OpenAIProvider(
+        String(api_key), rstrip(String(base_url), '/'), String(model),
+        request, max_retries, Float64(retry_base_seconds),
+    )
+end
+
 function GeminiProvider(;
     api_key::AbstractString = get(ENV, "GEMINI_API_KEY", ""),
     base_url::AbstractString = "https://generativelanguage.googleapis.com/v1beta",
@@ -79,16 +100,10 @@ function GeminiProvider(;
     max_retries::Int = 3,
     retry_base_seconds::Real = 0.5,
 )
-    isempty(api_key) && throw(ArgumentError("Missing GEMINI_API_KEY (or pass api_key explicitly)"))
-    max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
-    retry_base_seconds < 0 && throw(ArgumentError("retry_base_seconds must be >= 0"))
+    _validate_provider_args(api_key, "GEMINI_API_KEY", max_retries, retry_base_seconds)
     return GeminiProvider(
-        String(api_key),
-        rstrip(String(base_url), '/'),
-        String(model),
-        request,
-        max_retries,
-        Float64(retry_base_seconds),
+        String(api_key), rstrip(String(base_url), '/'), String(model),
+        request, max_retries, Float64(retry_base_seconds),
     )
 end
 
@@ -101,38 +116,10 @@ function GeminiOpenAICompatProvider(;
     retry_base_seconds::Real = 0.5,
     extra_body::Union{Nothing,Dict{String,Any}} = nothing,
 )
-    isempty(api_key) && throw(ArgumentError("Missing GEMINI_API_KEY (or pass api_key explicitly)"))
-    max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
-    retry_base_seconds < 0 && throw(ArgumentError("retry_base_seconds must be >= 0"))
+    _validate_provider_args(api_key, "GEMINI_API_KEY", max_retries, retry_base_seconds)
     return GeminiOpenAICompatProvider(
-        String(api_key),
-        rstrip(String(base_url), '/'),
-        String(model),
-        request,
-        max_retries,
-        Float64(retry_base_seconds),
-        extra_body,
-    )
-end
-
-function OpenAIProvider(;
-    api_key::AbstractString = get(ENV, "OPENAI_API_KEY", ""),
-    base_url::AbstractString = "https://api.openai.com/v1",
-    model::AbstractString = "gpt-5.4-mini",
-    request::Function = HTTP.request,
-    max_retries::Int = 3,
-    retry_base_seconds::Real = 0.5,
-)
-    isempty(api_key) && throw(ArgumentError("Missing OPENAI_API_KEY (or pass api_key explicitly)"))
-    max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
-    retry_base_seconds < 0 && throw(ArgumentError("retry_base_seconds must be >= 0"))
-    return OpenAIProvider(
-        String(api_key),
-        rstrip(String(base_url), '/'),
-        String(model),
-        request,
-        max_retries,
-        Float64(retry_base_seconds),
+        String(api_key), rstrip(String(base_url), '/'), String(model),
+        request, max_retries, Float64(retry_base_seconds), extra_body,
     )
 end
 

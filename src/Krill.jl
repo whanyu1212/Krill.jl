@@ -29,7 +29,7 @@ using .Core: Types,
 
 # ─── Types ──────────────────────────────────────────────────────────
 using .Core: ContentPart, TextPart, BinaryPart, ToolCallPart, ToolResultPart,
-    DeliveryPolicy, ErrorEnvelope,
+    DeliveryPolicy, ErrorEnvelope, MCPConnectionError, MemoryConsolidationError,
     InboundMessage, OutboundMessage,
     ToolCallEvent, ToolResultEvent,
     message_text
@@ -152,7 +152,7 @@ export # ─── Submodules ───
 
     # ─── Message types ───
     ContentPart, TextPart, BinaryPart, ToolCallPart, ToolResultPart,
-    DeliveryPolicy, ErrorEnvelope,
+    DeliveryPolicy, ErrorEnvelope, MCPConnectionError, MemoryConsolidationError,
     InboundMessage, OutboundMessage,
     ToolCallEvent, ToolResultEvent,
     message_text,

@@ -2,13 +2,15 @@ function _is_retriable_status(status::Integer)
     return Int(status) in (429, 500, 503)
 end
 
-function _api_headers(provider::OpenAIProvider)
+# Default: Bearer token auth (OpenAI, GeminiOpenAICompat)
+function _api_headers(provider::AbstractLLMProvider)
     return [
         "Content-Type" => "application/json",
         "Authorization" => "Bearer $(provider.api_key)",
     ]
 end
 
+# Gemini native uses x-goog-api-key instead of Bearer
 function _api_headers(provider::GeminiProvider)
     return [
         "Content-Type" => "application/json",
@@ -16,20 +18,8 @@ function _api_headers(provider::GeminiProvider)
     ]
 end
 
-function _api_headers(provider::GeminiOpenAICompatProvider)
-    return [
-        "Content-Type" => "application/json",
-        "Authorization" => "Bearer $(provider.api_key)",
-    ]
-end
-
-_provider_retries(provider::OpenAIProvider) = provider.max_retries
-_provider_retries(provider::GeminiProvider) = provider.max_retries
-_provider_retries(provider::GeminiOpenAICompatProvider) = provider.max_retries
-
-_provider_retry_base(provider::OpenAIProvider) = provider.retry_base_seconds
-_provider_retry_base(provider::GeminiProvider) = provider.retry_base_seconds
-_provider_retry_base(provider::GeminiOpenAICompatProvider) = provider.retry_base_seconds
+_provider_retries(provider::AbstractLLMProvider) = provider.max_retries
+_provider_retry_base(provider::AbstractLLMProvider) = provider.retry_base_seconds
 
 function _extract_error_description(body::AbstractString, fallback::AbstractString)
     try

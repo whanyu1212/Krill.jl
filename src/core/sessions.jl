@@ -47,7 +47,7 @@ History files live at `workspace/sessions/<sanitized_key>/history.jsonl`.
 
 Thread-safe: the lock map is protected by its own `ReentrantLock`.
 """
-mutable struct SessionStore
+struct SessionStore
     workspace::String
     locks::Dict{String,ReentrantLock}
     lock_map_lock::ReentrantLock

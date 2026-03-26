@@ -15,6 +15,12 @@ export AbstractToolDef,
     dispatch_tool,
     @tool
 
+"""
+    AbstractToolDef
+
+Abstract supertype for tool definitions. Subtypes must have `name`, `parameters`,
+`description`, `execute`, `return_direct`, `max_output_chars`, and `strict` fields.
+"""
 abstract type AbstractToolDef end
 
 """
@@ -58,11 +64,20 @@ function ToolDef(;
     )
 end
 
+"""
+    ToolRegistry()
+    ToolRegistry(tools::Vector{<:ToolDef})
+
+Thread-safe registry of named tools. All read and write operations are protected
+by a `ReentrantLock`. Tool execution (via `dispatch_tool`) releases the lock
+before calling the tool's `execute` function.
+"""
 mutable struct ToolRegistry
     tools::Dict{String,ToolDef}
+    lock::ReentrantLock
 end
 
-ToolRegistry() = ToolRegistry(Dict{String,ToolDef}())
+ToolRegistry() = ToolRegistry(Dict{String,ToolDef}(), ReentrantLock())
 
 function ToolRegistry(tools::Vector{<:ToolDef})
     registry = ToolRegistry()
@@ -72,6 +87,12 @@ function ToolRegistry(tools::Vector{<:ToolDef})
     return registry
 end
 
+"""
+    ToolNotFoundError <: Exception
+
+Thrown by `dispatch_tool` when the requested tool name is not in the registry.
+Includes the list of available tool names for diagnostics.
+"""
 struct ToolNotFoundError <: Exception
     tool_name::String
     available::Vector{String}
@@ -82,6 +103,12 @@ function Base.showerror(io::IO, err::ToolNotFoundError)
     print(io, "Tool not found: ", err.tool_name, ". Available: ", available)
 end
 
+"""
+    ToolValidationError <: Exception
+
+Thrown by `dispatch_tool` when tool arguments fail schema validation.
+Contains a list of human-readable error strings.
+"""
 struct ToolValidationError <: Exception
     tool_name::String
     errors::Vector{String}
@@ -91,32 +118,77 @@ function Base.showerror(io::IO, err::ToolValidationError)
     print(io, "Invalid arguments for tool ", err.tool_name, ": ", join(err.errors, "; "))
 end
 
+"""
+    ToolExecutionError <: Exception
+
+Thrown by `dispatch_tool` when a tool's `execute` function raises an error.
+Wraps the original exception and captures its backtrace for diagnostics.
+"""
 struct ToolExecutionError <: Exception
     tool_name::String
     error::Any
+    backtrace::Union{Nothing,Vector}
 end
+
+ToolExecutionError(tool_name::String, error) = ToolExecutionError(tool_name, error, nothing)
 
 function Base.showerror(io::IO, err::ToolExecutionError)
     print(io, "Tool execution failed (", err.tool_name, "): ", sprint(showerror, err.error))
-end
-
-function register_tool!(registry::ToolRegistry, tool::ToolDef; replace::Bool = false)
-    if haskey(registry.tools, tool.name) && !replace
-        throw(ArgumentError("tool already registered: $(tool.name)"))
+    if err.backtrace !== nothing
+        println(io)
+        Base.show_backtrace(io, err.backtrace)
     end
-    registry.tools[tool.name] = tool
+end
+
+"""
+    register_tool!(registry, tool; replace=false) -> ToolRegistry
+
+Add a tool to the registry. Throws `ArgumentError` if a tool with the same name
+already exists and `replace` is false.
+"""
+function register_tool!(registry::ToolRegistry, tool::ToolDef; replace::Bool = false)
+    lock(registry.lock) do
+        if haskey(registry.tools, tool.name) && !replace
+            throw(ArgumentError("tool already registered: $(tool.name)"))
+        end
+        registry.tools[tool.name] = tool
+    end
     return registry
 end
 
+"""
+    unregister_tool!(registry, name) -> ToolRegistry
+
+Remove a tool by name. No-op if the tool doesn't exist.
+"""
 function unregister_tool!(registry::ToolRegistry, name::AbstractString)
-    pop!(registry.tools, String(name), nothing)
+    lock(registry.lock) do
+        pop!(registry.tools, String(name), nothing)
+    end
     return registry
 end
 
-get_tool(registry::ToolRegistry, name::AbstractString) = get(registry.tools, String(name), nothing)
-has_tool(registry::ToolRegistry, name::AbstractString) = haskey(registry.tools, String(name))
-tool_names(registry::ToolRegistry) = collect(keys(registry.tools))
+"""Return the `ToolDef` for `name`, or `nothing` if not registered."""
+get_tool(registry::ToolRegistry, name::AbstractString) = lock(registry.lock) do
+    get(registry.tools, String(name), nothing)
+end
 
+"""Return `true` if a tool with `name` is registered."""
+has_tool(registry::ToolRegistry, name::AbstractString) = lock(registry.lock) do
+    haskey(registry.tools, String(name))
+end
+
+"""Return a list of all registered tool names."""
+tool_names(registry::ToolRegistry) = lock(registry.lock) do
+    collect(keys(registry.tools))
+end
+
+"""
+    tools_schema(tools) -> Vector{Dict{String,Any}}
+    tools_schema(registry) -> Vector{Dict{String,Any}}
+
+Convert tool definitions into OpenAI-compatible function-calling JSON schemas.
+"""
 function tools_schema(tools::Vector{<:AbstractToolDef})
     return map(tools) do tool
         schema = Dict{String,Any}(
@@ -134,7 +206,9 @@ function tools_schema(tools::Vector{<:AbstractToolDef})
     end
 end
 
-tools_schema(registry::ToolRegistry) = tools_schema(collect(values(registry.tools)))
+tools_schema(registry::ToolRegistry) = lock(registry.lock) do
+    tools_schema(collect(values(registry.tools)))
+end
 
 _schema_properties(schema::AbstractDict) = get(schema, "properties", get(schema, :properties, Dict{String,Any}()))
 _schema_required(schema::AbstractDict) = get(schema, "required", get(schema, :required, String[]))
@@ -174,6 +248,8 @@ function _coerce_bool(value)
     return value
 end
 
+"""Coerce `value` to match the JSON schema type. Handles string, integer, number,
+boolean, array, and object types. Returns the value unchanged if coercion isn't possible."""
 function _coerce_by_schema(value, schema::AbstractDict)
     types = _json_schema_type(schema)
     isempty(types) && return value
@@ -227,6 +303,8 @@ function _coerce_by_schema(value, schema::AbstractDict)
     return value
 end
 
+"""Recursively validate `value` against a JSON schema, returning a list of error strings.
+`path` tracks the current location for error messages (e.g. `"args.name"`)."""
 function _validate_value(value, schema::AbstractDict, path::AbstractString)
     errors = String[]
     types = _json_schema_type(schema)
@@ -293,6 +371,7 @@ function _validate_value(value, schema::AbstractDict, path::AbstractString)
     return errors
 end
 
+"""Coerce each argument value to match the tool's JSON schema property types."""
 function _prepare_args(tool::ToolDef, args::Dict{String,Any})
     params = tool.parameters
     props = _schema_properties(params)
@@ -309,6 +388,8 @@ function _prepare_args(tool::ToolDef, args::Dict{String,Any})
     return coerced
 end
 
+"""Validate arguments against the tool's schema. Returns a list of error strings (empty if valid).
+Checks required fields, unexpected fields (in strict mode), and per-field type validation."""
 function _validate_args(tool::ToolDef, args::Dict{String,Any})
     errors = String[]
     params = tool.parameters
@@ -336,7 +417,16 @@ function _validate_args(tool::ToolDef, args::Dict{String,Any})
     return errors
 end
 
+"""
+    dispatch_tool(registry, name, args) -> Any
+
+Look up a tool by name, validate and coerce arguments against its JSON schema,
+then execute it. Throws `ToolNotFoundError`, `ToolValidationError`, or
+`ToolExecutionError` on failure. The tool is looked up under the registry lock,
+but execution happens outside the lock.
+"""
 function dispatch_tool(registry::ToolRegistry, name::AbstractString, args::AbstractDict)
+    # Look up tool under lock, but execute outside the lock (execution can be long-running)
     tool = get_tool(registry, name)
     tool === nothing && throw(ToolNotFoundError(String(name), sort(tool_names(registry))))
 
@@ -348,7 +438,7 @@ function dispatch_tool(registry::ToolRegistry, name::AbstractString, args::Abstr
     try
         return tool.execute(prepared)
     catch e
-        throw(ToolExecutionError(tool.name, e))
+        throw(ToolExecutionError(tool.name, e, catch_backtrace()))
     end
 end
 
