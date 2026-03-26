@@ -36,6 +36,8 @@ node_modules/
 # Environment secrets and local config
 .env
 *.json
+!docs/package.json
+!docs/package-lock.json
 
 # Build artifacts (sysimage)
 build/
