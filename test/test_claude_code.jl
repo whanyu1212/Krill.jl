@@ -17,7 +17,7 @@ using JSON3
     # ============================================================================
 
     @testset "parse stream-json result" begin
-        parse = Krill.Core.BuiltinTools._parse_stream_json_result
+        parse = Krill.BuiltinTools._parse_stream_json_result
 
         @testset "success result" begin
             lines = [
@@ -87,7 +87,7 @@ using JSON3
     # ============================================================================
 
     @testset "extract progress event" begin
-        extract = Krill.Core.BuiltinTools._extract_progress_event
+        extract = Krill.BuiltinTools._extract_progress_event
 
         @testset "tool_use event" begin
             line = """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"}]}}"""
@@ -137,22 +137,22 @@ using JSON3
 
     @testset "tool registration" begin
         @testset "claude_code not registered when disabled" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_claude_code = false)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_claude_code = false)
             names = [d.name for d in defs]
             @test !("claude_code" in names)
         end
 
         @testset "claude_code registered when enabled" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_claude_code = true)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_claude_code = true)
             names = [d.name for d in defs]
             @test "claude_code" in names
         end
 
         @testset "claude_code schema has required fields" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_claude_code = true)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_claude_code = true)
             cc = filter(d -> d.name == "claude_code", defs)
             @test length(cc) == 1
             params = cc[1].parameters
@@ -171,17 +171,17 @@ using JSON3
 
     @testset "input validation" begin
         @testset "empty task" begin
-            reg = Krill.Core.ToolRegistry()
-            Krill.Core.register_builtin_tools!(reg; enable_claude_code = true, workspace = "/tmp")
-            result = Krill.Core.dispatch_tool(reg, "claude_code", Dict{String,Any}("task" => ""))
+            reg = Krill.ToolRegistry()
+            Krill.register_builtin_tools!(reg; enable_claude_code = true, workspace = "/tmp")
+            result = Krill.dispatch_tool(reg, "claude_code", Dict{String,Any}("task" => ""))
             @test contains(result, "Error")
             @test contains(result, "must not be empty")
         end
 
         @testset "missing task throws" begin
-            reg = Krill.Core.ToolRegistry()
-            Krill.Core.register_builtin_tools!(reg; enable_claude_code = true, workspace = "/tmp")
-            @test_throws Exception Krill.Core.dispatch_tool(reg, "claude_code", Dict{String,Any}())
+            reg = Krill.ToolRegistry()
+            Krill.register_builtin_tools!(reg; enable_claude_code = true, workspace = "/tmp")
+            @test_throws Exception Krill.dispatch_tool(reg, "claude_code", Dict{String,Any}())
         end
     end
 
@@ -190,13 +190,13 @@ using JSON3
     # ============================================================================
 
     @testset "github tool" begin
-        reg = Krill.Core.ToolRegistry()
-        defs = Krill.Core.register_builtin_tools!(reg)
+        reg = Krill.ToolRegistry()
+        defs = Krill.register_builtin_tools!(reg)
         names = [d.name for d in defs]
         @test "github" in names
 
         # Empty command
-        result = Krill.Core.dispatch_tool(reg, "github", Dict{String,Any}("command" => ""))
+        result = Krill.dispatch_tool(reg, "github", Dict{String,Any}("command" => ""))
         @test contains(result, "Error")
     end
 
@@ -205,7 +205,7 @@ using JSON3
     # ============================================================================
 
     @testset "parse codex result" begin
-        parse = Krill.Core.BuiltinTools._parse_codex_result
+        parse = Krill.BuiltinTools._parse_codex_result
 
         @testset "success with message and usage" begin
             lines = [
@@ -291,7 +291,7 @@ using JSON3
     # ============================================================================
 
     @testset "extract codex progress" begin
-        extract = Krill.Core.BuiltinTools._extract_codex_progress
+        extract = Krill.BuiltinTools._extract_codex_progress
 
         @testset "command execution" begin
             line = """{"type":"item.completed","item":{"type":"command_execution","command":"git status","status":"completed"}}"""
@@ -337,22 +337,22 @@ using JSON3
 
     @testset "codex tool registration" begin
         @testset "codex not registered when disabled" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_codex = false)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_codex = false)
             names = [d.name for d in defs]
             @test !("codex" in names)
         end
 
         @testset "codex registered when enabled" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_codex = true)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_codex = true)
             names = [d.name for d in defs]
             @test "codex" in names
         end
 
         @testset "codex schema has required fields" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_codex = true)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_codex = true)
             cx = filter(d -> d.name == "codex", defs)
             @test length(cx) == 1
             params = cx[1].parameters
@@ -364,8 +364,8 @@ using JSON3
         end
 
         @testset "both claude_code and codex can coexist" begin
-            reg = Krill.Core.ToolRegistry()
-            defs = Krill.Core.register_builtin_tools!(reg; enable_claude_code = true, enable_codex = true)
+            reg = Krill.ToolRegistry()
+            defs = Krill.register_builtin_tools!(reg; enable_claude_code = true, enable_codex = true)
             names = [d.name for d in defs]
             @test "claude_code" in names
             @test "codex" in names
@@ -378,17 +378,17 @@ using JSON3
 
     @testset "codex input validation" begin
         @testset "empty task" begin
-            reg = Krill.Core.ToolRegistry()
-            Krill.Core.register_builtin_tools!(reg; enable_codex = true, workspace = "/tmp")
-            result = Krill.Core.dispatch_tool(reg, "codex", Dict{String,Any}("task" => ""))
+            reg = Krill.ToolRegistry()
+            Krill.register_builtin_tools!(reg; enable_codex = true, workspace = "/tmp")
+            result = Krill.dispatch_tool(reg, "codex", Dict{String,Any}("task" => ""))
             @test contains(result, "Error")
             @test contains(result, "must not be empty")
         end
 
         @testset "missing task throws" begin
-            reg = Krill.Core.ToolRegistry()
-            Krill.Core.register_builtin_tools!(reg; enable_codex = true, workspace = "/tmp")
-            @test_throws Exception Krill.Core.dispatch_tool(reg, "codex", Dict{String,Any}())
+            reg = Krill.ToolRegistry()
+            Krill.register_builtin_tools!(reg; enable_codex = true, workspace = "/tmp")
+            @test_throws Exception Krill.dispatch_tool(reg, "codex", Dict{String,Any}())
         end
     end
 end  # top-level testset

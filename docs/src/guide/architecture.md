@@ -250,7 +250,7 @@ The intelligence surface is layered rather than monolithic.
 - skills provide markdown instructions — always-on or on-demand via `read_skill`
 - MCP connections discover external tools and register them into the same registry
 
-**Note:** Julia has no official MCP SDK. Krill's MCP client (`src/core/mcp.jl`) implements JSON-RPC initialize / list / call over stdio and HTTP from scratch. It covers common cases well but may have edge-case issues with unusual servers. See [Known Limitations](/guide/features#Known-Limitations).
+**Note:** Julia has no official MCP SDK. Krill's MCP client (`src/tools/mcp.jl`) implements JSON-RPC initialize / list / call over stdio and HTTP from scratch. It covers common cases well but may have edge-case issues with unusual servers. See [Known Limitations](/guide/features#Known-Limitations).
 
 
 ### `PromptContext`

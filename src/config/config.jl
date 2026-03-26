@@ -2,8 +2,10 @@ module Config
 
 using TOML
 
-using ..Core: AbstractChannel, AbstractLLMProvider, OpenAIProvider, GeminiProvider,
-    MCPServer, Agent, AgentHooks,
+using ..ChannelInterface: AbstractChannel
+using ..LLM: AbstractLLMProvider, OpenAIProvider, GeminiProvider
+using ..MCP: MCPServer
+using ..AgentModule: Agent, AgentHooks,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
     ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig
 using ..Channels.Telegram: TelegramChannel

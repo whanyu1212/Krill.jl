@@ -6,7 +6,7 @@ using Krill.Telegram: HTTP, JSON3
 # Internal modules for white-box tests; use local names to avoid conflicts when
 # included from runtests.jl which may have already defined these.
 const _Agent_MCPServer = Krill.MCP.MCPServer
-const _LLM = Krill.Core.LLM
+const _LLM = Krill.LLM
 
 # ============================================================================
 # RetryConfig

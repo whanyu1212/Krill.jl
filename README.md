@@ -1,69 +1,80 @@
-# Krill.jl 🦐
+<p align="center">
+  <h1 align="center">Krill.jl 🦐</h1>
+  <p align="center">
+    <strong>A Julia-native, channel-agnostic AI agent runtime</strong><br>
+    Inspired by <a href="https://github.com/HKUDS/nanobot">nanobot</a> and <a href="https://github.com/openclaw/openclaw">OpenClaw</a>
+  </p>
+  <p align="center">
+    <a href="https://whanyu1212.github.io/Krill.jl/"><img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Documentation"></a>
+    <a href="https://github.com/whanyu1212/Krill.jl/actions"><img src="https://img.shields.io/github/actions/workflow/status/whanyu1212/Krill.jl/docs.yml?label=docs%20build" alt="Docs Build"></a>
+    <img src="https://img.shields.io/badge/Julia-1.12%2B-purple.svg" alt="Julia 1.12+">
+    <img src="https://img.shields.io/badge/status-work%20in%20progress-orange.svg" alt="WIP">
+    <a href="https://github.com/whanyu1212/Krill.jl/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License"></a>
+  </p>
+</p>
 
-A Julia-native, channel-agnostic AI agent runtime. Inspired by [nanobot](https://github.com/HKUDS/nanobot) and [OpenClaw](https://github.com/openclaw/openclaw).
+---
 
-> **Work in progress** — this is a solo project under active development. Things may break, APIs may change, and only OpenAI and Gemini are supported as LLM providers for now. More platform and provider support is planned.
+> **Work in progress** — solo project under active development. APIs may change. Only OpenAI and Gemini providers supported for now.
+
+## What It Does
+
+Connect an LLM to Telegram or Discord with tools, memory, scheduling, and coding agents — all from a single `krill.toml` config file.
+
+```
+User (Telegram/Discord)
+  → Krill agent
+    → LLM (OpenAI / Gemini)
+    → Tools (file ops, web, GitHub, shell, MCP)
+    → Coding agents (Claude Code, Codex)
+    → Memory (persisted across sessions)
+    → Cron (scheduled tasks)
+    → Subagents (background work)
+  → Reply
+```
 
 ## Features
 
-| Category | What's included | Status |
-| --- | --- | --- |
-| **Channels** | Telegram (polling + webhook), Discord (gateway + REST) | Stable |
-| **LLM Providers** | OpenAI Responses API, Gemini native + OpenAI-compat | Stable |
-| **Provider Search** | OpenAI web search, Gemini Google Search — with citations | Stable |
-| **Local Tools** | File ops, web fetch, shell exec, GitHub CLI, Google Workspace | Stable |
-| **Coding Agents** | Delegate to Claude Code or Codex CLI | Stable |
-| **MCP** | Connect external tool servers via stdio or HTTP | Works, edge cases |
-| **Memory** | Per-session persistent memory with LLM-driven consolidation | Works, no size cap |
-| **Cron** | Recurring and one-shot scheduled tasks | Stable |
-| **Subagents** | Background tasks with full tool access, results announced when done | Stable |
-| **Skills** | Markdown instruction docs — always-on or on-demand via `read_skill` | Stable |
-| **Context Management** | History summarization when context window fills | Stable |
-| **Prompt Construction** | System prompt + bootstrap docs + skills + memory, composed per-turn | Stable |
-
-## Known Limitations
-
-| Area | Limitation |
-| --- | --- |
-| **Providers** | OpenAI and Gemini only — no Anthropic Claude, Ollama, or local models yet |
-| **Channels** | Telegram and Discord only — no WhatsApp, Slack, or voice |
-| **Memory** | Per-chat isolation (no cross-channel), no explicit "remember this", no size cap, full dump each turn |
-| **MCP client** | Built from scratch (no Julia SDK) — partial SSE frames, stdio mid-call exits, non-standard errors may cause issues |
-| **Telegram rendering** | Tables may not align well on mobile; nested formatting stripped in tables; no auto-split for messages over 4096 chars |
-| **Image generation** | OpenAI `image_generation` tool exists but Krill can't display images in Telegram/Discord yet |
-| **Deployment** | Only Cloud Run tested; cold starts slow due to Julia JIT; coding agents need interactive auth (can't use subscriptions in containers) |
-| **Tool permissions** | All enabled tools are global — no per-user or per-session allowlists yet |
+| | Feature | Description |
+|:---:|---|---|
+| 💬 | **Channels** | Telegram (polling + webhook), Discord (gateway + REST) |
+| 🧠 | **LLM Providers** | OpenAI Responses API, Gemini native + OpenAI-compat |
+| 🔍 | **Provider Search** | OpenAI web search, Gemini Google Search — with citations |
+| 🛠️ | **Local Tools** | File ops, web fetch, shell exec, GitHub CLI, Google Workspace |
+| 👨‍💻 | **Coding Agents** | Delegate to Claude Code or Codex CLI |
+| 🔌 | **MCP** | Connect external tool servers via stdio or HTTP |
+| 💾 | **Memory** | Per-session persistent memory with LLM-driven consolidation |
+| ⏰ | **Cron** | Recurring and one-shot scheduled tasks |
+| 🤖 | **Subagents** | Background tasks with full tool access |
+| 📝 | **Skills** | Markdown instruction docs — always-on or on-demand |
+| 📊 | **Context Management** | History summarization when context window fills |
+| 🏗️ | **Prompt Construction** | System prompt + bootstrap docs + skills + memory, composed per-turn |
 
 ## Quick Start
 
-**1. Install Julia 1.12+** via [juliaup](https://github.com/JuliaLang/juliaup)
-
-**2. Clone and install dependencies**
+**1.** Install [Julia 1.12+](https://github.com/JuliaLang/juliaup) and clone:
 ```bash
-git clone https://github.com/whanyu1212/Krill.jl
-cd Krill.jl
+git clone https://github.com/whanyu1212/Krill.jl && cd Krill.jl
 julia --project=. -e 'using Pkg; Pkg.instantiate()'
 ```
 
-**3. Configure**
+**2.** Configure:
 ```bash
-cp krill.toml.example krill.toml
-# Edit krill.toml — set your bot token, LLM provider, and API keys
+cp krill.toml.example krill.toml   # edit with your tokens
 ```
-
-Create a `.env` file with your secrets:
 ```bash
+# .env
 TELEGRAM_BOT_TOKEN=your_token
 OPENAI_API_KEY=your_key
 ```
 
-**4. (Optional) Authenticate coding agents**
+**3.** (Optional) Authenticate coding agents:
 ```bash
 claude auth login    # Claude Code
 codex auth           # Codex
 ```
 
-**5. Run**
+**4.** Run:
 ```bash
 julia --project=. --threads=auto bin/krill.jl
 ```
@@ -84,7 +95,7 @@ bot_token = "$TELEGRAM_BOT_TOKEN"
 
 [llm]
 workspace = "context"   # agent file sandbox
-data_dir  = ""          # session/memory/cron storage — defaults to ~/.krill
+data_dir  = ""          # defaults to ~/.krill
 ```
 
 See [`krill.toml.example`](krill.toml.example) for the full reference.
@@ -94,36 +105,50 @@ See [`krill.toml.example`](krill.toml.example) for the full reference.
 ```
 bin/           entry point (krill.jl)
 context/       agent workspace — files, skills, persona docs
-src/           source code
-  channels/    Telegram, Discord channel implementations
+src/
+  transport/   message types, hub, dispatch, dedup
+  sessions/    session history, memory, consolidation
+  tools/       tool registry, skills, MCP, builtin tools
+  scheduling/  cron jobs, subagents
+  llm/         LLM providers, parsing, tool loop
+  channels/    Telegram, Discord implementations
   config/      config loading, .env, provider setup
-  core/        agent, LLM, tools, memory, sessions, cron, MCP, subagents
   runtime.jl   RuntimeState — wires everything together
 test/          test suite
-scripts/       helper scripts (deploy, test, GCP setup)
-docs/          documentation (Documenter + VitePress)
+docs/          Documenter + VitePress documentation
 ```
 
-## Deployment
+## Known Limitations
 
-Running locally is the simplest option — all features work out of the box.
-
-The `Dockerfile` and `scripts/deploy.sh` target **Google Cloud Run**, which is the only cloud platform tested so far. Cold starts are slow due to Julia's compilation overhead, and Cloud Run's serverless model requires workarounds for a long-running polling bot. More platform testing is planned — a long-running VM or VPS may be a better fit.
-
-See the [deployment guide](https://whanyu1212.github.io/Krill.jl/guide/deployment) for details.
+| | Area | What's missing |
+|:---:|---|---|
+| ⚠️ | **Providers** | OpenAI and Gemini only — no Anthropic, Ollama, or local models yet |
+| ⚠️ | **Channels** | Telegram and Discord only — no WhatsApp, Slack, or voice |
+| ⚠️ | **Memory** | Per-chat isolation, no explicit "remember this", no size cap |
+| ⚠️ | **MCP** | Built from scratch (no Julia SDK) — edge cases with non-standard servers |
+| ⚠️ | **Telegram** | Tables may misalign on mobile; no auto-split for long messages |
+| ⚠️ | **Images** | Can't display generated images in chat yet |
+| ⚠️ | **Deploy** | Only Cloud Run tested; Julia cold starts are slow |
+| ⚠️ | **Permissions** | All tools are global — no per-user allowlists yet |
 
 ## Testing
 
 ```bash
-# Full test suite
-julia --project=. -e 'using Pkg; Pkg.test()'
-
-# Fast offline tests only
-KRILL_FAST_TESTS=1 julia --project=. -e 'using Pkg; Pkg.test()'
-
-# Via script (cleans up workspace artifacts)
-bash scripts/test.sh
+bash scripts/test.sh                    # full suite
+KRILL_FAST_TESTS=1 bash scripts/test.sh  # fast offline tests
 ```
+
+## Deployment
+
+Running locally is the simplest option. The `Dockerfile` targets Google Cloud Run but more platform testing is planned. See the [deployment guide](https://whanyu1212.github.io/Krill.jl/guide/deployment).
+
+## Contributing
+
+Issues and PRs are welcome. If you've tried Krill and hit a bug or have an idea, [open an issue](https://github.com/whanyu1212/Krill.jl/issues).
+
+## AI Disclosure
+
+AI was used as a force multiplier in this project. For onboarding, see [`CLAUDE.md`](CLAUDE.md) or [`AGENTS.md`](AGENTS.md).
 
 ## Acknowledgements
 

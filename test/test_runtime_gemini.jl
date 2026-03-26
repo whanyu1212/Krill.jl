@@ -212,7 +212,7 @@ if !KRILL_FAST_TESTS
             @test occursin("User prefers Julia examples.", instructions_text)
 
             # Runtime metadata
-            @test occursin(Krill.Core.RUNTIME_CONTEXT_MARKER, instructions_text)
+            @test occursin(Krill.RUNTIME_CONTEXT_MARKER, instructions_text)
             @test occursin("## Runtime Metadata", instructions_text)
             @test occursin("Channel: telegram", instructions_text)
             @test occursin("Session Key: telegram:50", instructions_text)
@@ -220,7 +220,7 @@ if !KRILL_FAST_TESTS
             @test occursin("User ID: 50", instructions_text)
 
             # Tool safety notice
-            @test occursin(Krill.Core.TOOL_OUTPUT_SAFETY_NOTICE, instructions_text)
+            @test occursin(Krill.TOOL_OUTPUT_SAFETY_NOTICE, instructions_text)
         end
     end
 end  # !KRILL_FAST_TESTS (Gemini native provider)

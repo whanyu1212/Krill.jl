@@ -63,6 +63,12 @@ end
 # AgentHooks
 # ---------------------------------------------------------------------------
 
+# Hook type aliases — Julia doesn't enforce signatures, but these document intent.
+const TurnHook = Union{Nothing,Function}       # (msg::InboundMessage, history::Vector{TurnRecord}) -> nothing
+const ToolCallHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> nothing
+const ToolResultHook = Union{Nothing,Function}  # (tool_name::String, result_text::String) -> nothing
+const InterruptHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> Bool
+
 """
     AgentHooks(; on_turn_start, on_turn_end, on_tool_call, on_tool_result, should_interrupt)
 
@@ -82,12 +88,6 @@ by default — close over shared mutable state with care in concurrent sessions.
 When `should_interrupt` returns `true`, remaining tool calls in the current LLM batch
 are silently skipped and the loop exits with the current response text.
 """
-# Hook type aliases — Julia doesn't enforce signatures, but these document intent.
-const TurnHook = Union{Nothing,Function}       # (msg::InboundMessage, history::Vector{TurnRecord}) -> nothing
-const ToolCallHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> nothing
-const ToolResultHook = Union{Nothing,Function}  # (tool_name::String, result_text::String) -> nothing
-const InterruptHook = Union{Nothing,Function}   # (tool_name::String, arguments::Dict{String,Any}) -> Bool
-
 struct AgentHooks
     on_turn_start::TurnHook
     on_turn_end::TurnHook

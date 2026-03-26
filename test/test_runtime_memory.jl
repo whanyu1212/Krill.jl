@@ -79,7 +79,7 @@
         @test payload !== nothing
         @test haskey(payload, :instructions)
         instructions = String(payload[:instructions])
-        @test occursin(Krill.Core.RUNTIME_CONTEXT_MARKER, instructions)
+        @test occursin(Krill.RUNTIME_CONTEXT_MARKER, instructions)
         @test occursin("## Workspace Bootstrap Docs", instructions)
         @test occursin("### AGENTS.md", instructions)
         @test occursin("Workspace agent profile.", instructions)
@@ -90,7 +90,7 @@
         @test occursin("Session Key: telegram:8", instructions)
         @test occursin("Chat ID: 8", instructions)
         @test occursin("User ID: 8", instructions)
-        @test occursin(Krill.Core.TOOL_OUTPUT_SAFETY_NOTICE, instructions)
+        @test occursin(Krill.TOOL_OUTPUT_SAFETY_NOTICE, instructions)
     end
 
     @testset "RuntimeState appends MEMORY.md content to instructions" begin

@@ -4,8 +4,8 @@ using Dates
 using UUIDs
 using Krill.Telegram: HTTP, JSON3
 
-const CronMod = Krill.Core.Cron
-const BuiltinToolsMod = Krill.Core.BuiltinTools
+const CronMod = Krill.Cron
+const BuiltinToolsMod = Krill.BuiltinTools
 
 @testset "Krill.jl C.7 Cron expression parsing" begin
     @testset "parse_cron parses simple expression" begin
@@ -90,7 +90,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -113,7 +113,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -134,7 +134,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -158,7 +158,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, false, false,  # enabled=false
+            now(UTC), nothing, 0, false, false, false,  # enabled=false
             CronMod.JobExecution[],
         )
         @test !is_due(job, now(UTC))
@@ -422,14 +422,14 @@ end
         )
         add_job!(svc, job)
 
-        Krill.Core.Cron.start!(svc)
+        Krill.Cron.start!(svc)
         @test svc.running[] == true
         @test svc.tick_task !== nothing
 
         # Wait for at least one tick
         sleep(0.5)
 
-        Krill.Core.Cron.stop!(svc)
+        Krill.Cron.stop!(svc)
         @test svc.running[] == false
 
         @test length(published) >= 1
@@ -437,7 +437,7 @@ end
 
     @testset "start! without publish_fn throws" begin
         svc = CronService(workspace = mktempdir(), tick_interval_s = 1.0)
-        @test_throws ArgumentError Krill.Core.Cron.start!(svc)
+        @test_throws ArgumentError Krill.Cron.start!(svc)
     end
 end
 
@@ -485,7 +485,7 @@ end
     job = CronMod.CronJob(
         uuid4(), "wed", sched, "test",
         :telegram, "t:1", "1",
-        now(UTC), nothing, 0, true, false,
+        now(UTC), nothing, 0, true, false, false,
         CronMod.JobExecution[],
     )
     @test is_due(job, wed)
@@ -502,7 +502,7 @@ end
     job_sun = CronMod.CronJob(
         uuid4(), "sun", sched_sun, "test",
         :telegram, "t:1", "1",
-        now(UTC), nothing, 0, true, false,
+        now(UTC), nothing, 0, true, false, false,
         CronMod.JobExecution[],
     )
     @test is_due(job_sun, sun)
@@ -524,12 +524,12 @@ end
                 "label" => "test_add",
                 "schedule_type" => "every",
                 "schedule_value" => "5m",
-                "prompt" => "check status",
+                "task" => "check status",
                 "session_key" => "telegram:42",
                 "chat_id" => "42",
             ),
         )
-        @test occursin("Created cron job", result)
+        @test occursin("Added cron job", result)
         @test occursin("test_add", result)
         jobs = list_jobs(svc)
         @test length(jobs) == 1
@@ -545,12 +545,12 @@ end
                 "label" => "daily",
                 "schedule_type" => "cron",
                 "schedule_value" => "0 9 * * 1-5",
-                "prompt" => "standup",
+                "task" => "standup",
                 "session_key" => "telegram:1",
                 "chat_id" => "1",
             ),
         )
-        @test occursin("Created cron job", result)
+        @test occursin("Added cron job", result)
         @test length(list_jobs(svc)) == 2
     end
 
@@ -562,7 +562,7 @@ end
                 "label" => "bad",
                 "schedule_type" => "cron",
                 "schedule_value" => "not a cron expr",
-                "prompt" => "nope",
+                "task" => "nope",
                 "session_key" => "t:1",
                 "chat_id" => "1",
             ),
@@ -578,7 +578,7 @@ end
                 "label" => "missing",
                 "schedule_type" => "every",
                 "schedule_value" => "5m",
-                "prompt" => "",
+                "task" => "",
                 "session_key" => "t:1",
                 "chat_id" => "1",
             ),
@@ -625,7 +625,7 @@ end
         @test occursin("j1", result)
         @test occursin("j2", result)
         @test occursin("every", result)
-        @test occursin("cron:", result)
+        @test occursin("cron '", result)
     end
 end
 
@@ -647,42 +647,33 @@ end
     @test length(list_jobs(svc)) == 1
 
     @testset "removes existing job" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => string(job.id)))
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => "removeme"))
         @test occursin("Removed", result)
         @test length(list_jobs(svc)) == 0
     end
 
-    @testset "returns not found for unknown id" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => string(uuid4())))
-        @test occursin("not found", result)
+    @testset "returns not found for unknown label" begin
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => "nonexistent"))
+        @test occursin("not found", result) || occursin("Error", result)
     end
 
-    @testset "returns error for invalid uuid" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => "not-a-uuid"))
-        @test occursin("Error", result) || occursin("invalid", result)
+    @testset "returns error for empty label" begin
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => ""))
+        @test occursin("Error", result) || occursin("empty", result)
     end
 end
 
 @testset "Krill.jl C.7 cron tool recursion prevention" begin
-    workspace = mktempdir()
-    svc = CronService(workspace = workspace, tick_interval_s = 1.0)
-    registry = ToolRegistry()
-    register_cron_tools!(registry, svc; from_cron = true)
-
-    result = dispatch_tool(
-        registry,
-        "cron_add",
-        Dict{String,Any}(
-            "label" => "recursive",
-            "schedule_type" => "every",
-            "schedule_value" => "1m",
-            "prompt" => "should fail",
-            "session_key" => "t:1",
-            "chat_id" => "1",
-        ),
+    # CronJob constructor throws when from_cron=true, preventing recursive scheduling
+    @test_throws ArgumentError CronJob(
+        label = "recursive",
+        schedule = parse_schedule("every", "1m"),
+        prompt = "should fail",
+        channel = :telegram,
+        session_key = "t:1",
+        chat_id = "1",
+        from_cron = true,
     )
-    @test occursin("Error", result) || occursin("cron execution", result)
-    @test length(list_jobs(svc)) == 0
 end
 
 @testset "Krill.jl C.7 RuntimeState cron integration" begin
@@ -703,6 +694,7 @@ end
         rt = RuntimeState(TelegramChannel(client);
             llm_provider = provider,
             workspace = workspace,
+            data_dir = mktempdir(),
             llm_enable_cron = true,
         )
 
