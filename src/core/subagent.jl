@@ -58,9 +58,9 @@ end
 
 function SubagentManager(;
     publish_fn::Function,
-    processor_factory::Union{Nothing,Function}=nothing,
-    max_concurrent::Int=5,
-    max_iterations::Int=15,
+    processor_factory::Union{Nothing,Function} = nothing,
+    max_concurrent::Int = 5,
+    max_iterations::Int = 15,
 )
     return SubagentManager(
         Dict{String,SubagentTask}(),
@@ -87,10 +87,10 @@ results back to the origin session via the shared message hub.
 function spawn_subagent!(
     mgr::SubagentManager,
     task_description::AbstractString;
-    label::AbstractString="",
-    origin_channel::Symbol=:system,
-    origin_session_key::AbstractString="",
-    origin_chat_id::AbstractString="",
+    label::AbstractString = "",
+    origin_channel::Symbol = :system,
+    origin_session_key::AbstractString = "",
+    origin_chat_id::AbstractString = "",
 )
     task_id = string(uuid4())[1:8]
     display_label = isempty(label) ? _truncate(task_description, 40) : String(label)
@@ -161,12 +161,12 @@ function _run_subagent!(mgr::SubagentManager, st::SubagentTask)
 
     # Build a minimal InboundMessage for the subagent task
     task_msg = InboundMessage(
-        channel=:system,
-        session_key="subagent:$(st.id)",
-        user_id="parent",
-        chat_id=st.origin_chat_id,
-        text=st.task_description,
-        metadata=Dict{String,Any}(
+        channel = :system,
+        session_key = "subagent:$(st.id)",
+        user_id = "parent",
+        chat_id = st.origin_chat_id,
+        text = st.task_description,
+        metadata = Dict{String,Any}(
             "from_subagent" => true,
             "subagent_id" => st.id,
         ),
@@ -204,9 +204,10 @@ end
 function _announce_result!(mgr::SubagentManager, st::SubagentTask)
     st.status === :running && return  # not finished yet
 
-    status_text = st.status === :completed ? "completed successfully" :
-                  st.status === :failed ? "failed" :
-                  st.status === :cancelled ? "was cancelled" : "finished"
+    status_text =
+        st.status === :completed ? "completed successfully" :
+        st.status === :failed ? "failed" :
+        st.status === :cancelled ? "was cancelled" : "finished"
 
     content = """[Subagent '$(st.label)' $(status_text)]
 
@@ -219,12 +220,12 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
 
     # Inject as inbound message to the origin session
     msg = InboundMessage(
-        channel=st.origin_channel,
-        session_key=st.origin_session_key,
-        user_id="subagent",
-        chat_id=st.origin_chat_id,
-        text=content,
-        metadata=Dict{String,Any}(
+        channel = st.origin_channel,
+        session_key = st.origin_session_key,
+        user_id = "subagent",
+        chat_id = st.origin_chat_id,
+        text = content,
+        metadata = Dict{String,Any}(
             "from_subagent" => true,
             "subagent_id" => st.id,
             "subagent_status" => string(st.status),
@@ -271,7 +272,7 @@ end
 
 List subagent tasks, optionally filtered by session.
 """
-function list_subagents(mgr::SubagentManager; session_key::Union{Nothing,AbstractString}=nothing)
+function list_subagents(mgr::SubagentManager; session_key::Union{Nothing,AbstractString} = nothing)
     lock(mgr.lock) do
         if session_key === nothing
             return collect(values(mgr.tasks))
@@ -284,7 +285,7 @@ end
 """
     subagent_count(mgr; running_only=false) -> Int
 """
-function subagent_count(mgr::SubagentManager; running_only::Bool=false)
+function subagent_count(mgr::SubagentManager; running_only::Bool = false)
     lock(mgr.lock) do
         if running_only
             return count(t -> t.status === :running, values(mgr.tasks))
@@ -306,75 +307,84 @@ tools are not registered (prevents recursive spawning).
 function register_spawn_tools!(
     registry::ToolRegistry,
     mgr::SubagentManager;
-    from_subagent::Bool=false,
-    replace::Bool=false,
+    from_subagent::Bool = false,
+    replace::Bool = false,
 )
     from_subagent && return ToolDef[]
 
     defs = ToolDef[]
 
-    push!(defs, ToolDef(
-        name="spawn",
-        description="Spawn a background subagent to work on a task independently. " *
-            "The subagent has its own LLM conversation with file/web tools but cannot spawn further subagents. " *
-            "Results are reported back when complete. Use for long-running research, file operations, or parallel tasks.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "task" => Dict{String,Any}(
-                    "type" => "string",
-                    "description" => "Detailed description of the task for the subagent to complete",
+    push!(
+        defs,
+        ToolDef(
+            name = "spawn",
+            description = "Spawn a background subagent to work on a task independently. " *
+                          "The subagent has its own LLM conversation with file/web tools but cannot spawn further subagents. " *
+                          "Results are reported back when complete. Use for long-running research, file operations, or parallel tasks.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "task" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Detailed description of the task for the subagent to complete",
+                    ),
+                    "label" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Short label for display (optional, defaults to truncated task)",
+                    ),
                 ),
-                "label" => Dict{String,Any}(
-                    "type" => "string",
-                    "description" => "Short label for display (optional, defaults to truncated task)",
-                ),
+                "required" => Any["task"],
             ),
-            "required" => Any["task"],
+            execute = args -> _spawn_impl(mgr, args),
         ),
-        execute=args -> _spawn_impl(mgr, args),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name="spawn_list",
-        description="List all spawned subagent tasks and their status.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(),
-        ),
-        execute=args -> _spawn_list_impl(mgr, args),
-    ))
-
-    push!(defs, ToolDef(
-        name="spawn_cancel",
-        description="Cancel a running subagent task by ID.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "task_id" => Dict{String,Any}(
-                    "type" => "string",
-                    "description" => "The ID of the subagent task to cancel",
-                ),
+    push!(
+        defs,
+        ToolDef(
+            name = "spawn_list",
+            description = "List all spawned subagent tasks and their status.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(),
             ),
-            "required" => Any["task_id"],
+            execute = args -> _spawn_list_impl(mgr, args),
         ),
-        execute=args -> _spawn_cancel_impl(mgr, args),
-    ))
+    )
+
+    push!(
+        defs,
+        ToolDef(
+            name = "spawn_cancel",
+            description = "Cancel a running subagent task by ID.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "task_id" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "The ID of the subagent task to cancel",
+                    ),
+                ),
+                "required" => Any["task_id"],
+            ),
+            execute = args -> _spawn_cancel_impl(mgr, args),
+        ),
+    )
 
     for def in defs
-        register_tool!(registry, def; replace=replace)
+        register_tool!(registry, def; replace = replace)
     end
 
     return defs
 end
 
 # Tool context: set by session consumer before each turn
-const _TOOL_CONTEXT = Ref{@NamedTuple{channel::Symbol, session_key::String, chat_id::String}}(
-    (channel=:system, session_key="", chat_id="")
+const _TOOL_CONTEXT = Ref{@NamedTuple{channel::Symbol,session_key::String,chat_id::String}}(
+    (channel = :system, session_key = "", chat_id = "")
 )
 
 function set_spawn_context!(channel::Symbol, session_key::AbstractString, chat_id::AbstractString)
-    _TOOL_CONTEXT[] = (channel=channel, session_key=String(session_key), chat_id=String(chat_id))
+    _TOOL_CONTEXT[] = (channel = channel, session_key = String(session_key), chat_id = String(chat_id))
 end
 
 function _spawn_impl(mgr::SubagentManager, args::Dict{String,Any})
@@ -384,10 +394,10 @@ function _spawn_impl(mgr::SubagentManager, args::Dict{String,Any})
 
     ctx = _TOOL_CONTEXT[]
     return spawn_subagent!(mgr, task;
-        label=label,
-        origin_channel=ctx.channel,
-        origin_session_key=ctx.session_key,
-        origin_chat_id=ctx.chat_id,
+        label = label,
+        origin_channel = ctx.channel,
+        origin_session_key = ctx.session_key,
+        origin_chat_id = ctx.chat_id,
     )
 end
 
@@ -396,7 +406,7 @@ function _spawn_list_impl(mgr::SubagentManager, ::Dict{String,Any})
     isempty(tasks) && return "No subagent tasks."
 
     lines = String[]
-    for st in sort(tasks; by=t -> t.started_at)
+    for st in sort(tasks; by = t -> t.started_at)
         elapsed = if st.finished_at !== nothing
             "$(round(Int, Dates.value(st.finished_at - st.started_at) / 1000))s"
         else

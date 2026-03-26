@@ -27,11 +27,11 @@ end
 function _echo_reply!(hub::MessageHubState, msg::InboundMessage)
     text = message_text(msg)
     reply = OutboundMessage(
-        channel=msg.channel,
-        session_key=msg.session_key,
-        chat_id=msg.chat_id,
-        text=text,
-        correlation_id=msg.message_id,
+        channel = msg.channel,
+        session_key = msg.session_key,
+        chat_id = msg.chat_id,
+        text = text,
+        correlation_id = msg.message_id,
     )
     publish_outbound!(hub, reply)
 end

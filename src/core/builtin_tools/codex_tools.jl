@@ -106,7 +106,8 @@ function _codex_impl(
     resume_last = _parse_bool(get(args, "resume", false))
 
     codex_path = Sys.which("codex")
-    codex_path === nothing && return "Error: `codex` CLI not found on PATH. Install from https://github.com/openai/codex"
+    codex_path === nothing &&
+        return "Error: `codex` CLI not found on PATH. Install from https://github.com/openai/codex"
 
     # Build command
     cmd_parts = if resume_last
@@ -126,7 +127,7 @@ function _codex_impl(
     timed_out = Ref(false)
 
     proc = try
-        open(pipeline(cmd; stderr=stderr_buf), "r")
+        open(pipeline(cmd; stderr = stderr_buf), "r")
     catch e
         return "Error starting Codex: $(sprint(showerror, e))"
     end
@@ -151,7 +152,11 @@ function _codex_impl(
                 if now_t - last_progress_at[] >= progress_interval_s
                     progress_msg = _extract_codex_progress(line)
                     if progress_msg !== nothing
-                        try; progress_fn(progress_msg); catch _; end
+                        try
+                            ; progress_fn(progress_msg);
+                        catch _
+                            ;
+                        end
                         last_progress_at[] = now_t
                     end
                 end
@@ -162,7 +167,7 @@ function _codex_impl(
     end
 
     if !istaskdone(watchdog)
-        Base.schedule(watchdog, InterruptException(); error=true)
+        Base.schedule(watchdog, InterruptException(); error = true)
     end
 
     if timed_out[]

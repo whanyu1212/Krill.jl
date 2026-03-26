@@ -12,10 +12,10 @@ function load_dotenv!(path::AbstractString)
         isempty(line) && continue
         startswith(line, "#") && continue
         occursin("=", line) || continue
-        k, v = strip.(split(line, "="; limit=2))
+        k, v = strip.(split(line, "="; limit = 2))
         if (startswith(v, "\"") && endswith(v, "\"")) ||
            (startswith(v, "'") && endswith(v, "'"))
-            v = v[2:end-1]
+            v = v[2:(end - 1)]
         end
         isempty(k) && continue
         haskey(ENV, k) || (ENV[k] = v)

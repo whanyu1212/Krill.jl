@@ -2,50 +2,58 @@
     @testset "chat_completion maps responses-style input to chat completions payload" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["method"] = method
             captured["url"] = url
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "chatcmpl_1",
-                "choices" => Any[
-                    Dict("index" => 0, "message" => Dict("role" => "assistant", "content" => "hi from gemini")),
-                ],
-                "usage" => Dict(
-                    "prompt_tokens" => 15,
-                    "completion_tokens" => 6,
-                    "total_tokens" => 21,
-                    "completion_tokens_details" => Dict("reasoning_tokens" => 2),
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "chatcmpl_1",
+                        "choices" => Any[
+                            Dict(
+                            "index" => 0,
+                            "message" => Dict("role" => "assistant", "content" => "hi from gemini"),
+                        ),
+                        ],
+                        "usage" => Dict(
+                            "prompt_tokens" => 15,
+                            "completion_tokens" => 6,
+                            "total_tokens" => 21,
+                            "completion_tokens_details" => Dict("reasoning_tokens" => 2),
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = GeminiOpenAICompatProvider(
-            api_key="gemini-key",
-            base_url="https://example.gemini.test/v1beta/openai",
-            model="gemini-3-flash-preview",
-            request=mock_request,
-            max_retries=0,
+            api_key = "gemini-key",
+            base_url = "https://example.gemini.test/v1beta/openai",
+            model = "gemini-3-flash-preview",
+            request = mock_request,
+            max_retries = 0,
         )
 
         input = Any[
             Dict(
-                "role" => "user",
-                "content" => Any[
-                    Dict("type" => "input_text", "text" => "hello"),
-                    Dict("type" => "input_image", "image_url" => "https://example.test/cat.jpg"),
-                    Dict("type" => "input_file", "file_id" => "file-abc"),
-                ],
-            ),
+            "role" => "user",
+            "content" => Any[
+                Dict("type" => "input_text", "text" => "hello"),
+                Dict("type" => "input_image", "image_url" => "https://example.test/cat.jpg"),
+                Dict("type" => "input_file", "file_id" => "file-abc"),
+            ],
+        ),
         ]
 
         response = chat_completion(
             provider,
             input;
-            instructions="You are concise",
-            reasoning=Dict("effort" => "low"),
-            tools=Any[Dict("type" => "function", "name" => "foo", "parameters" => Dict("type" => "object"))],
-            stream=true,
+            instructions = "You are concise",
+            reasoning = Dict("effort" => "low"),
+            tools = Any[Dict("type" => "function", "name" => "foo", "parameters" => Dict("type" => "object"))],
+            stream = true,
         )
 
         @test captured["method"] == "POST"
@@ -74,57 +82,73 @@ end
     @testset "chat_completion maps responses-style input to generateContent payload" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["method"] = method
             captured["url"] = url
             captured["headers"] = headers
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "candidates" => Any[
-                    Dict("content" => Dict(
-                        "role" => "model",
-                        "parts" => Any[
-                            Dict("text" => "hi"),
-                            Dict("text" => "from native gemini"),
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "candidates" => Any[
+                            Dict(
+                            "content" => Dict(
+                                "role" => "model",
+                                "parts" => Any[
+                                    Dict("text" => "hi"),
+                                    Dict("text" => "from native gemini"),
+                                ],
+                            ),
+                        ),
                         ],
-                    )),
-                ],
-                "usageMetadata" => Dict(
-                    "promptTokenCount" => 18,
-                    "candidatesTokenCount" => 7,
-                    "totalTokenCount" => 25,
-                    "thoughtsTokenCount" => 2,
-                    "cachedContentTokenCount" => 1,
+                        "usageMetadata" => Dict(
+                            "promptTokenCount" => 18,
+                            "candidatesTokenCount" => 7,
+                            "totalTokenCount" => 25,
+                            "thoughtsTokenCount" => 2,
+                            "cachedContentTokenCount" => 1,
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = GeminiProvider(
-            api_key="gemini-key",
-            base_url="https://example.gemini.test/v1beta",
-            model="gemini-3-flash-preview",
-            request=mock_request,
-            max_retries=0,
+            api_key = "gemini-key",
+            base_url = "https://example.gemini.test/v1beta",
+            model = "gemini-3-flash-preview",
+            request = mock_request,
+            max_retries = 0,
         )
 
         input = Any[
             Dict(
-                "role" => "user",
-                "content" => Any[
-                    Dict("type" => "input_text", "text" => "hello"),
-                    Dict("type" => "input_image", "mime_type" => "image/png", "image_url" => "data:image/png;base64,AA=="),
-                    Dict("type" => "input_file", "mime_type" => "application/pdf", "file_data" => "UEs=", "filename" => "doc.pdf"),
-                    Dict("type" => "input_file", "mime_type" => "application/pdf", "file_url" => "https://example.test/doc.pdf"),
-                ],
-            ),
+            "role" => "user",
+            "content" => Any[
+                Dict("type" => "input_text", "text" => "hello"),
+                Dict("type" => "input_image", "mime_type" => "image/png", "image_url" => "data:image/png;base64,AA=="),
+                Dict(
+                    "type" => "input_file",
+                    "mime_type" => "application/pdf",
+                    "file_data" => "UEs=",
+                    "filename" => "doc.pdf",
+                ),
+                Dict(
+                    "type" => "input_file",
+                    "mime_type" => "application/pdf",
+                    "file_url" => "https://example.test/doc.pdf",
+                ),
+            ],
+        ),
         ]
 
         response = chat_completion(
             provider,
             input;
-            instructions="You are concise",
-            reasoning=Dict("effort" => "low", "includeThoughts" => true),
-            tools=Any[
+            instructions = "You are concise",
+            reasoning = Dict("effort" => "low", "includeThoughts" => true),
+            tools = Any[
                 Dict("type" => "web_search"),
                 Dict("type" => "code_interpreter"),
                 Dict("type" => "url_context"),
@@ -137,14 +161,14 @@ end
                     "parameters" => Dict("type" => "object"),
                 ),
             ],
-            tool_choice=Dict("function" => Dict("name" => "lookup_weather")),
-            max_output_tokens=200,
-            temperature=0.2,
-            top_p=0.9,
-            include=Any["unused.include"],
-            stream=true,
-            parallel_tool_calls=true,
-            metadata=Dict{String,Any}("trace_id" => "abc"),
+            tool_choice = Dict("function" => Dict("name" => "lookup_weather")),
+            max_output_tokens = 200,
+            temperature = 0.2,
+            top_p = 0.9,
+            include = Any["unused.include"],
+            stream = true,
+            parallel_tool_calls = true,
+            metadata = Dict{String,Any}("trace_id" => "abc"),
         )
 
         @test captured["method"] == "POST"
@@ -188,35 +212,40 @@ end
     @testset "chat_completion drops googleMaps when combined with googleSearch" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "candidates" => Any[
-                    Dict("content" => Dict(
-                        "role" => "model",
-                        "parts" => Any[Dict("text" => "ok")],
-                    )),
-                ],
-                "usageMetadata" => Dict(
-                    "promptTokenCount" => 1,
-                    "candidatesTokenCount" => 1,
-                    "totalTokenCount" => 2,
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "candidates" => Any[
+                            Dict("content" => Dict(
+                            "role" => "model",
+                            "parts" => Any[Dict("text" => "ok")],
+                        )),
+                        ],
+                        "usageMetadata" => Dict(
+                            "promptTokenCount" => 1,
+                            "candidatesTokenCount" => 1,
+                            "totalTokenCount" => 2,
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = GeminiProvider(
-            api_key="gemini-key",
-            base_url="https://example.gemini.test/v1beta",
-            model="gemini-3-flash-preview",
-            request=mock_request,
-            max_retries=0,
+            api_key = "gemini-key",
+            base_url = "https://example.gemini.test/v1beta",
+            model = "gemini-3-flash-preview",
+            request = mock_request,
+            max_retries = 0,
         )
 
         response = chat_completion(
             provider,
             Any[Dict("role" => "user", "content" => Any[Dict("type" => "input_text", "text" => "hello")])];
-            tools=Any[
+            tools = Any[
                 Dict("type" => "web_search"),
                 Dict("type" => "google_maps"),
             ],
@@ -230,40 +259,45 @@ end
     @testset "chat_completion enables includeThoughts when Gemini tools are present" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "candidates" => Any[
-                    Dict("content" => Dict(
-                        "role" => "model",
-                        "parts" => Any[Dict("text" => "ok")],
-                    )),
-                ],
-                "usageMetadata" => Dict(
-                    "promptTokenCount" => 1,
-                    "candidatesTokenCount" => 1,
-                    "totalTokenCount" => 2,
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "candidates" => Any[
+                            Dict("content" => Dict(
+                            "role" => "model",
+                            "parts" => Any[Dict("text" => "ok")],
+                        )),
+                        ],
+                        "usageMetadata" => Dict(
+                            "promptTokenCount" => 1,
+                            "candidatesTokenCount" => 1,
+                            "totalTokenCount" => 2,
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = GeminiProvider(
-            api_key="gemini-key",
-            base_url="https://example.gemini.test/v1beta",
-            model="gemini-3-flash-preview",
-            request=mock_request,
-            max_retries=0,
+            api_key = "gemini-key",
+            base_url = "https://example.gemini.test/v1beta",
+            model = "gemini-3-flash-preview",
+            request = mock_request,
+            max_retries = 0,
         )
 
         response = chat_completion(
             provider,
             Any[Dict("role" => "user", "content" => Any[Dict("type" => "input_text", "text" => "hello")])];
-            tools=Any[
+            tools = Any[
                 Dict(
-                    "type" => "function",
-                    "name" => "sum_numbers",
-                    "parameters" => Dict("type" => "object"),
-                ),
+                "type" => "function",
+                "name" => "sum_numbers",
+                "parameters" => Dict("type" => "object"),
+            ),
             ],
         )
 
@@ -276,67 +310,83 @@ end
         payloads = Any[]
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
             payload = JSON3.read(String(body))
             push!(payloads, payload)
 
             if call_no[] == 1
-                return HTTP.Response(200, JSON3.write(Dict(
-                    "candidates" => Any[
-                        Dict("content" => Dict(
-                            "role" => "model",
-                            "parts" => Any[
+                return HTTP.Response(
+                    200,
+                    JSON3.write(
+                        Dict(
+                            "candidates" => Any[
                                 Dict(
-                                    "text" => "internal thought",
-                                    "thought" => true,
-                                    "thoughtSignature" => "sig_abc123",
+                                "content" => Dict(
+                                    "role" => "model",
+                                    "parts" => Any[
+                                        Dict(
+                                            "text" => "internal thought",
+                                            "thought" => true,
+                                            "thoughtSignature" => "sig_abc123",
+                                        ),
+                                        Dict(
+                                            "functionCall" => Dict(
+                                                "id" => "call_1",
+                                                "name" => "sum_numbers",
+                                                "args" => Dict("a" => 2, "b" => 3),
+                                                "thoughtSignature" => "sig_abc123",
+                                            ),
+                                        ),
+                                    ],
                                 ),
-                                Dict("functionCall" => Dict(
-                                    "id" => "call_1",
-                                    "name" => "sum_numbers",
-                                    "args" => Dict("a" => 2, "b" => 3),
-                                    "thoughtSignature" => "sig_abc123",
-                                )),
+                            ),
                             ],
-                        )),
-                    ],
-                    "usageMetadata" => Dict(
-                        "promptTokenCount" => 9,
-                        "candidatesTokenCount" => 3,
-                        "totalTokenCount" => 12,
+                            "usageMetadata" => Dict(
+                                "promptTokenCount" => 9,
+                                "candidatesTokenCount" => 3,
+                                "totalTokenCount" => 12,
+                            ),
+                        ),
                     ),
-                )))
+                )
             end
 
-            return HTTP.Response(200, JSON3.write(Dict(
-                "candidates" => Any[
-                    Dict("content" => Dict(
-                        "role" => "model",
-                        "parts" => Any[
-                            Dict("text" => "gemini says 5"),
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "candidates" => Any[
+                            Dict(
+                            "content" => Dict(
+                                "role" => "model",
+                                "parts" => Any[
+                                    Dict("text" => "gemini says 5"),
+                                ],
+                            ),
+                        ),
                         ],
-                    )),
-                ],
-                "usageMetadata" => Dict(
-                    "promptTokenCount" => 11,
-                    "candidatesTokenCount" => 4,
-                    "totalTokenCount" => 15,
+                        "usageMetadata" => Dict(
+                            "promptTokenCount" => 11,
+                            "candidatesTokenCount" => 4,
+                            "totalTokenCount" => 15,
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = GeminiProvider(
-            api_key="gemini-key",
-            base_url="https://example.gemini.test/v1beta",
-            model="gemini-3-flash-preview",
-            request=mock_request,
-            max_retries=0,
+            api_key = "gemini-key",
+            base_url = "https://example.gemini.test/v1beta",
+            model = "gemini-3-flash-preview",
+            request = mock_request,
+            max_retries = 0,
         )
 
         sum_tool = ToolDef(
-            name="sum_numbers",
-            parameters=Dict{String,Any}(
+            name = "sum_numbers",
+            parameters = Dict{String,Any}(
                 "type" => "object",
                 "properties" => Dict{String,Any}(
                     "a" => Dict{String,Any}("type" => "integer"),
@@ -344,20 +394,20 @@ end
                 ),
                 "required" => Any["a", "b"],
             ),
-            execute=args -> Int(args["a"]) + Int(args["b"]),
+            execute = args -> Int(args["a"]) + Int(args["b"]),
         )
 
         processor = make_llm_processor(provider;
-            tools=[sum_tool],
-            max_tool_iterations=4,
+            tools = [sum_tool],
+            max_tool_iterations = 4,
         )
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="2+3?",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "2+3?",
         )
 
         result = processor(msg, TurnRecord[])
@@ -381,4 +431,3 @@ end
         @test second_payload[:contents][3][:parts][1][:functionResponse][:response][:output] == "5"
     end
 end
-

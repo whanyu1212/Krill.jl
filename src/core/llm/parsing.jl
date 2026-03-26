@@ -134,9 +134,11 @@ function _extract_chat_usage(parsed)
     haskey(parsed, :usage) || return nothing
     usage = parsed[:usage]
 
-    input_tokens = haskey(usage, :prompt_tokens) ? Int(usage[:prompt_tokens]) :
+    input_tokens =
+        haskey(usage, :prompt_tokens) ? Int(usage[:prompt_tokens]) :
         (haskey(usage, :input_tokens) ? Int(usage[:input_tokens]) : 0)
-    output_tokens = haskey(usage, :completion_tokens) ? Int(usage[:completion_tokens]) :
+    output_tokens =
+        haskey(usage, :completion_tokens) ? Int(usage[:completion_tokens]) :
         (haskey(usage, :output_tokens) ? Int(usage[:output_tokens]) : 0)
     total_tokens = haskey(usage, :total_tokens) ? Int(usage[:total_tokens]) : (input_tokens + output_tokens)
 
@@ -211,23 +213,32 @@ function _responses_messages_to_chat_messages(
                 ))
             elseif ptype == "input_image"
                 image_url = String(get(part, "image_url", ""))
-                push!(mapped_content, Dict{String,Any}(
-                    "type" => "image_url",
-                    "image_url" => Dict{String,Any}("url" => image_url),
-                ))
+                push!(
+                    mapped_content,
+                    Dict{String,Any}(
+                        "type" => "image_url",
+                        "image_url" => Dict{String,Any}("url" => image_url),
+                    ),
+                )
             elseif ptype == "input_file"
                 # Gemini OpenAI-compat chat endpoint has a reduced schema;
                 # keep file references as plain text context here.
                 if haskey(part, "file_url")
-                    push!(mapped_content, Dict{String,Any}(
-                        "type" => "text",
-                        "text" => "[file_url] " * String(part["file_url"]),
-                    ))
+                    push!(
+                        mapped_content,
+                        Dict{String,Any}(
+                            "type" => "text",
+                            "text" => "[file_url] " * String(part["file_url"]),
+                        ),
+                    )
                 elseif haskey(part, "file_id")
-                    push!(mapped_content, Dict{String,Any}(
-                        "type" => "text",
-                        "text" => "[file_id] " * String(part["file_id"]),
-                    ))
+                    push!(
+                        mapped_content,
+                        Dict{String,Any}(
+                            "type" => "text",
+                            "text" => "[file_id] " * String(part["file_id"]),
+                        ),
+                    )
                 elseif haskey(part, "file_data")
                     fname = haskey(part, "filename") ? String(part["filename"]) : "uploaded_file"
                     push!(mapped_content, Dict{String,Any}(
@@ -246,7 +257,7 @@ function _responses_messages_to_chat_messages(
     return out
 end
 
-function _dict_get(obj, key::AbstractString, default=nothing)
+function _dict_get(obj, key::AbstractString, default = nothing)
     obj isa AbstractDict || return default
     if haskey(obj, key)
         return obj[key]
@@ -261,7 +272,7 @@ end
 function _parse_base64_data_url(url::AbstractString)
     m = match(r"^data:([^;,]+);base64,(.+)$"s, String(url))
     m === nothing && return nothing
-    return (mime_type=String(m.captures[1]), data=String(m.captures[2]))
+    return (mime_type = String(m.captures[1]), data = String(m.captures[2]))
 end
 
 function _responses_part_to_gemini_parts(part)
@@ -280,19 +291,25 @@ function _responses_part_to_gemini_parts(part)
         isempty(image_url) && return out
         parsed = _parse_base64_data_url(image_url)
         if parsed === nothing
-            push!(out, Dict{String,Any}(
-                "fileData" => Dict{String,Any}(
-                    "mimeType" => String(_dict_get(part, "mime_type", "image/*")),
-                    "fileUri" => image_url,
+            push!(
+                out,
+                Dict{String,Any}(
+                    "fileData" => Dict{String,Any}(
+                        "mimeType" => String(_dict_get(part, "mime_type", "image/*")),
+                        "fileUri" => image_url,
+                    ),
                 ),
-            ))
+            )
         else
-            push!(out, Dict{String,Any}(
-                "inlineData" => Dict{String,Any}(
-                    "mimeType" => parsed.mime_type,
-                    "data" => parsed.data,
+            push!(
+                out,
+                Dict{String,Any}(
+                    "inlineData" => Dict{String,Any}(
+                        "mimeType" => parsed.mime_type,
+                        "data" => parsed.data,
+                    ),
                 ),
-            ))
+            )
         end
         return out
     end
@@ -301,34 +318,43 @@ function _responses_part_to_gemini_parts(part)
         mime_type = String(_dict_get(part, "mime_type", "application/octet-stream"))
         file_data = _dict_get(part, "file_data", nothing)
         if file_data !== nothing
-            push!(out, Dict{String,Any}(
-                "inlineData" => Dict{String,Any}(
-                    "mimeType" => mime_type,
-                    "data" => String(file_data),
+            push!(
+                out,
+                Dict{String,Any}(
+                    "inlineData" => Dict{String,Any}(
+                        "mimeType" => mime_type,
+                        "data" => String(file_data),
+                    ),
                 ),
-            ))
+            )
             return out
         end
 
         file_url = _dict_get(part, "file_url", nothing)
         if file_url !== nothing
-            push!(out, Dict{String,Any}(
-                "fileData" => Dict{String,Any}(
-                    "mimeType" => mime_type,
-                    "fileUri" => String(file_url),
+            push!(
+                out,
+                Dict{String,Any}(
+                    "fileData" => Dict{String,Any}(
+                        "mimeType" => mime_type,
+                        "fileUri" => String(file_url),
+                    ),
                 ),
-            ))
+            )
             return out
         end
 
         file_id = _dict_get(part, "file_id", nothing)
         if file_id !== nothing
-            push!(out, Dict{String,Any}(
-                "fileData" => Dict{String,Any}(
-                    "mimeType" => mime_type,
-                    "fileUri" => String(file_id),
+            push!(
+                out,
+                Dict{String,Any}(
+                    "fileData" => Dict{String,Any}(
+                        "mimeType" => mime_type,
+                        "fileUri" => String(file_id),
+                    ),
                 ),
-            ))
+            )
             return out
         end
     end
@@ -365,7 +391,7 @@ function _responses_part_to_gemini_parts(part)
             for (k, v) in pairs(part)
                 sk = String(k)
                 if startswith(sk, "gemini_part_")
-                    gemini_part[sk[length("gemini_part_")+1:end]] = v
+                    gemini_part[sk[(length("gemini_part_") + 1):end]] = v
                 end
             end
             push!(out, gemini_part)
@@ -506,15 +532,17 @@ function _tools_openai_to_gemini(tools)
             file_search = Dict{String,Any}()
             # Gemini expects File Search store names; if callers pass OpenAI-style
             # `vector_store_ids`, we forward values verbatim for cross-provider config.
-            store_names = _string_list(_dict_get(
-                tool,
-                "file_search_store_names",
+            store_names = _string_list(
                 _dict_get(
                     tool,
-                    "fileSearchStoreNames",
-                    _dict_get(tool, "vector_store_ids", nothing),
+                    "file_search_store_names",
+                    _dict_get(
+                        tool,
+                        "fileSearchStoreNames",
+                        _dict_get(tool, "vector_store_ids", nothing),
+                    ),
                 ),
-            ))
+            )
             store_names === nothing || (file_search["fileSearchStoreNames"] = store_names)
 
             top_k = _dict_get(tool, "top_k", _dict_get(tool, "topK", nothing))
@@ -537,13 +565,13 @@ function _tools_openai_to_gemini(tools)
         end
 
         if _dict_get(tool, "functionDeclarations", nothing) !== nothing ||
-            _dict_get(tool, "googleSearch", nothing) !== nothing ||
-            _dict_get(tool, "fileSearch", nothing) !== nothing ||
-            _dict_get(tool, "urlContext", nothing) !== nothing ||
-            _dict_get(tool, "codeExecution", nothing) !== nothing ||
-            _dict_get(tool, "googleMaps", nothing) !== nothing ||
-            _dict_get(tool, "computerUse", nothing) !== nothing ||
-            _dict_get(tool, "mcpServers", nothing) !== nothing
+           _dict_get(tool, "googleSearch", nothing) !== nothing ||
+           _dict_get(tool, "fileSearch", nothing) !== nothing ||
+           _dict_get(tool, "urlContext", nothing) !== nothing ||
+           _dict_get(tool, "codeExecution", nothing) !== nothing ||
+           _dict_get(tool, "googleMaps", nothing) !== nothing ||
+           _dict_get(tool, "computerUse", nothing) !== nothing ||
+           _dict_get(tool, "mcpServers", nothing) !== nothing
             push!(mapped, tool)
         end
     end
@@ -568,9 +596,9 @@ function _sanitize_gemini_tools(tools)
             continue
         end
         if _dict_get(tool, "googleSearch", nothing) !== nothing ||
-            _dict_get(tool, "codeExecution", nothing) !== nothing ||
-            _dict_get(tool, "urlContext", nothing) !== nothing ||
-            _dict_get(tool, "fileSearch", nothing) !== nothing
+           _dict_get(tool, "codeExecution", nothing) !== nothing ||
+           _dict_get(tool, "urlContext", nothing) !== nothing ||
+           _dict_get(tool, "fileSearch", nothing) !== nothing
             has_incompatible_with_maps = true
         end
     end
@@ -722,10 +750,10 @@ function _ensure_gemini_thought_signatures(thinking_config, tools)
 end
 
 function _gemini_generation_config(;
-    max_output_tokens::Union{Nothing,Integer}=nothing,
-    temperature::Union{Nothing,Real}=nothing,
-    top_p::Union{Nothing,Real}=nothing,
-    thinking_config=nothing,
+    max_output_tokens::Union{Nothing,Integer} = nothing,
+    temperature::Union{Nothing,Real} = nothing,
+    top_p::Union{Nothing,Real} = nothing,
+    thinking_config = nothing,
 )
     generation = Dict{String,Any}()
     max_output_tokens === nothing || (generation["maxOutputTokens"] = Int(max_output_tokens))
@@ -779,7 +807,8 @@ function _extract_gemini_tool_calls(parsed)
             fc = part[:functionCall]
             name = haskey(fc, :name) ? String(fc[:name]) : ""
             isempty(name) && continue
-            call_id = haskey(fc, :id) ? String(fc[:id]) :
+            call_id =
+                haskey(fc, :id) ? String(fc[:id]) :
                 (haskey(fc, :callId) ? String(fc[:callId]) : "call_" * string(length(calls) + 1))
             args = haskey(fc, :args) ? _parse_tool_arguments(fc[:args]) : Dict{String,Any}()
             push!(calls, LLMToolCall(call_id, name, args))

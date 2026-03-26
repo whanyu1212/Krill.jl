@@ -47,20 +47,30 @@ function _extract_error_description(body::AbstractString, fallback::AbstractStri
     return String(fallback)
 end
 
-function _post_responses(provider::OpenAIProvider, payload::Dict{String,Any}; retry_config=nothing)
-    return _post_json(provider, "/responses", payload; retry_config=retry_config)
+function _post_responses(provider::OpenAIProvider, payload::Dict{String,Any}; retry_config = nothing)
+    return _post_json(provider, "/responses", payload; retry_config = retry_config)
 end
 
-function _post_generate_content(provider::GeminiProvider, model::AbstractString, payload::Dict{String,Any}; retry_config=nothing)
+function _post_generate_content(
+    provider::GeminiProvider,
+    model::AbstractString,
+    payload::Dict{String,Any};
+    retry_config = nothing,
+)
     model_name = startswith(String(model), "models/") ? String(model)[8:end] : String(model)
-    return _post_json(provider, "/models/$(model_name):generateContent", payload; retry_config=retry_config)
+    return _post_json(provider, "/models/$(model_name):generateContent", payload; retry_config = retry_config)
 end
 
-function _post_chat_completions(provider::GeminiOpenAICompatProvider, payload::Dict{String,Any}; retry_config=nothing)
-    return _post_json(provider, "/chat/completions", payload; retry_config=retry_config)
+function _post_chat_completions(provider::GeminiOpenAICompatProvider, payload::Dict{String,Any}; retry_config = nothing)
+    return _post_json(provider, "/chat/completions", payload; retry_config = retry_config)
 end
 
-function _post_json(provider::AbstractLLMProvider, path::AbstractString, payload::Dict{String,Any}; retry_config=nothing)
+function _post_json(
+    provider::AbstractLLMProvider,
+    path::AbstractString,
+    payload::Dict{String,Any};
+    retry_config = nothing,
+)
     method = "POST $(path)"
     base_url = getproperty(provider, :base_url)
     url = "$(base_url)$(path)"

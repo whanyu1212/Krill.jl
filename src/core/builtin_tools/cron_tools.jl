@@ -1,4 +1,4 @@
-function _cron_add_impl(args::Dict{String,Any}; cron_service::CronService, from_cron::Bool=false)
+function _cron_add_impl(args::Dict{String,Any}; cron_service::CronService, from_cron::Bool = false)
     label = String(get(args, "label", "unnamed"))
     schedule_type = String(get(args, "schedule_type", ""))
     schedule_value = String(get(args, "schedule_value", ""))
@@ -16,14 +16,14 @@ function _cron_add_impl(args::Dict{String,Any}; cron_service::CronService, from_
     once = get(args, "once", false) === true
     ctx = _CRON_CONTEXT[]
     job = CronJob(
-        label=label,
-        schedule=schedule,
-        prompt=task_text,
-        channel=ctx.channel,
-        session_key=ctx.session_key,
-        chat_id=ctx.chat_id,
-        from_cron=from_cron,
-        once=once,
+        label = label,
+        schedule = schedule,
+        prompt = task_text,
+        channel = ctx.channel,
+        session_key = ctx.session_key,
+        chat_id = ctx.chat_id,
+        from_cron = from_cron,
+        once = once,
     )
 
     try
@@ -40,7 +40,10 @@ function _cron_list_impl(args::Dict{String,Any}; cron_service::CronService)
     lines = String["Scheduled jobs:", ""]
     for job in jobs
         status = job.enabled ? "enabled" : "disabled"
-        push!(lines, "- $(job.label) [$(status)] schedule=$(_schedule_display(job.schedule)) prompt=$(first(job.prompt, 60))")
+        push!(
+            lines,
+            "- $(job.label) [$(status)] schedule=$(_schedule_display(job.schedule)) prompt=$(first(job.prompt, 60))",
+        )
     end
     return join(lines, "\n")
 end
@@ -88,53 +91,74 @@ Register cron management tools (add, list, remove) into the given `ToolRegistry`
 function register_cron_tools!(
     registry::ToolRegistry,
     cron_service::CronService;
-    replace::Bool=false,
+    replace::Bool = false,
 )
     defs = ToolDef[]
 
-    push!(defs, ToolDef(
-        name="cron_add",
-        description="Schedule a recurring or one-shot task. For one-shot delays like 'in 5 minutes' or 'remind me in 1 hour', use schedule_type='at' — compute the absolute UTC datetime (now + offset) and pass it as schedule_value in ISO 8601 format. Use 'interval' (or 'every') only for truly recurring tasks that repeat at a fixed interval (e.g. 'every 10m'). Use 'cron' for wall-clock schedules like 'every day at 9am'.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "label" => Dict{String,Any}("type" => "string", "description" => "Unique job label"),
-                "schedule_type" => Dict{String,Any}("type" => "string", "description" => "One of: 'at' (one-shot at exact UTC datetime), 'interval' (recurring or one-shot delay, e.g. '1m', '30s', '2h'), 'cron' (cron expression)"),
-                "schedule_value" => Dict{String,Any}("type" => "string", "description" => "Schedule value: ISO datetime (yyyy-mm-ddTHH:MM:SS) for 'at'; duration like '60s', '5m', '2h' for 'interval'; 5-field cron expression for 'cron'"),
-                "task" => Dict{String,Any}("type" => "string", "description" => "Task description (processed as an LLM prompt when the job fires)"),
-                "once" => Dict{String,Any}("type" => "boolean", "description" => "If true, disable the job after it fires once (useful for 'interval' one-shot delays like 'remind me in 5m')"),
+    push!(
+        defs,
+        ToolDef(
+            name = "cron_add",
+            description = "Schedule a recurring or one-shot task. For one-shot delays like 'in 5 minutes' or 'remind me in 1 hour', use schedule_type='at' — compute the absolute UTC datetime (now + offset) and pass it as schedule_value in ISO 8601 format. Use 'interval' (or 'every') only for truly recurring tasks that repeat at a fixed interval (e.g. 'every 10m'). Use 'cron' for wall-clock schedules like 'every day at 9am'.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "label" => Dict{String,Any}("type" => "string", "description" => "Unique job label"),
+                    "schedule_type" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "One of: 'at' (one-shot at exact UTC datetime), 'interval' (recurring or one-shot delay, e.g. '1m', '30s', '2h'), 'cron' (cron expression)",
+                    ),
+                    "schedule_value" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Schedule value: ISO datetime (yyyy-mm-ddTHH:MM:SS) for 'at'; duration like '60s', '5m', '2h' for 'interval'; 5-field cron expression for 'cron'",
+                    ),
+                    "task" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Task description (processed as an LLM prompt when the job fires)",
+                    ),
+                    "once" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "If true, disable the job after it fires once (useful for 'interval' one-shot delays like 'remind me in 5m')",
+                    ),
+                ),
+                "required" => Any["label", "schedule_type", "schedule_value", "task"],
             ),
-            "required" => Any["label", "schedule_type", "schedule_value", "task"],
+            execute = args -> _cron_add_impl(args; cron_service = cron_service),
         ),
-        execute=args -> _cron_add_impl(args; cron_service=cron_service),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name="cron_list",
-        description="List all scheduled jobs.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(),
-            "required" => Any[],
-        ),
-        execute=args -> _cron_list_impl(args; cron_service=cron_service),
-    ))
-
-    push!(defs, ToolDef(
-        name="cron_remove",
-        description="Remove a scheduled job by label.",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "label" => Dict{String,Any}("type" => "string", "description" => "Job label to remove"),
+    push!(
+        defs,
+        ToolDef(
+            name = "cron_list",
+            description = "List all scheduled jobs.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(),
+                "required" => Any[],
             ),
-            "required" => Any["label"],
+            execute = args -> _cron_list_impl(args; cron_service = cron_service),
         ),
-        execute=args -> _cron_remove_impl(args; cron_service=cron_service),
-    ))
+    )
+
+    push!(
+        defs,
+        ToolDef(
+            name = "cron_remove",
+            description = "Remove a scheduled job by label.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "label" => Dict{String,Any}("type" => "string", "description" => "Job label to remove"),
+                ),
+                "required" => Any["label"],
+            ),
+            execute = args -> _cron_remove_impl(args; cron_service = cron_service),
+        ),
+    )
 
     for def in defs
-        register_tool!(registry, def; replace=replace)
+        register_tool!(registry, def; replace = replace)
     end
     return defs
 end

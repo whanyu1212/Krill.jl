@@ -34,7 +34,7 @@ function _web_search_impl(args::Dict{String,Any}; max_results::Int)
     ]
 
     response = try
-        _safe_http_get(url; headers=headers, request_fn=HTTP.request)
+        _safe_http_get(url; headers = headers, request_fn = HTTP.request)
     catch e
         return "Error: web_search request failed: $(sprint(showerror, e))"
     end
@@ -61,8 +61,8 @@ const _MAX_REDIRECTS = 5
 
 function _web_fetch_impl(
     args::Dict{String,Any};
-    max_chars::Int=_DEFAULT_WEB_FETCH_LIMIT,
-    request_fn::Function=HTTP.request,
+    max_chars::Int = _DEFAULT_WEB_FETCH_LIMIT,
+    request_fn::Function = HTTP.request,
 )
     url = get(args, "url", nothing)
     url isa AbstractString || return "Error: `url` must be a string"
@@ -85,23 +85,23 @@ function _web_fetch_impl(
             request_fn(
                 "GET",
                 current_url;
-                headers=Pair{String,String}["User-Agent" => "Krill/1.0"],
-                readtimeout=_WEB_TOOL_TIMEOUT_SECONDS,
-                require_ssl_verification=true,
-                redirect=false,
+                headers = Pair{String,String}["User-Agent" => "Krill/1.0"],
+                readtimeout = _WEB_TOOL_TIMEOUT_SECONDS,
+                require_ssl_verification = true,
+                redirect = false,
             )
         catch e
             if _is_insecure_web_fetch_allowed() &&
-                startswith(lowercase(current_url), "https://") &&
-                _is_certificate_error(e)
+               startswith(lowercase(current_url), "https://") &&
+               _is_certificate_error(e)
                 try
                     request_fn(
                         "GET",
                         current_url;
-                        headers=Pair{String,String}["User-Agent" => "Krill/1.0"],
-                        readtimeout=_WEB_TOOL_TIMEOUT_SECONDS,
-                        require_ssl_verification=false,
-                        redirect=false,
+                        headers = Pair{String,String}["User-Agent" => "Krill/1.0"],
+                        readtimeout = _WEB_TOOL_TIMEOUT_SECONDS,
+                        require_ssl_verification = false,
+                        redirect = false,
                     )
                 catch e2
                     return "Error: web_fetch request failed: $(sprint(showerror, e2))"

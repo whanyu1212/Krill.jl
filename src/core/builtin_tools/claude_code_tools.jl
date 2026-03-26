@@ -96,27 +96,39 @@ end
 
 function _check_claude_code_rate_limit()
     claude_path = Sys.which("claude")
-    claude_path === nothing && return (ok=false, msg="claude CLI not found on PATH")
+    claude_path === nothing && return (ok = false, msg = "claude CLI not found on PATH")
 
     cmd = Cmd(["claude", "-p", "ping", "--output-format", "stream-json", "--verbose",
-               "--max-budget-usd", "0.01"])
+        "--max-budget-usd", "0.01"])
     out_pipe = Pipe()
     err_pipe = Pipe()
     proc = try
-        run(pipeline(cmd; stdout=out_pipe, stderr=err_pipe); wait=false)
+        run(pipeline(cmd; stdout = out_pipe, stderr = err_pipe); wait = false)
     catch e
-        return (ok=false, msg="Failed to run claude: $(sprint(showerror, e))")
+        return (ok = false, msg = "Failed to run claude: $(sprint(showerror, e))")
     end
     close(out_pipe.in)
     close(err_pipe.in)
 
-    out_task = @async try; String(read(out_pipe)); catch _; ""; end
-    err_task = @async try; String(read(err_pipe)); catch _; ""; end
+    out_task = @async try
+        ; String(read(out_pipe));
+    catch _
+        ; "";
+    end
+    err_task = @async try
+        ; String(read(err_pipe));
+    catch _
+        ; "";
+    end
 
-    timedwait(() -> !process_running(proc), 30.0; pollint=0.05)
+    timedwait(() -> !process_running(proc), 30.0; pollint = 0.05)
     if process_running(proc)
-        try; kill(proc); catch _; end
-        return (ok=false, msg="Rate limit check timed out")
+        try
+            ; kill(proc);
+        catch _
+            ;
+        end
+        return (ok = false, msg = "Rate limit check timed out")
     end
 
     stdout_text = fetch(out_task)
@@ -136,15 +148,15 @@ function _check_claude_code_rate_limit()
                         reset_time = Dates.unix2datetime(resets_at)
                         reset_str = ", resets $(Dates.format(reset_time, "HH:MM")) UTC"
                     end
-                    return (ok=false, msg="Rate limited ($(status)$(reset_str)). Try again later.")
+                    return (ok = false, msg = "Rate limited ($(status)$(reset_str)). Try again later.")
                 end
-                return (ok=true, msg="")
+                return (ok = true, msg = "")
             end
         catch _
             continue
         end
     end
-    return (ok=true, msg="")  # no rate limit event = assume ok
+    return (ok = true, msg = "")  # no rate limit event = assume ok
 end
 
 function _claude_code_impl(
@@ -186,7 +198,7 @@ function _claude_code_impl(
         push!(cmd_parts, "--continue")
     end
 
-    cmd = Cmd(Cmd(cmd_parts); dir=workspace)
+    cmd = Cmd(Cmd(cmd_parts); dir = workspace)
 
     @info "Claude Code starting" model=model task=first(task_str, 80) workspace=workspace timeout_s=timeout_s
 
@@ -196,7 +208,7 @@ function _claude_code_impl(
     timed_out = Ref(false)
 
     proc = try
-        open(pipeline(cmd; stderr=stderr_buf), "r")
+        open(pipeline(cmd; stderr = stderr_buf), "r")
     catch e
         return "Error starting Claude Code: $(sprint(showerror, e))"
     end
@@ -222,7 +234,11 @@ function _claude_code_impl(
                 if now_t - last_progress_at[] >= progress_interval_s
                     progress_msg = _extract_progress_event(line)
                     if progress_msg !== nothing
-                        try; progress_fn(progress_msg); catch _; end
+                        try
+                            ; progress_fn(progress_msg);
+                        catch _
+                            ;
+                        end
                         last_progress_at[] = now_t
                     end
                 end
@@ -233,7 +249,7 @@ function _claude_code_impl(
     end
 
     if !istaskdone(watchdog)
-        Base.schedule(watchdog, InterruptException(); error=true)
+        Base.schedule(watchdog, InterruptException(); error = true)
     end
 
     if timed_out[]

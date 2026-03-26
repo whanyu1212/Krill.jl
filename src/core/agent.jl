@@ -45,12 +45,12 @@ struct RetryConfig
 end
 
 function RetryConfig(;
-    max_retries::Int=3,
-    base_delay_s::Float64=0.5,
-    max_delay_s::Float64=60.0,
-    multiplier::Float64=2.0,
-    jitter::Bool=true,
-    retriable_status_codes::Set{Int}=DEFAULT_RETRIABLE_CODES,
+    max_retries::Int = 3,
+    base_delay_s::Float64 = 0.5,
+    max_delay_s::Float64 = 60.0,
+    multiplier::Float64 = 2.0,
+    jitter::Bool = true,
+    retriable_status_codes::Set{Int} = DEFAULT_RETRIABLE_CODES,
 )
     max_retries >= 0 || throw(ArgumentError("max_retries must be >= 0"))
     base_delay_s >= 0 || throw(ArgumentError("base_delay_s must be >= 0"))
@@ -91,11 +91,11 @@ struct AgentHooks
 end
 
 function AgentHooks(;
-    on_turn_start=nothing,
-    on_turn_end=nothing,
-    on_tool_call=nothing,
-    on_tool_result=nothing,
-    should_interrupt=nothing,
+    on_turn_start = nothing,
+    on_turn_end = nothing,
+    on_tool_call = nothing,
+    on_tool_result = nothing,
+    should_interrupt = nothing,
 )
     return AgentHooks(on_turn_start, on_turn_end, on_tool_call, on_tool_result, should_interrupt)
 end
@@ -120,13 +120,13 @@ struct MemoryConfig
 end
 
 function MemoryConfig(;
-    enable::Bool=true,
-    enable_consolidation::Bool=true,
-    consolidation_threshold_tokens::Int=2_000,
-    consolidation_max_output_tokens::Union{Nothing,Integer}=800,
-    consolidation_max_turn_chars::Int=2_000,
-    consolidation_max_turns::Int=50,
-    consolidation_max_failures::Int=3,
+    enable::Bool = true,
+    enable_consolidation::Bool = true,
+    consolidation_threshold_tokens::Int = 2_000,
+    consolidation_max_output_tokens::Union{Nothing,Integer} = 800,
+    consolidation_max_turn_chars::Int = 2_000,
+    consolidation_max_turns::Int = 50,
+    consolidation_max_failures::Int = 3,
 )
     MemoryConfig(enable, enable_consolidation,
         consolidation_threshold_tokens, consolidation_max_output_tokens,
@@ -149,12 +149,12 @@ struct BuiltinToolsConfig
 end
 
 function BuiltinToolsConfig(;
-    enable::Bool=true,
-    restrict_to_workspace::Bool=true,
-    enable_exec::Bool=false,
-    exec_timeout_s::Real=60.0,
-    exec_path_append::AbstractString="",
-    web_search_max_results::Int=5,
+    enable::Bool = true,
+    restrict_to_workspace::Bool = true,
+    enable_exec::Bool = false,
+    exec_timeout_s::Real = 60.0,
+    exec_path_append::AbstractString = "",
+    web_search_max_results::Int = 5,
 )
     BuiltinToolsConfig(enable, restrict_to_workspace, enable_exec,
         Float64(exec_timeout_s), String(exec_path_append), web_search_max_results)
@@ -171,8 +171,8 @@ struct SkillsConfig
 end
 
 function SkillsConfig(;
-    enable::Bool=true,
-    dir::Union{Nothing,AbstractString}=nothing,
+    enable::Bool = true,
+    dir::Union{Nothing,AbstractString} = nothing,
 )
     SkillsConfig(enable, dir === nothing ? nothing : String(dir))
 end
@@ -192,12 +192,12 @@ struct ClaudeCodeConfig
 end
 
 function ClaudeCodeConfig(;
-    enable::Bool=false,
-    model::AbstractString="sonnet",
-    timeout_s::Real=1800.0,
-    max_budget::Union{Nothing,Real}=nothing,
-    permission_mode::AbstractString="bypassPermissions",
-    progress_interval_s::Real=15.0,
+    enable::Bool = false,
+    model::AbstractString = "sonnet",
+    timeout_s::Real = 1800.0,
+    max_budget::Union{Nothing,Real} = nothing,
+    permission_mode::AbstractString = "bypassPermissions",
+    progress_interval_s::Real = 15.0,
 )
     ClaudeCodeConfig(enable, String(model), Float64(timeout_s),
         max_budget, String(permission_mode), Float64(progress_interval_s))
@@ -217,11 +217,11 @@ struct CodexConfig
 end
 
 function CodexConfig(;
-    enable::Bool=false,
-    model::Union{Nothing,AbstractString}=nothing,
-    timeout_s::Real=1800.0,
-    sandbox_mode::AbstractString="workspace-write",
-    progress_interval_s::Real=15.0,
+    enable::Bool = false,
+    model::Union{Nothing,AbstractString} = nothing,
+    timeout_s::Real = 1800.0,
+    sandbox_mode::AbstractString = "workspace-write",
+    progress_interval_s::Real = 15.0,
 )
     CodexConfig(enable, model === nothing ? nothing : String(model),
         Float64(timeout_s), String(sandbox_mode), Float64(progress_interval_s))
@@ -240,10 +240,10 @@ struct PromptContextConfig
 end
 
 function PromptContextConfig(;
-    enable::Bool=true,
-    doc_names::Union{Tuple,Vector}=DEFAULT_BOOTSTRAP_DOCS,
-    max_chars_per_doc::Int=12_000,
-    include_runtime_metadata::Bool=true,
+    enable::Bool = true,
+    doc_names::Union{Tuple,Vector} = DEFAULT_BOOTSTRAP_DOCS,
+    max_chars_per_doc::Int = 12_000,
+    include_runtime_metadata::Bool = true,
 )
     PromptContextConfig(enable, collect(doc_names), max_chars_per_doc,
         include_runtime_metadata)
@@ -261,9 +261,9 @@ struct SubagentConfig
 end
 
 function SubagentConfig(;
-    enable::Bool=true,
-    max_concurrent::Int=5,
-    max_iterations::Int=15,
+    enable::Bool = true,
+    max_concurrent::Int = 5,
+    max_iterations::Int = 15,
 )
     SubagentConfig(enable, max_concurrent, max_iterations)
 end
@@ -363,141 +363,153 @@ values take precedence over flat kwargs.
 """
 function Agent(
     provider::AbstractLLMProvider;
-    system_prompt::Union{Nothing,AbstractString,Function}="You are a helpful assistant.",
-    workspace::AbstractString="context",
-    data_dir::AbstractString=joinpath(homedir(), ".krill"),
-    tool_registry::Union{Nothing,ToolRegistry}=nothing,
-    memory_store::Union{Nothing,MemoryStore}=nothing,
-    hooks::AgentHooks=AgentHooks(),
-    retry::RetryConfig=RetryConfig(),
+    system_prompt::Union{Nothing,AbstractString,Function} = "You are a helpful assistant.",
+    workspace::AbstractString = "context",
+    data_dir::AbstractString = joinpath(homedir(), ".krill"),
+    tool_registry::Union{Nothing,ToolRegistry} = nothing,
+    memory_store::Union{Nothing,MemoryStore} = nothing,
+    hooks::AgentHooks = AgentHooks(),
+    retry::RetryConfig = RetryConfig(),
     # Provider-native tools
-    llm_tools=nothing,
-    llm_include=nothing,
-    llm_reasoning=nothing,
-    llm_stream::Bool=false,
-    llm_parallel_tool_calls::Union{Nothing,Bool}=nothing,
-    llm_max_output_tokens::Union{Nothing,Integer}=nothing,
-    llm_tool_choice=nothing,
-    max_context_tokens::Int=8_000,
-    max_tool_iterations::Int=10,
-    max_tool_output_chars::Int=8_000,
-    allowed_tools::Union{Nothing,AbstractVector{<:AbstractString}}=nothing,
+    llm_tools = nothing,
+    llm_include = nothing,
+    llm_reasoning = nothing,
+    llm_stream::Bool = false,
+    llm_parallel_tool_calls::Union{Nothing,Bool} = nothing,
+    llm_max_output_tokens::Union{Nothing,Integer} = nothing,
+    llm_tool_choice = nothing,
+    max_context_tokens::Int = 8_000,
+    max_tool_iterations::Int = 10,
+    max_tool_output_chars::Int = 8_000,
+    allowed_tools::Union{Nothing,AbstractVector{<:AbstractString}} = nothing,
     # Memory — flat kwargs (backward compat) or struct
-    memory::Union{MemoryConfig,Nothing}=nothing,
-    enable_memory::Bool=true,
-    enable_memory_consolidation::Bool=true,
-    memory_consolidation_threshold_tokens::Int=2_000,
-    memory_consolidation_max_output_tokens::Union{Nothing,Integer}=800,
-    memory_consolidation_max_turn_chars::Int=2_000,
-    memory_consolidation_max_turns::Int=50,
-    memory_consolidation_max_failures::Int=3,
+    memory::Union{MemoryConfig,Nothing} = nothing,
+    enable_memory::Bool = true,
+    enable_memory_consolidation::Bool = true,
+    memory_consolidation_threshold_tokens::Int = 2_000,
+    memory_consolidation_max_output_tokens::Union{Nothing,Integer} = 800,
+    memory_consolidation_max_turn_chars::Int = 2_000,
+    memory_consolidation_max_turns::Int = 50,
+    memory_consolidation_max_failures::Int = 3,
     # Builtin tools — flat kwargs or struct
-    builtin_tools::Union{BuiltinToolsConfig,Nothing}=nothing,
-    enable_builtin_tools::Bool=true,
-    builtin_restrict_to_workspace::Bool=true,
-    builtin_enable_exec::Bool=false,
-    builtin_exec_timeout_s::Real=60.0,
-    builtin_exec_path_append::AbstractString="",
-    builtin_web_search_max_results::Int=5,
+    builtin_tools::Union{BuiltinToolsConfig,Nothing} = nothing,
+    enable_builtin_tools::Bool = true,
+    builtin_restrict_to_workspace::Bool = true,
+    builtin_enable_exec::Bool = false,
+    builtin_exec_timeout_s::Real = 60.0,
+    builtin_exec_path_append::AbstractString = "",
+    builtin_web_search_max_results::Int = 5,
     # Skills — flat kwargs or struct
-    skills::Union{SkillsConfig,Nothing}=nothing,
-    enable_builtin_skills::Bool=true,
-    builtin_skills_dir::Union{Nothing,AbstractString}=nothing,
+    skills::Union{SkillsConfig,Nothing} = nothing,
+    enable_builtin_skills::Bool = true,
+    builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
     # Prompt context — flat kwargs or struct
-    prompt_context::Union{PromptContextConfig,Nothing}=nothing,
-    enable_prompt_context::Bool=true,
-    prompt_doc_names::Union{Tuple,Vector}=DEFAULT_BOOTSTRAP_DOCS,
-    prompt_max_chars_per_doc::Int=12_000,
-    prompt_include_runtime_metadata::Bool=true,
+    prompt_context::Union{PromptContextConfig,Nothing} = nothing,
+    enable_prompt_context::Bool = true,
+    prompt_doc_names::Union{Tuple,Vector} = DEFAULT_BOOTSTRAP_DOCS,
+    prompt_max_chars_per_doc::Int = 12_000,
+    prompt_include_runtime_metadata::Bool = true,
     # Claude Code — flat kwargs or struct
-    claude_code::Union{ClaudeCodeConfig,Nothing}=nothing,
-    enable_claude_code::Bool=false,
-    claude_code_model::AbstractString="sonnet",
-    claude_code_timeout_s::Real=1800.0,
-    claude_code_max_budget::Union{Nothing,Real}=nothing,
-    claude_code_permission_mode::AbstractString="bypassPermissions",
-    claude_code_progress_interval_s::Real=15.0,
+    claude_code::Union{ClaudeCodeConfig,Nothing} = nothing,
+    enable_claude_code::Bool = false,
+    claude_code_model::AbstractString = "sonnet",
+    claude_code_timeout_s::Real = 1800.0,
+    claude_code_max_budget::Union{Nothing,Real} = nothing,
+    claude_code_permission_mode::AbstractString = "bypassPermissions",
+    claude_code_progress_interval_s::Real = 15.0,
     # Codex — flat kwargs or struct
-    codex::Union{CodexConfig,Nothing}=nothing,
-    enable_codex::Bool=false,
-    codex_model::Union{Nothing,AbstractString}=nothing,
-    codex_timeout_s::Real=1800.0,
-    codex_sandbox_mode::AbstractString="workspace-write",
-    codex_progress_interval_s::Real=15.0,
+    codex::Union{CodexConfig,Nothing} = nothing,
+    enable_codex::Bool = false,
+    codex_model::Union{Nothing,AbstractString} = nothing,
+    codex_timeout_s::Real = 1800.0,
+    codex_sandbox_mode::AbstractString = "workspace-write",
+    codex_progress_interval_s::Real = 15.0,
     # Subagents — flat kwargs or struct
-    subagents::Union{SubagentConfig,Nothing}=nothing,
-    enable_subagents::Bool=true,
-    subagent_max_concurrent::Int=5,
-    subagent_max_iterations::Int=15,
+    subagents::Union{SubagentConfig,Nothing} = nothing,
+    enable_subagents::Bool = true,
+    subagent_max_concurrent::Int = 5,
+    subagent_max_iterations::Int = 15,
     # History summarization
-    enable_history_summarization::Bool=false,
-    history_summarization_max_chars::Int=2_000,
+    enable_history_summarization::Bool = false,
+    history_summarization_max_chars::Int = 2_000,
     # Google Workspace
-    enable_google_workspace::Bool=false,
+    enable_google_workspace::Bool = false,
     # Cron
-    enable_cron::Bool=true,
-    cron_tick_interval_s::Real=15.0,
+    enable_cron::Bool = true,
+    cron_tick_interval_s::Real = 15.0,
     # MCP
-    mcp_servers::Vector{MCPServer}=MCPServer[],
-    mcp_connect_fn::Function=connect,
+    mcp_servers::Vector{MCPServer} = MCPServer[],
+    mcp_connect_fn::Function = connect,
 )
     resolved_system_prompt = system_prompt isa AbstractString ? String(system_prompt) : system_prompt
     resolved_allowed = allowed_tools === nothing ? nothing : String.(collect(allowed_tools))
 
     # Pack flat kwargs into config structs (struct value takes precedence)
-    mem = memory !== nothing ? memory : MemoryConfig(
-        enable=enable_memory,
-        enable_consolidation=enable_memory_consolidation,
-        consolidation_threshold_tokens=memory_consolidation_threshold_tokens,
-        consolidation_max_output_tokens=memory_consolidation_max_output_tokens,
-        consolidation_max_turn_chars=memory_consolidation_max_turn_chars,
-        consolidation_max_turns=memory_consolidation_max_turns,
-        consolidation_max_failures=memory_consolidation_max_failures,
-    )
+    mem =
+        memory !== nothing ? memory :
+        MemoryConfig(
+            enable = enable_memory,
+            enable_consolidation = enable_memory_consolidation,
+            consolidation_threshold_tokens = memory_consolidation_threshold_tokens,
+            consolidation_max_output_tokens = memory_consolidation_max_output_tokens,
+            consolidation_max_turn_chars = memory_consolidation_max_turn_chars,
+            consolidation_max_turns = memory_consolidation_max_turns,
+            consolidation_max_failures = memory_consolidation_max_failures,
+        )
 
-    bt = builtin_tools !== nothing ? builtin_tools : BuiltinToolsConfig(
-        enable=enable_builtin_tools,
-        restrict_to_workspace=builtin_restrict_to_workspace,
-        enable_exec=builtin_enable_exec,
-        exec_timeout_s=builtin_exec_timeout_s,
-        exec_path_append=builtin_exec_path_append,
-        web_search_max_results=builtin_web_search_max_results,
-    )
+    bt =
+        builtin_tools !== nothing ? builtin_tools :
+        BuiltinToolsConfig(
+            enable = enable_builtin_tools,
+            restrict_to_workspace = builtin_restrict_to_workspace,
+            enable_exec = builtin_enable_exec,
+            exec_timeout_s = builtin_exec_timeout_s,
+            exec_path_append = builtin_exec_path_append,
+            web_search_max_results = builtin_web_search_max_results,
+        )
 
     sk = skills !== nothing ? skills : SkillsConfig(
-        enable=enable_builtin_skills,
-        dir=builtin_skills_dir,
+        enable = enable_builtin_skills,
+        dir = builtin_skills_dir,
     )
 
-    pc = prompt_context !== nothing ? prompt_context : PromptContextConfig(
-        enable=enable_prompt_context,
-        doc_names=prompt_doc_names,
-        max_chars_per_doc=prompt_max_chars_per_doc,
-        include_runtime_metadata=prompt_include_runtime_metadata,
-    )
+    pc =
+        prompt_context !== nothing ? prompt_context :
+        PromptContextConfig(
+            enable = enable_prompt_context,
+            doc_names = prompt_doc_names,
+            max_chars_per_doc = prompt_max_chars_per_doc,
+            include_runtime_metadata = prompt_include_runtime_metadata,
+        )
 
-    cc = claude_code !== nothing ? claude_code : ClaudeCodeConfig(
-        enable=enable_claude_code,
-        model=claude_code_model,
-        timeout_s=claude_code_timeout_s,
-        max_budget=claude_code_max_budget,
-        permission_mode=claude_code_permission_mode,
-        progress_interval_s=claude_code_progress_interval_s,
-    )
+    cc =
+        claude_code !== nothing ? claude_code :
+        ClaudeCodeConfig(
+            enable = enable_claude_code,
+            model = claude_code_model,
+            timeout_s = claude_code_timeout_s,
+            max_budget = claude_code_max_budget,
+            permission_mode = claude_code_permission_mode,
+            progress_interval_s = claude_code_progress_interval_s,
+        )
 
-    cx = codex !== nothing ? codex : CodexConfig(
-        enable=enable_codex,
-        model=codex_model,
-        timeout_s=codex_timeout_s,
-        sandbox_mode=codex_sandbox_mode,
-        progress_interval_s=codex_progress_interval_s,
-    )
+    cx =
+        codex !== nothing ? codex :
+        CodexConfig(
+            enable = enable_codex,
+            model = codex_model,
+            timeout_s = codex_timeout_s,
+            sandbox_mode = codex_sandbox_mode,
+            progress_interval_s = codex_progress_interval_s,
+        )
 
-    sa = subagents !== nothing ? subagents : SubagentConfig(
-        enable=enable_subagents,
-        max_concurrent=subagent_max_concurrent,
-        max_iterations=subagent_max_iterations,
-    )
+    sa =
+        subagents !== nothing ? subagents :
+        SubagentConfig(
+            enable = enable_subagents,
+            max_concurrent = subagent_max_concurrent,
+            max_iterations = subagent_max_iterations,
+        )
 
     return Agent(
         provider,

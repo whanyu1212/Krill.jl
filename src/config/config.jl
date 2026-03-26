@@ -62,22 +62,22 @@ function load_config(;
     cfg = expand_env_deep!(TOML.parsefile(config_path))
 
     # Resolve components
-    provider    = make_provider(cfg)
-    channels    = build_channels(cfg)
+    provider = make_provider(cfg)
+    channels = build_channels(cfg)
     mcp_servers = make_mcp_servers(cfg)
 
-    workspace = let w = get_cfg(cfg, "llm", "workspace"; default="")
+    workspace = let w = get_cfg(cfg, "llm", "workspace"; default = "")
         isempty(w) ? joinpath(project_root, "context") : w
     end
 
-    data_dir = let d = get_cfg(cfg, "llm", "data_dir"; default="")
+    data_dir = let d = get_cfg(cfg, "llm", "data_dir"; default = "")
         isempty(d) ? joinpath(homedir(), ".krill") : d
     end
 
     system_prompt = get_cfg(cfg, "profile", "system_prompt";
-        default="You are a helpful assistant. Be concise and friendly.")
+        default = "You are a helpful assistant. Be concise and friendly.")
 
-    tools_cfg = get_cfg(cfg, "profile", "tools"; default=Dict())
+    tools_cfg = get_cfg(cfg, "profile", "tools"; default = Dict())
 
     KrillConfig(
         provider,
@@ -109,48 +109,48 @@ function start_agent!(config::KrillConfig;
 
     if hooks === nothing
         hooks = AgentHooks(
-            on_tool_call   = (name, args) -> (@info "Tool called"  tool=name),
-            on_tool_result = (name, res)  -> (@info "Tool result"  tool=name chars=length(res)),
+            on_tool_call = (name, args) -> (@info "Tool called" tool=name),
+            on_tool_result = (name, res) -> (@info "Tool result" tool=name chars=length(res)),
         )
     end
 
     agent = Agent(config.provider;
-        system_prompt   = config.system_prompt,
-        workspace       = config.workspace,
-        data_dir        = config.data_dir,
+        system_prompt = config.system_prompt,
+        workspace = config.workspace,
+        data_dir = config.data_dir,
         # Provider-side tools
-        llm_tools       = config.llm_tools,
-        llm_include     = config.llm_include,
+        llm_tools = config.llm_tools,
+        llm_include = config.llm_include,
         # Grouped configs
         memory = MemoryConfig(
-            enable            = get(tc, "memory", true),
+            enable = get(tc, "memory", true),
             enable_consolidation = get(tc, "memory_consolidation", true),
         ),
         builtin_tools = BuiltinToolsConfig(
-            enable               = get(tc, "local_builtins", true),
-            restrict_to_workspace = get_cfg(config.raw, "llm", "builtin_restrict_to_workspace"; default=true),
-            enable_exec          = get(tc, "exec", false),
+            enable = get(tc, "local_builtins", true),
+            restrict_to_workspace = get_cfg(config.raw, "llm", "builtin_restrict_to_workspace"; default = true),
+            enable_exec = get(tc, "exec", false),
         ),
         skills = SkillsConfig(
             enable = get(tc, "builtin_skills", true),
         ),
         claude_code = ClaudeCodeConfig(
             enable = get(tc, "claude_code", false),
-            model  = get(tc, "claude_code_model", "sonnet"),
+            model = get(tc, "claude_code_model", "sonnet"),
         ),
         codex = CodexConfig(
             enable = get(tc, "codex", false),
-            model  = let m = get(tc, "codex_model", "")
-                         isempty(m) ? nothing : m
-                     end,
+            model = let m = get(tc, "codex_model", "")
+                isempty(m) ? nothing : m
+            end,
         ),
         subagents = SubagentConfig(
             enable = get(tc, "subagents", true),
         ),
         # Flat flags
-        enable_history_summarization  = get(tc, "history_summarization", false),
-        enable_cron                   = get(tc, "cron", true),
-        enable_google_workspace       = get(tc, "google_workspace", false),
+        enable_history_summarization = get(tc, "history_summarization", false),
+        enable_cron = get(tc, "cron", true),
+        enable_google_workspace = get(tc, "google_workspace", false),
         # Hooks
         hooks = hooks,
         # MCP

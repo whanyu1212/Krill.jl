@@ -67,7 +67,7 @@ function _exec_impl(
 
     working_dir_raw = get(args, "working_dir", workspace)
     working_dir = try
-        _resolve_path(String(working_dir_raw), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(working_dir_raw), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -85,14 +85,17 @@ function _exec_impl(
         shell_cmd
     else
         path_sep = Sys.iswindows() ? ";" : ":"
-        env = merge(Dict{String,String}(String(k) => String(v) for (k, v) in ENV), Dict("PATH" => get(ENV, "PATH", "") * path_sep * String(path_append)))
-        Cmd(shell_cmd; env=env)
+        env = merge(
+            Dict{String,String}(String(k) => String(v) for (k, v) in ENV),
+            Dict("PATH" => get(ENV, "PATH", "") * path_sep * String(path_append)),
+        )
+        Cmd(shell_cmd; env = env)
     end
 
     out_pipe = Pipe()
     err_pipe = Pipe()
     proc = try
-        run(pipeline(final_cmd; stdout=out_pipe, stderr=err_pipe); wait=false, dir=working_dir)
+        run(pipeline(final_cmd; stdout = out_pipe, stderr = err_pipe); wait = false, dir = working_dir)
     catch e
         return "Error executing command: $(sprint(showerror, e))"
     end
@@ -111,7 +114,7 @@ function _exec_impl(
         ""
     end
 
-    wait_status = timedwait(() -> !process_running(proc), timeout_val; pollint=0.05)
+    wait_status = timedwait(() -> !process_running(proc), timeout_val; pollint = 0.05)
     if wait_status == :timed_out
         try
             kill(proc)

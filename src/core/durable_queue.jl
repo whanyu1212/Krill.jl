@@ -35,7 +35,7 @@ end
 
 function DurableQueueState(;
     wal_path::AbstractString,
-    auto_compact_threshold::Int=1000,
+    auto_compact_threshold::Int = 1000,
 )
     path = String(wal_path)
     dir = dirname(path)
@@ -99,33 +99,33 @@ end
 
 function _deserialize_inbound(d::Dict{String,Any})
     return InboundMessage(
-        channel=Symbol(d["channel"]),
-        session_key=d["session_key"],
-        user_id=d["user_id"],
-        chat_id=d["chat_id"],
-        text=d["text"],
-        message_id=UUID(d["message_id"]),
-        idempotency_key=d["idempotency_key"],
-        correlation_id=d["correlation_id"] === nothing ? nothing : UUID(d["correlation_id"]),
-        timestamp=DateTime(d["timestamp"]),
+        channel = Symbol(d["channel"]),
+        session_key = d["session_key"],
+        user_id = d["user_id"],
+        chat_id = d["chat_id"],
+        text = d["text"],
+        message_id = UUID(d["message_id"]),
+        idempotency_key = d["idempotency_key"],
+        correlation_id = d["correlation_id"] === nothing ? nothing : UUID(d["correlation_id"]),
+        timestamp = DateTime(d["timestamp"]),
     )
 end
 
 function _deserialize_outbound(d::Dict{String,Any})
     return OutboundMessage(
-        channel=Symbol(d["channel"]),
-        session_key=d["session_key"],
-        chat_id=d["chat_id"],
-        text=d["text"],
-        message_id=UUID(d["message_id"]),
-        correlation_id=d["correlation_id"] === nothing ? nothing : UUID(d["correlation_id"]),
-        timestamp=DateTime(d["timestamp"]),
-        format=Symbol(d["format"]),
-        delivery_policy=DeliveryPolicy(
-            max_retries=d["max_retries"],
-            timeout_ms=d["timeout_ms"],
-            priority=d["priority"],
-            drop_if_late=d["drop_if_late"],
+        channel = Symbol(d["channel"]),
+        session_key = d["session_key"],
+        chat_id = d["chat_id"],
+        text = d["text"],
+        message_id = UUID(d["message_id"]),
+        correlation_id = d["correlation_id"] === nothing ? nothing : UUID(d["correlation_id"]),
+        timestamp = DateTime(d["timestamp"]),
+        format = Symbol(d["format"]),
+        delivery_policy = DeliveryPolicy(
+            max_retries = d["max_retries"],
+            timeout_ms = d["timeout_ms"],
+            priority = d["priority"],
+            drop_if_late = d["drop_if_late"],
         ),
     )
 end
@@ -186,7 +186,7 @@ Call this on startup to recover messages that were enqueued but not acked.
 function replay(dq::DurableQueueState)
     inbound = InboundMessage[]
     outbound = OutboundMessage[]
-    isfile(dq.wal_path) || return (inbound=inbound, outbound=outbound)
+    isfile(dq.wal_path) || return (inbound = inbound, outbound = outbound)
 
     enqueued = Dict{String,Dict{String,Any}}()  # message_id -> payload
     acked = Set{String}()
@@ -207,7 +207,8 @@ function replay(dq::DurableQueueState)
                 op = get(entry, "op", "")
                 mid = get(entry, "message_id", "")
                 if op == "enqueue" && haskey(entry, "payload")
-                    enqueued[mid] = entry["payload"] isa Dict{String,Any} ? entry["payload"] : Dict{String,Any}(entry["payload"]...)
+                    enqueued[mid] =
+                        entry["payload"] isa Dict{String,Any} ? entry["payload"] : Dict{String,Any}(entry["payload"]...)
                     push!(order, mid)
                 elseif op == "ack"
                     push!(acked, mid)
@@ -231,7 +232,7 @@ function replay(dq::DurableQueueState)
         end
     end
 
-    return (inbound=inbound, outbound=outbound)
+    return (inbound = inbound, outbound = outbound)
 end
 
 """
@@ -286,7 +287,7 @@ function compact!(dq::DurableQueueState)
             end
         end
 
-        mv(tmp_path, dq.wal_path; force=true)
+        mv(tmp_path, dq.wal_path; force = true)
         dq.wal_lines = lines_written
     end
     return nothing

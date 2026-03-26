@@ -63,7 +63,8 @@ using .Core: SessionStore, TurnRecord,
     load_memory_state, save_memory_state!
 
 # ─── Echo & session consumer ────────────────────────────────────────
-using .Core: run_echo_loop!, run_session_loop!, echo_processor,
+using .Core:
+    run_echo_loop!, run_session_loop!, echo_processor,
     SessionCancelScope, request_cancel!, is_cancelled, clear_cancel!
 
 # ─── Tools ──────────────────────────────────────────────────────────

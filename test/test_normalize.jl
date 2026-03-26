@@ -82,7 +82,7 @@ end
     @testset "sends outbound message text via client" begin
         sent = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             sent["payload"] = JSON3.read(String(body))
             return HTTP.Response(200, JSON3.write(Dict(
                 "ok" => true,
@@ -90,15 +90,15 @@ end
             )))
         end
 
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
         sender = make_telegram_sender(client)
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1234",
-            chat_id="1234",
-            text="hi there",
-            format=:telegram_html,
+            channel = :telegram,
+            session_key = "telegram:1234",
+            chat_id = "1234",
+            text = "hi there",
+            format = :telegram_html,
         )
 
         sender(msg)
@@ -111,7 +111,7 @@ end
     @testset "plain format sends without parse_mode" begin
         sent = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             sent["payload"] = JSON3.read(String(body))
             return HTTP.Response(200, JSON3.write(Dict(
                 "ok" => true,
@@ -119,15 +119,15 @@ end
             )))
         end
 
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
         sender = make_telegram_sender(client)
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1234",
-            chat_id="1234",
-            text="plain text",
-            format=:plain,
+            channel = :telegram,
+            session_key = "telegram:1234",
+            chat_id = "1234",
+            text = "plain text",
+            format = :plain,
         )
 
         sender(msg)
@@ -139,7 +139,7 @@ end
     @testset "markdown format renders to HTML parse_mode" begin
         sent = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             sent["payload"] = JSON3.read(String(body))
             return HTTP.Response(200, JSON3.write(Dict(
                 "ok" => true,
@@ -147,15 +147,15 @@ end
             )))
         end
 
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
         sender = make_telegram_sender(client)
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1234",
-            chat_id="1234",
-            text="## Title\n**bold** and `x < y`\n\n[OpenAI](https://openai.com/?a=1&b=2)\n\n```julia\nx = 1 < 2\n```",
-            format=:markdown,
+            channel = :telegram,
+            session_key = "telegram:1234",
+            chat_id = "1234",
+            text = "## Title\n**bold** and `x < y`\n\n[OpenAI](https://openai.com/?a=1&b=2)\n\n```julia\nx = 1 < 2\n```",
+            format = :markdown,
         )
 
         sender(msg)
@@ -173,16 +173,21 @@ end
         payloads = Any[]
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
             payload = JSON3.read(String(body))
             push!(payloads, payload)
             if call_no[] == 1
-                return HTTP.Response(400, JSON3.write(Dict(
-                    "ok" => false,
-                    "error_code" => 400,
-                    "description" => "Bad Request: can't parse entities",
-                )))
+                return HTTP.Response(
+                    400,
+                    JSON3.write(
+                        Dict(
+                            "ok" => false,
+                            "error_code" => 400,
+                            "description" => "Bad Request: can't parse entities",
+                        ),
+                    ),
+                )
             end
             return HTTP.Response(200, JSON3.write(Dict(
                 "ok" => true,
@@ -190,15 +195,15 @@ end
             )))
         end
 
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
         sender = make_telegram_sender(client)
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1234",
-            chat_id="1234",
-            text="**fallback me**",
-            format=:markdown,
+            channel = :telegram,
+            session_key = "telegram:1234",
+            chat_id = "1234",
+            text = "**fallback me**",
+            format = :markdown,
         )
 
         sender(msg)
@@ -209,4 +214,3 @@ end
         @test payloads[2][:text] == "**fallback me**"
     end
 end
-

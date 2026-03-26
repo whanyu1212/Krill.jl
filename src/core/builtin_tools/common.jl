@@ -1,6 +1,6 @@
 # Tool context for cron: auto-injected session routing info
-const _CRON_CONTEXT = Ref{@NamedTuple{channel::Symbol, session_key::String, chat_id::String}}(
-    (channel=:system, session_key="", chat_id="")
+const _CRON_CONTEXT = Ref{@NamedTuple{channel::Symbol,session_key::String,chat_id::String}}(
+    (channel = :system, session_key = "", chat_id = "")
 )
 
 """
@@ -9,7 +9,7 @@ const _CRON_CONTEXT = Ref{@NamedTuple{channel::Symbol, session_key::String, chat
 Set the global cron routing context (channel, session key, chat ID) for tool invocations.
 """
 function set_cron_context!(channel::Symbol, session_key::AbstractString, chat_id::AbstractString)
-    _CRON_CONTEXT[] = (channel=channel, session_key=String(session_key), chat_id=String(chat_id))
+    _CRON_CONTEXT[] = (channel = channel, session_key = String(session_key), chat_id = String(chat_id))
 end
 
 const _DEFAULT_READ_LIMIT = 2_000
@@ -41,43 +41,43 @@ end
 
 function _safe_http_get(
     url::AbstractString,
-   ;
-    request_fn::Function=HTTP.request,
-    headers::AbstractVector=Pair{String,String}[],
+    ;
+    request_fn::Function = HTTP.request,
+    headers::AbstractVector = Pair{String,String}[],
 )
     return request_fn(
         "GET",
         url;
-        headers=headers,
-        readtimeout=_WEB_TOOL_TIMEOUT_SECONDS,
-        require_ssl_verification=true,
+        headers = headers,
+        readtimeout = _WEB_TOOL_TIMEOUT_SECONDS,
+        require_ssl_verification = true,
     )
 end
 
 function _safe_web_fetch_request(
     url::AbstractString;
-    request_fn::Function=HTTP.request,
-    headers::AbstractVector=Pair{String,String}[],
+    request_fn::Function = HTTP.request,
+    headers::AbstractVector = Pair{String,String}[],
 )
     try
         return _safe_http_get(
             url;
-            request_fn=request_fn,
-            headers=headers,
+            request_fn = request_fn,
+            headers = headers,
         )
     catch e
         normalized_url = lowercase(String(url))
         if _is_insecure_web_fetch_allowed() &&
-            startswith(normalized_url, "https://") &&
-            _is_certificate_error(e)
+           startswith(normalized_url, "https://") &&
+           _is_certificate_error(e)
             return request_fn(
                 "GET",
                 url;
-                headers=Pair{String,String}[
+                headers = Pair{String,String}[
                     String(p.first) => String(p.second) for p in headers
                 ],
-                readtimeout=_WEB_TOOL_TIMEOUT_SECONDS,
-                require_ssl_verification=false,
+                readtimeout = _WEB_TOOL_TIMEOUT_SECONDS,
+                require_ssl_verification = false,
             )
         end
         rethrow()
@@ -261,7 +261,7 @@ function _is_within(path::AbstractString, root::AbstractString)
     return startswith(npath, nroot * string(sep))
 end
 
-function _resolve_path(path::AbstractString, workspace::AbstractString; restrict_to_workspace::Bool=true)
+function _resolve_path(path::AbstractString, workspace::AbstractString; restrict_to_workspace::Bool = true)
     raw = expanduser(String(path))
     resolved = isabspath(raw) ? normpath(abspath(raw)) : normpath(abspath(joinpath(workspace, raw)))
     if restrict_to_workspace
@@ -288,7 +288,7 @@ function _resolve_path(path::AbstractString, workspace::AbstractString; restrict
     return resolved
 end
 
-function _parse_bool(value; default::Bool=false)
+function _parse_bool(value; default::Bool = false)
     value === nothing && return default
     value isa Bool && return value
     if value isa AbstractString
@@ -308,8 +308,8 @@ function _truncate_text(s::AbstractString, max_chars::Int)
     half = max(1, max_chars ÷ 2)
     omitted = length(s) - (2 * half)
     return String(first(String(s), half)) *
-        "\n\n... ($(omitted) chars truncated) ...\n\n" *
-        String(last(String(s), half))
+           "\n\n... ($(omitted) chars truncated) ...\n\n" *
+           String(last(String(s), half))
 end
 
 function _decode_html_entities(text::AbstractString)

@@ -79,8 +79,8 @@ end
 
 function ChannelManagerState(
     hub::MessageHubState;
-    on_dispatch::Union{Nothing,Function}=nothing,
-    dead_letter_path::Union{Nothing,AbstractString}=nothing,
+    on_dispatch::Union{Nothing,Function} = nothing,
+    dead_letter_path::Union{Nothing,AbstractString} = nothing,
 )
     return ChannelManagerState(
         hub,
@@ -172,30 +172,30 @@ function _attempt_send(sender::Function, msg::OutboundMessage; timeout_ms::Int)
     task = Threads.@spawn begin
         try
             sender(msg)
-            return (ok=true, error=nothing)
+            return (ok = true, error = nothing)
         catch err
-            return (ok=false, error=err)
+            return (ok = false, error = err)
         end
     end
     if timeout_ms > 0
         timeout_s = timeout_ms / 1000
         poll_s = max(0.001, min(0.01, timeout_s / 5))
-        wait_result = timedwait(() -> istaskdone(task), timeout_s; pollint=poll_s)
+        wait_result = timedwait(() -> istaskdone(task), timeout_s; pollint = poll_s)
         if wait_result == :timed_out
-            return (ok=false, retriable=true, error=ErrorException("send timeout after $(timeout_ms) ms"))
+            return (ok = false, retriable = true, error = ErrorException("send timeout after $(timeout_ms) ms"))
         end
     end
 
     result = fetch(task)
-    result.ok && return (ok=true, retriable=false, error=nothing)
-    return (ok=false, retriable=_is_retriable_send_error(result.error), error=result.error)
+    result.ok && return (ok = true, retriable = false, error = nothing)
+    return (ok = false, retriable = _is_retriable_send_error(result.error), error = result.error)
 end
 
 function _message_age_ms(msg::OutboundMessage)
     return Dates.value(now(UTC) - msg.timestamp)
 end
 
-function _record_dead_letter!(manager::ChannelManagerState, msg::OutboundMessage, reason::String; error=nothing)
+function _record_dead_letter!(manager::ChannelManagerState, msg::OutboundMessage, reason::String; error = nothing)
     entry = Dict{String,Any}(
         "message_id" => string(msg.message_id),
         "correlation_id" => msg.correlation_id === nothing ? nothing : string(msg.correlation_id),
@@ -223,7 +223,15 @@ function _record_dead_letter!(manager::ChannelManagerState, msg::OutboundMessage
     return nothing
 end
 
-function _emit_dispatch_event!(manager::ChannelManagerState, msg::OutboundMessage, outcome::Symbol, reason::String, attempts::Int, elapsed_ms::Int; error=nothing)
+function _emit_dispatch_event!(
+    manager::ChannelManagerState,
+    msg::OutboundMessage,
+    outcome::Symbol,
+    reason::String,
+    attempts::Int,
+    elapsed_ms::Int;
+    error = nothing,
+)
     @debug "dispatch" message_id=msg.message_id correlation_id=msg.correlation_id channel=msg.channel session_key=msg.session_key outcome=outcome attempts=attempts elapsed_ms=elapsed_ms
 
     manager.on_dispatch === nothing && return nothing
@@ -254,7 +262,7 @@ end
 
 function _enqueue_pending!(manager::ChannelManagerState, msg::OutboundMessage)
     push!(manager.pending, msg)
-    sort!(manager.pending; by=_delivery_sort_key)
+    sort!(manager.pending; by = _delivery_sort_key)
     return nothing
 end
 
@@ -286,7 +294,14 @@ function _dispatch_with_policy!(manager::ChannelManagerState, sender::Function, 
             elapsed = round(Int, (time() - t0) * 1000)
             @warn "dropping late outbound message" message_id=msg.message_id correlation_id=msg.correlation_id channel=msg.channel session_key=msg.session_key age_ms=age_ms timeout_ms=timeout_ms
             _record_dead_letter!(manager, msg, "drop_if_late")
-            _emit_dispatch_event!(manager, msg, :dropped, "drop_if_late: age $(age_ms)ms > timeout $(timeout_ms)ms", 0, elapsed)
+            _emit_dispatch_event!(
+                manager,
+                msg,
+                :dropped,
+                "drop_if_late: age $(age_ms)ms > timeout $(timeout_ms)ms",
+                0,
+                elapsed,
+            )
             return false
         end
     end
@@ -294,7 +309,7 @@ function _dispatch_with_policy!(manager::ChannelManagerState, sender::Function, 
     attempts = max(1, policy.max_retries + 1)
     last_error = nothing
     for attempt in 1:attempts
-        result = _attempt_send(sender, msg; timeout_ms=timeout_ms)
+        result = _attempt_send(sender, msg; timeout_ms = timeout_ms)
         if result.ok
             manager.delivered_count += 1
             manager.last_successful_send_at = now(UTC)
@@ -314,8 +329,8 @@ function _dispatch_with_policy!(manager::ChannelManagerState, sender::Function, 
 
     elapsed = round(Int, (time() - t0) * 1000)
     manager.failed_count += 1
-    _record_dead_letter!(manager, msg, "send_failed"; error=last_error)
-    _emit_dispatch_event!(manager, msg, :failed, "send_failed", attempts, elapsed; error=last_error)
+    _record_dead_letter!(manager, msg, "send_failed"; error = last_error)
+    _emit_dispatch_event!(manager, msg, :failed, "send_failed", attempts, elapsed; error = last_error)
     @error "channel sender failed" message_id=msg.message_id correlation_id=msg.correlation_id channel=msg.channel session_key=msg.session_key chat_id=msg.chat_id error=last_error
     return false
 end

@@ -80,7 +80,12 @@ struct DeliveryPolicy
     priority::Int
     drop_if_late::Bool
 
-    function DeliveryPolicy(; max_retries::Int=3, timeout_ms::Int=30_000, priority::Int=0, drop_if_late::Bool=false)
+    function DeliveryPolicy(;
+        max_retries::Int = 3,
+        timeout_ms::Int = 30_000,
+        priority::Int = 0,
+        drop_if_late::Bool = false,
+    )
         max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
         timeout_ms < 0 && throw(ArgumentError("timeout_ms must be >= 0"))
         return new(max_retries, timeout_ms, priority, drop_if_late)
@@ -128,15 +133,15 @@ function InboundMessage(;
     session_key::AbstractString,
     user_id::AbstractString,
     chat_id::AbstractString,
-    text::AbstractString="",
-    version::Int=1,
-    message_id::UUID=uuid4(),
-    idempotency_key::AbstractString=string(message_id),
-    correlation_id::Union{Nothing,UUID}=nothing,
-    timestamp::DateTime=now(UTC),
-    content_parts::Union{Nothing,Vector{ContentPart}}=nothing,
-    metadata::Dict{String,Any}=Dict{String,Any}(),
-    raw::Any=nothing,
+    text::AbstractString = "",
+    version::Int = 1,
+    message_id::UUID = uuid4(),
+    idempotency_key::AbstractString = string(message_id),
+    correlation_id::Union{Nothing,UUID} = nothing,
+    timestamp::DateTime = now(UTC),
+    content_parts::Union{Nothing,Vector{ContentPart}} = nothing,
+    metadata::Dict{String,Any} = Dict{String,Any}(),
+    raw::Any = nothing,
 )
     parts = if content_parts !== nothing
         content_parts
@@ -185,13 +190,13 @@ function OutboundMessage(;
     session_key::AbstractString,
     chat_id::AbstractString,
     text::AbstractString,
-    version::Int=1,
-    message_id::UUID=uuid4(),
-    correlation_id::Union{Nothing,UUID}=nothing,
-    timestamp::DateTime=now(UTC),
-    format::Symbol=:plain,
-    delivery_policy::DeliveryPolicy=DeliveryPolicy(),
-    metadata::Dict{String,Any}=Dict{String,Any}(),
+    version::Int = 1,
+    message_id::UUID = uuid4(),
+    correlation_id::Union{Nothing,UUID} = nothing,
+    timestamp::DateTime = now(UTC),
+    format::Symbol = :plain,
+    delivery_policy::DeliveryPolicy = DeliveryPolicy(),
+    metadata::Dict{String,Any} = Dict{String,Any}(),
 )
     return OutboundMessage(
         version,
@@ -226,11 +231,11 @@ end
 function ToolCallEvent(;
     session_key::AbstractString,
     tool_name::AbstractString,
-    arguments::Dict{String,Any}=Dict{String,Any}(),
-    version::Int=1,
-    event_id::UUID=uuid4(),
-    correlation_id::Union{Nothing,UUID}=nothing,
-    timestamp::DateTime=now(UTC),
+    arguments::Dict{String,Any} = Dict{String,Any}(),
+    version::Int = 1,
+    event_id::UUID = uuid4(),
+    correlation_id::Union{Nothing,UUID} = nothing,
+    timestamp::DateTime = now(UTC),
 )
     return ToolCallEvent(
         version,
@@ -264,13 +269,13 @@ end
 function ToolResultEvent(;
     session_key::AbstractString,
     tool_name::AbstractString,
-    result::Any=nothing,
-    error::Union{Nothing,ErrorEnvelope}=nothing,
-    duration_ms::Union{Nothing,Real}=nothing,
-    version::Int=1,
-    event_id::UUID=uuid4(),
-    correlation_id::Union{Nothing,UUID}=nothing,
-    timestamp::DateTime=now(UTC),
+    result::Any = nothing,
+    error::Union{Nothing,ErrorEnvelope} = nothing,
+    duration_ms::Union{Nothing,Real} = nothing,
+    version::Int = 1,
+    event_id::UUID = uuid4(),
+    correlation_id::Union{Nothing,UUID} = nothing,
+    timestamp::DateTime = now(UTC),
 )
     return ToolResultEvent(
         version,

@@ -1,7 +1,9 @@
 function _log_llm_response(provider::AbstractLLMProvider, response::LLMResponse, session_key::String)
     u = response.usage
     if u !== nothing
-        @info "LLM call" model=provider.model session_key=session_key input_tokens=u.input_tokens output_tokens=u.output_tokens tool_calls=length(response.tool_calls)
+        @info "LLM call" model=provider.model session_key=session_key input_tokens=u.input_tokens output_tokens=u.output_tokens tool_calls=length(
+            response.tool_calls,
+        )
     else
         @info "LLM call" model=provider.model session_key=session_key tool_calls=length(response.tool_calls)
     end
@@ -40,7 +42,7 @@ function _clone_tool_registry(registry::ToolRegistry)
     cloned = ToolRegistry()
     for name in tool_names(registry)
         tool = get_tool(registry, name)
-        tool === nothing || register_tool!(cloned, tool; replace=true)
+        tool === nothing || register_tool!(cloned, tool; replace = true)
     end
     return cloned
 end
@@ -69,7 +71,7 @@ function _resolve_tools_and_registry(tools, tool_registry::Union{Nothing,ToolReg
             else
                 merged = _clone_tool_registry(registry)
                 for def in defs
-                    register_tool!(merged, def; replace=true)
+                    register_tool!(merged, def; replace = true)
                 end
                 merged
             end
@@ -81,7 +83,7 @@ function _resolve_tools_and_registry(tools, tool_registry::Union{Nothing,ToolReg
             ToolRegistry([tools])
         else
             merged = _clone_tool_registry(registry)
-            register_tool!(merged, tools; replace=true)
+            register_tool!(merged, tools; replace = true)
             merged
         end
         return tools_schema([tools]), registry
@@ -93,11 +95,11 @@ function _execute_tool_calls(
     registry::ToolRegistry,
     calls::Vector{LLMToolCall};
     max_tool_output_chars::Int,
-    tool_progress::Union{Nothing,Function}=nothing,
-    allowed_tools::Union{Nothing,Set{String}}=nothing,
-    session_key::String="",
-    tool_cache::Union{Nothing,Dict{UInt64,Tuple{String,Bool}}}=nothing,
-    hooks=nothing,  # expected: AgentHooks or nothing
+    tool_progress::Union{Nothing,Function} = nothing,
+    allowed_tools::Union{Nothing,Set{String}} = nothing,
+    session_key::String = "",
+    tool_cache::Union{Nothing,Dict{UInt64,Tuple{String,Bool}}} = nothing,
+    hooks = nothing,  # expected: AgentHooks or nothing
 )
     openai_outputs = Any[]
     events = Any[]
@@ -173,7 +175,9 @@ function _execute_tool_calls(
                     if tool !== nothing && tool.return_direct && return_direct_text === nothing
                         return_direct_text = result_text
                     end
-                    @info "tool executed" tool=call.name status=:ok duration_ms=round(Int, duration_ms) result_chars=length(result_text)
+                    @info "tool executed" tool=call.name status=:ok duration_ms=round(Int, duration_ms) result_chars=length(
+                        result_text,
+                    )
 
                     # on_tool_result hook
                     if hooks !== nothing && hooks.on_tool_result !== nothing
@@ -187,20 +191,24 @@ function _execute_tool_calls(
                     duration_ms = (time() - t0) * 1000.0
                     is_error = true
                     result_text = _truncate_text(sprint(showerror, e), per_tool_limit)
-                    error_code = if occursin("timeout", lowercase(result_text)) || occursin("timed out", lowercase(result_text))
-                        "E_TIMEOUT"
-                    elseif occursin("not found", lowercase(result_text))
-                        "E_NOT_FOUND"
-                    else
-                        "E_EXECUTION"
-                    end
+                    error_code =
+                        if occursin("timeout", lowercase(result_text)) || occursin("timed out", lowercase(result_text))
+                            "E_TIMEOUT"
+                        elseif occursin("not found", lowercase(result_text))
+                            "E_NOT_FOUND"
+                        else
+                            "E_EXECUTION"
+                        end
                     error_envelope = ErrorEnvelope(
                         error_code,
                         result_text,
                         error_code == "E_TIMEOUT",
                         Dict{String,Any}("tool_name" => call.name),
                     )
-                    @info "tool executed" tool=call.name status=:error error_code=error_code duration_ms=round(Int, duration_ms)
+                    @info "tool executed" tool=call.name status=:error error_code=error_code duration_ms=round(
+                        Int,
+                        duration_ms,
+                    )
 
                     # on_tool_result hook (also fires on errors)
                     if hooks !== nothing && hooks.on_tool_result !== nothing
@@ -219,33 +227,36 @@ function _execute_tool_calls(
             end
         end
 
-        push!(openai_outputs, Dict{String,Any}(
-            "type" => "function_call_output",
-            "call_id" => call_id,
-            "output" => result_text,
-        ))
+        push!(
+            openai_outputs,
+            Dict{String,Any}(
+                "type" => "function_call_output",
+                "call_id" => call_id,
+                "output" => result_text,
+            ),
+        )
 
         call_event = ToolCallEvent(
-            session_key=session_key,
-            tool_name=call.name,
-            arguments=call.arguments,
+            session_key = session_key,
+            tool_name = call.name,
+            arguments = call.arguments,
         )
         result_event = ToolResultEvent(
-            session_key=session_key,
-            tool_name=call.name,
-            correlation_id=call_event.event_id,
-            result=is_error ? nothing : result_text,
-            error=error_envelope,
-            duration_ms=duration_ms,
+            session_key = session_key,
+            tool_name = call.name,
+            correlation_id = call_event.event_id,
+            result = is_error ? nothing : result_text,
+            error = error_envelope,
+            duration_ms = duration_ms,
         )
-        push!(events, (call=call_event, result=result_event))
+        push!(events, (call = call_event, result = result_event))
     end
 
     return (
-        openai_outputs=openai_outputs,
-        events=events,
-        return_direct_text=return_direct_text,
-        interrupted=interrupted,
+        openai_outputs = openai_outputs,
+        events = events,
+        return_direct_text = return_direct_text,
+        interrupted = interrupted,
     )
 end
 
@@ -319,9 +330,9 @@ function _gemini_raw_function_call_parts(raw_response, fallback_calls::Vector{LL
         raw_parts = get(content, "parts", Any[])
         raw_parts isa AbstractVector || continue
         has_function_call = any(rp -> begin
-            p = _to_plain(rp)
-            p isa AbstractDict && haskey(p, "functionCall")
-        end, raw_parts)
+                p = _to_plain(rp)
+                p isa AbstractDict && haskey(p, "functionCall")
+            end, raw_parts)
         has_function_call || continue
 
         for raw_part in raw_parts
@@ -339,7 +350,8 @@ function _gemini_raw_function_call_parts(raw_response, fallback_calls::Vector{LL
                     "name" => name,
                     "arguments" => args,
                     # Preserve provider-native metadata (e.g. thoughtSignature) for Gemini continuation.
-                    "gemini_function_call" => Dict{String,Any}(String(k) => _to_plain(v) for (k, v) in pairs(function_call)),
+                    "gemini_function_call" =>
+                        Dict{String,Any}(String(k) => _to_plain(v) for (k, v) in pairs(function_call)),
                 )
                 call_id === nothing || (call_part["id"] = String(call_id))
                 # Capture part-level siblings (e.g. thoughtSignature) required by Gemini
@@ -353,10 +365,13 @@ function _gemini_raw_function_call_parts(raw_response, fallback_calls::Vector{LL
             else
                 # Preserve any additional Gemini model parts (e.g. thought parts/signatures)
                 # so continuation payloads keep provider-required metadata.
-                push!(parts, Dict{String,Any}(
-                    "type" => "gemini_raw_part",
-                    "gemini_part" => Dict{String,Any}(String(k) => _to_plain(v) for (k, v) in pairs(part)),
-                ))
+                push!(
+                    parts,
+                    Dict{String,Any}(
+                        "type" => "gemini_raw_part",
+                        "gemini_part" => Dict{String,Any}(String(k) => _to_plain(v) for (k, v) in pairs(part)),
+                    ),
+                )
             end
         end
 
@@ -376,8 +391,8 @@ function _tool_events_to_function_response_parts(events::Vector{Any})
         is_error = _tool_event_is_error(event)
 
         response_payload = is_error ?
-            Dict{String,Any}("error" => output) :
-            Dict{String,Any}("output" => output)
+                           Dict{String,Any}("error" => output) :
+                           Dict{String,Any}("output" => output)
 
         part = Dict{String,Any}(
             "type" => "function_response",
@@ -407,26 +422,26 @@ end
 function _chat_with_tool_loop(
     provider::AbstractLLMProvider,
     input_messages::Vector{Any};
-    instructions::Union{Nothing,AbstractString}=nothing,
-    reasoning=nothing,
-    tools=nothing,
-    tool_choice=nothing,
-    include=nothing,
-    max_output_tokens::Union{Nothing,Integer}=nothing,
-    temperature::Union{Nothing,Real}=nothing,
-    top_p::Union{Nothing,Real}=nothing,
-    stream::Bool=false,
-    parallel_tool_calls::Union{Nothing,Bool}=nothing,
-    metadata::Union{Nothing,Dict{String,Any}}=nothing,
-    tool_registry::Union{Nothing,ToolRegistry}=nothing,
-    tool_progress::Union{Nothing,Function}=nothing,
-    stop_check::Union{Nothing,Function}=nothing,
-    max_tool_iterations::Int=10,
-    max_tool_output_chars::Int=8_000,
-    allowed_tools::Union{Nothing,Set{String}}=nothing,
-    session_key::String="",
-    hooks=nothing,         # expected: AgentHooks or nothing
-    retry_config=nothing,  # expected: RetryConfig or nothing
+    instructions::Union{Nothing,AbstractString} = nothing,
+    reasoning = nothing,
+    tools = nothing,
+    tool_choice = nothing,
+    include = nothing,
+    max_output_tokens::Union{Nothing,Integer} = nothing,
+    temperature::Union{Nothing,Real} = nothing,
+    top_p::Union{Nothing,Real} = nothing,
+    stream::Bool = false,
+    parallel_tool_calls::Union{Nothing,Bool} = nothing,
+    metadata::Union{Nothing,Dict{String,Any}} = nothing,
+    tool_registry::Union{Nothing,ToolRegistry} = nothing,
+    tool_progress::Union{Nothing,Function} = nothing,
+    stop_check::Union{Nothing,Function} = nothing,
+    max_tool_iterations::Int = 10,
+    max_tool_output_chars::Int = 8_000,
+    allowed_tools::Union{Nothing,Set{String}} = nothing,
+    session_key::String = "",
+    hooks = nothing,         # expected: AgentHooks or nothing
+    retry_config = nothing,  # expected: RetryConfig or nothing
 )
     max_tool_iterations <= 0 && throw(ArgumentError("max_tool_iterations must be > 0"))
     max_tool_output_chars < 0 && throw(ArgumentError("max_tool_output_chars must be >= 0"))
@@ -435,18 +450,18 @@ function _chat_with_tool_loop(
     response = chat_completion(
         provider,
         input_messages;
-        instructions=instructions,
-        reasoning=reasoning,
-        tools=tools,
-        tool_choice=tool_choice,
-        include=include,
-        max_output_tokens=max_output_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        stream=stream,
-        parallel_tool_calls=parallel_tool_calls,
-        metadata=metadata,
-        retry_config=retry_config,
+        instructions = instructions,
+        reasoning = reasoning,
+        tools = tools,
+        tool_choice = tool_choice,
+        include = include,
+        max_output_tokens = max_output_tokens,
+        temperature = temperature,
+        top_p = top_p,
+        stream = stream,
+        parallel_tool_calls = parallel_tool_calls,
+        metadata = metadata,
+        retry_config = retry_config,
     )
     _log_llm_response(provider, response, session_key)
 
@@ -485,12 +500,12 @@ function _chat_with_tool_loop(
             exec_result = _execute_tool_calls(
                 tool_registry,
                 current.tool_calls;
-                max_tool_output_chars=max_tool_output_chars,
-                tool_progress=tool_progress,
-                allowed_tools=allowed_tools,
-                session_key=session_key,
-                tool_cache=tool_cache,
-                hooks=hooks,
+                max_tool_output_chars = max_tool_output_chars,
+                tool_progress = tool_progress,
+                allowed_tools = allowed_tools,
+                session_key = session_key,
+                tool_cache = tool_cache,
+                hooks = hooks,
             )
             append!(tool_events, exec_result.events)
 
@@ -545,19 +560,19 @@ function _chat_with_tool_loop(
             current = chat_completion(
                 provider,
                 exec_result.openai_outputs;
-                instructions=nothing,
-                reasoning=reasoning,
-                tools=tools,
-                tool_choice=tool_choice,
-                include=include,
-                max_output_tokens=max_output_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                stream=false,
-                parallel_tool_calls=parallel_tool_calls,
-                metadata=metadata,
-                previous_response_id=current.response_id,
-                retry_config=retry_config,
+                instructions = nothing,
+                reasoning = reasoning,
+                tools = tools,
+                tool_choice = tool_choice,
+                include = include,
+                max_output_tokens = max_output_tokens,
+                temperature = temperature,
+                top_p = top_p,
+                stream = false,
+                parallel_tool_calls = parallel_tool_calls,
+                metadata = metadata,
+                previous_response_id = current.response_id,
+                retry_config = retry_config,
             )
             _log_llm_response(provider, current, session_key)
         end
@@ -578,12 +593,12 @@ function _chat_with_tool_loop(
             exec_result = _execute_tool_calls(
                 tool_registry,
                 current.tool_calls;
-                max_tool_output_chars=max_tool_output_chars,
-                tool_progress=tool_progress,
-                allowed_tools=allowed_tools,
-                session_key=session_key,
-                tool_cache=tool_cache,
-                hooks=hooks,
+                max_tool_output_chars = max_tool_output_chars,
+                tool_progress = tool_progress,
+                allowed_tools = allowed_tools,
+                session_key = session_key,
+                tool_cache = tool_cache,
+                hooks = hooks,
             )
             append!(tool_events, exec_result.events)
 
@@ -645,18 +660,18 @@ function _chat_with_tool_loop(
             current = chat_completion(
                 provider,
                 messages;
-                instructions=instructions,
-                reasoning=reasoning,
-                tools=tools,
-                tool_choice=tool_choice,
-                include=include,
-                max_output_tokens=max_output_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                stream=false,
-                parallel_tool_calls=parallel_tool_calls,
-                metadata=metadata,
-                retry_config=retry_config,
+                instructions = instructions,
+                reasoning = reasoning,
+                tools = tools,
+                tool_choice = tool_choice,
+                include = include,
+                max_output_tokens = max_output_tokens,
+                temperature = temperature,
+                top_p = top_p,
+                stream = false,
+                parallel_tool_calls = parallel_tool_calls,
+                metadata = metadata,
+                retry_config = retry_config,
             )
             _log_llm_response(provider, current, session_key)
         end
@@ -669,17 +684,17 @@ function _chat_with_tool_loop(
     for iteration in 1:max_tool_iterations
         isempty(current.tool_calls) && return current, tool_events
 
-            exec_result = _execute_tool_calls(
-                tool_registry,
-                current.tool_calls;
-                max_tool_output_chars=max_tool_output_chars,
-                tool_progress=tool_progress,
-                allowed_tools=allowed_tools,
-                session_key=session_key,
-                tool_cache=tool_cache,
-                hooks=hooks,
-            )
-            append!(tool_events, exec_result.events)
+        exec_result = _execute_tool_calls(
+            tool_registry,
+            current.tool_calls;
+            max_tool_output_chars = max_tool_output_chars,
+            tool_progress = tool_progress,
+            allowed_tools = allowed_tools,
+            session_key = session_key,
+            tool_cache = tool_cache,
+            hooks = hooks,
+        )
+        append!(tool_events, exec_result.events)
 
         if exec_result.interrupted
             return current, tool_events
@@ -696,27 +711,27 @@ function _chat_with_tool_loop(
             return synthetic, tool_events
         end
 
-            if stop_check !== nothing
-                try
-                    stop_check() && return (
-                        LLMResponse(
-                            "Stopped by user request.",
-                            current.usage,
-                            current.raw,
-                            LLMToolCall[],
-                            current.response_id,
-                        ),
-                        tool_events,
-                    )
-                catch e
-                    @warn "stop_check callback failed" exception=(e, catch_backtrace())
-                end
+        if stop_check !== nothing
+            try
+                stop_check() && return (
+                    LLMResponse(
+                        "Stopped by user request.",
+                        current.usage,
+                        current.raw,
+                        LLMToolCall[],
+                        current.response_id,
+                    ),
+                    tool_events,
+                )
+            catch e
+                @warn "stop_check callback failed" exception=(e, catch_backtrace())
             end
+        end
 
-            if iteration >= max_tool_iterations
-                synthetic = LLMResponse(
-                    _tool_loop_fallback_text(current, max_tool_iterations),
-                    current.usage,
+        if iteration >= max_tool_iterations
+            synthetic = LLMResponse(
+                _tool_loop_fallback_text(current, max_tool_iterations),
+                current.usage,
                 current.raw,
                 LLMToolCall[],
                 current.response_id,
@@ -724,29 +739,32 @@ function _chat_with_tool_loop(
             return synthetic, tool_events
         end
 
-        push!(messages, Dict{String,Any}(
-            "role" => "user",
-            "content" => Any[Dict{String,Any}(
-                "type" => "input_text",
-                "text" => _tool_events_to_text(exec_result.events),
-            )],
-        ))
+        push!(
+            messages,
+            Dict{String,Any}(
+                "role" => "user",
+                "content" => Any[Dict{String,Any}(
+                    "type" => "input_text",
+                    "text" => _tool_events_to_text(exec_result.events),
+                )],
+            ),
+        )
 
         current = chat_completion(
             provider,
             messages;
-            instructions=instructions,
-            reasoning=reasoning,
-            tools=tools,
-            tool_choice=tool_choice,
-            include=include,
-            max_output_tokens=max_output_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            stream=false,
-            parallel_tool_calls=parallel_tool_calls,
-            metadata=metadata,
-            retry_config=retry_config,
+            instructions = instructions,
+            reasoning = reasoning,
+            tools = tools,
+            tool_choice = tool_choice,
+            include = include,
+            max_output_tokens = max_output_tokens,
+            temperature = temperature,
+            top_p = top_p,
+            stream = false,
+            parallel_tool_calls = parallel_tool_calls,
+            metadata = metadata,
+            retry_config = retry_config,
         )
         _log_llm_response(provider, current, session_key)
     end

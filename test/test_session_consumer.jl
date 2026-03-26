@@ -1,23 +1,23 @@
 @testset "Krill.jl SessionConsumer" begin
     @testset "echo_processor returns message text" begin
         msg = InboundMessage(
-            channel=:telegram, session_key="t:1", user_id="1", chat_id="1", text="hello",
+            channel = :telegram, session_key = "t:1", user_id = "1", chat_id = "1", text = "hello",
         )
         result = echo_processor(msg, TurnRecord[])
         @test result == "hello"
     end
 
     @testset "run_session_loop! echoes with session history" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
+        store = SessionStore(; workspace = mktempdir())
 
         msg = InboundMessage(
-            channel=:telegram, session_key="telegram:42", user_id="42",
-            chat_id="42", text="session test",
+            channel = :telegram, session_key = "telegram:42", user_id = "42",
+            chat_id = "42", text = "session test",
         )
         publish_inbound!(hub, msg)
 
-        run_session_loop!(hub, Ref(false); store=store, processor=echo_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = echo_processor)
 
         reply = try_take_outbound!(hub)
         @test reply !== nothing
@@ -33,19 +33,22 @@
     end
 
     @testset "custom processor receives history" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
+        store = SessionStore(; workspace = mktempdir())
 
         count_processor = (msg, history) -> "turns: $(length(history))"
 
         for i in 1:3
-            publish_inbound!(hub, InboundMessage(
-                channel=:telegram, session_key="telegram:1", user_id="1",
-                chat_id="1", text="msg$i",
-            ))
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "telegram:1", user_id = "1",
+                    chat_id = "1", text = "msg$i",
+                ),
+            )
         end
 
-        run_session_loop!(hub, Ref(false); store=store, processor=count_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = count_processor)
 
         replies = OutboundMessage[]
         while true
@@ -60,17 +63,20 @@
     end
 
     @testset "processor can set outbound format" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
+        store = SessionStore(; workspace = mktempdir())
 
-        markdown_processor = (msg, history) -> (text="**formatted**", format=:markdown)
+        markdown_processor = (msg, history) -> (text = "**formatted**", format = :markdown)
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:fmt", user_id="1",
-            chat_id="1", text="use format",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:fmt", user_id = "1",
+                chat_id = "1", text = "use format",
+            ),
+        )
 
-        run_session_loop!(hub, Ref(false); store=store, processor=markdown_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = markdown_processor)
 
         reply = try_take_outbound!(hub)
         @test reply !== nothing
@@ -79,17 +85,20 @@
     end
 
     @testset "processor exception produces fallback reply" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
+        store = SessionStore(; workspace = mktempdir())
 
         boom_processor = (msg, history) -> error("kaboom")
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="t:1", user_id="1",
-            chat_id="1", text="trigger error",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "t:1", user_id = "1",
+                chat_id = "1", text = "trigger error",
+            ),
+        )
 
-        run_session_loop!(hub, Ref(false); store=store, processor=boom_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = boom_processor)
 
         reply = try_take_outbound!(hub)
         @test reply !== nothing
@@ -97,18 +106,21 @@
     end
 
     @testset "slash command /help returns command summary" begin
-        hub = MessageHubState(inbound_capacity=8, outbound_capacity=8)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
+        store = SessionStore(; workspace = mktempdir())
         running = Ref(true)
 
         task = Threads.@spawn run_session_loop!(hub, running;
-            store=store,
-            processor=echo_processor,
+            store = store,
+            processor = echo_processor,
         )
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:help", user_id="help", chat_id="42", text="/help",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:help", user_id = "help", chat_id = "42", text = "/help",
+            ),
+        )
 
         got_reply = false
         reply = nothing
@@ -134,27 +146,36 @@
     end
 
     @testset "slash command /new clears session history" begin
-        hub = MessageHubState(inbound_capacity=8, outbound_capacity=8)
+        hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
         workspace = mktempdir()
-        store = SessionStore(; workspace=workspace)
+        store = SessionStore(; workspace = workspace)
         running = Ref(true)
 
         task = Threads.@spawn run_session_loop!(hub, running;
-            store=store,
-            processor=echo_processor,
+            store = store,
+            processor = echo_processor,
         )
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:clear", user_id="clear", chat_id="100", text="first",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:clear", user_id = "clear", chat_id = "100", text = "first",
+            ),
+        )
         sleep(0.1)
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:clear", user_id="clear", chat_id="100", text="/new",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:clear", user_id = "clear", chat_id = "100", text = "/new",
+            ),
+        )
         sleep(0.1)
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:clear", user_id="clear", chat_id="100", text="second",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:clear", user_id = "clear", chat_id = "100", text = "second",
+            ),
+        )
         sleep(0.3)
 
         running[] = false
@@ -179,8 +200,8 @@
     end
 
     @testset "slash command /stop interrupts active task" begin
-        hub = MessageHubState(inbound_capacity=8, outbound_capacity=8)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
+        store = SessionStore(; workspace = mktempdir())
         running = Ref(true)
 
         started = Channel{Bool}(1)
@@ -194,13 +215,16 @@
         end
 
         task = Threads.@spawn run_session_loop!(hub, running;
-            store=store,
-            processor=blocking_processor,
+            store = store,
+            processor = blocking_processor,
         )
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:stop", user_id="stop", chat_id="300", text="slow",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300", text = "slow",
+            ),
+        )
         took = false
         deadline = time() + 2
         while time() < deadline && !took
@@ -213,13 +237,20 @@
         @test took
         take!(started)
 
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:stop", user_id="stop", chat_id="300", text="/stop",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300", text = "/stop",
+            ),
+        )
         sleep(0.1)
-        publish_inbound!(hub, InboundMessage(
-            channel=:telegram, session_key="telegram:stop", user_id="stop", chat_id="300", text="after stop",
-        ))
+        publish_inbound!(
+            hub,
+            InboundMessage(
+                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300",
+                text = "after stop",
+            ),
+        )
         sleep(0.3)
 
         running[] = false
@@ -246,31 +277,34 @@ end
 
 @testset "Krill.jl concurrent session safety" begin
     @testset "serial within same session, history order correct" begin
-        hub = MessageHubState(inbound_capacity=32, outbound_capacity=32)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 32, outbound_capacity = 32)
+        store = SessionStore(; workspace = mktempdir())
 
         for i in 1:5
-            publish_inbound!(hub, InboundMessage(
-                channel=:telegram, session_key="serial_test",
-                user_id="1", chat_id="1", text="msg-$i",
-            ))
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "serial_test",
+                    user_id = "1", chat_id = "1", text = "msg-$i",
+                ),
+            )
         end
 
-        run_session_loop!(hub, Ref(false); store=store, processor=echo_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = echo_processor)
 
         history = load_history(store, "serial_test")
         @test length(history) == 10
 
         for i in 1:5
-            @test history[2i-1].role == :user
-            @test history[2i-1].text == "msg-$i"
+            @test history[2i - 1].role == :user
+            @test history[2i - 1].text == "msg-$i"
             @test history[2i].role == :assistant
             @test history[2i].text == "msg-$i"
         end
     end
 
     @testset "concurrent lock creation for same session is safe" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         results = Channel{ReentrantLock}(100)
 
         tasks = [Threads.@spawn begin
@@ -289,14 +323,14 @@ end
     end
 
     @testset "different sessions process in parallel" begin
-        hub = MessageHubState(inbound_capacity=32, outbound_capacity=32)
-        store = SessionStore(; workspace=mktempdir())
+        hub = MessageHubState(inbound_capacity = 32, outbound_capacity = 32)
+        store = SessionStore(; workspace = mktempdir())
 
         start_times = Dict{String,Float64}()
         end_times = Dict{String,Float64}()
         time_lock = ReentrantLock()
 
-        timing_processor = function(msg, history)
+        timing_processor = function (msg, history)
             key = msg.session_key
             t0 = time()
             lock(time_lock) do
@@ -315,13 +349,16 @@ end
         end
 
         for s in ["par_a", "par_b", "par_c"]
-            publish_inbound!(hub, InboundMessage(
-                channel=:telegram, session_key=s,
-                user_id="1", chat_id="1", text="test",
-            ))
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = s,
+                    user_id = "1", chat_id = "1", text = "test",
+                ),
+            )
         end
 
-        run_session_loop!(hub, Ref(false); store=store, processor=timing_processor)
+        run_session_loop!(hub, Ref(false); store = store, processor = timing_processor)
 
         all_start = minimum(values(start_times))
         all_end = maximum(values(end_times))

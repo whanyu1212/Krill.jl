@@ -59,8 +59,8 @@ Missing files are skipped.
 """
 function load_bootstrap_docs(
     workspace::AbstractString;
-    doc_names::Union{Tuple,Vector}=DEFAULT_BOOTSTRAP_DOCS,
-    max_chars_per_doc::Int=12_000,
+    doc_names::Union{Tuple,Vector} = DEFAULT_BOOTSTRAP_DOCS,
+    max_chars_per_doc::Int = 12_000,
 )
     max_chars_per_doc > 0 || throw(ArgumentError("max_chars_per_doc must be > 0"))
 
@@ -112,7 +112,7 @@ Render runtime metadata for prompt context.
 """
 function render_runtime_metadata(
     msg::InboundMessage;
-    now_fn::Function=() -> now(UTC),
+    now_fn::Function = () -> now(UTC),
 )
     ts = now_fn()
     lines = String[
@@ -137,12 +137,12 @@ When `include_tool_safety` is true, appends `TOOL_OUTPUT_SAFETY_NOTICE`.
 """
 function compose_instructions(
     base_instructions::Union{Nothing,AbstractString};
-    bootstrap_docs::Vector{BootstrapDoc}=BootstrapDoc[],
-    skills_summary_text::Union{Nothing,AbstractString}=nothing,
-    always_skills_text::Union{Nothing,AbstractString}=nothing,
-    memory_text::Union{Nothing,AbstractString}=nothing,
-    include_tool_safety::Bool=false,
-    runtime_metadata_text::Union{Nothing,AbstractString}=nothing,
+    bootstrap_docs::Vector{BootstrapDoc} = BootstrapDoc[],
+    skills_summary_text::Union{Nothing,AbstractString} = nothing,
+    always_skills_text::Union{Nothing,AbstractString} = nothing,
+    memory_text::Union{Nothing,AbstractString} = nothing,
+    include_tool_safety::Bool = false,
+    runtime_metadata_text::Union{Nothing,AbstractString} = nothing,
 )
     sections = String[]
 
@@ -197,30 +197,30 @@ end
 Create a prompt builder callback compatible with `make_llm_processor(...; instructions_builder=...)`.
 """
 function make_prompt_builder(;
-    bootstrap_docs::Vector{BootstrapDoc}=BootstrapDoc[],
-    skills_summary_text::Union{Nothing,AbstractString}=nothing,
-    always_skills_text::Union{Nothing,AbstractString}=nothing,
-    include_runtime_metadata::Bool=true,
-    include_tool_safety::Bool=true,
-    now_fn::Function=() -> now(UTC),
+    bootstrap_docs::Vector{BootstrapDoc} = BootstrapDoc[],
+    skills_summary_text::Union{Nothing,AbstractString} = nothing,
+    always_skills_text::Union{Nothing,AbstractString} = nothing,
+    include_runtime_metadata::Bool = true,
+    include_tool_safety::Bool = true,
+    now_fn::Function = () -> now(UTC),
 )
     docs = copy(bootstrap_docs)
     skills = skills_summary_text === nothing ? nothing : String(skills_summary_text)
     always = always_skills_text === nothing ? nothing : String(always_skills_text)
 
-    return function(
+    return function (
         msg::InboundMessage,
         base_instructions::Union{Nothing,AbstractString},
-        memory_text::Union{Nothing,AbstractString}=nothing,
+        memory_text::Union{Nothing,AbstractString} = nothing,
     )
-        runtime_text = include_runtime_metadata ? render_runtime_metadata(msg; now_fn=now_fn) : nothing
+        runtime_text = include_runtime_metadata ? render_runtime_metadata(msg; now_fn = now_fn) : nothing
         return compose_instructions(base_instructions;
-            bootstrap_docs=docs,
-            skills_summary_text=skills,
-            always_skills_text=always,
-            memory_text=memory_text,
-            include_tool_safety=include_tool_safety,
-            runtime_metadata_text=runtime_text,
+            bootstrap_docs = docs,
+            skills_summary_text = skills,
+            always_skills_text = always,
+            memory_text = memory_text,
+            include_tool_safety = include_tool_safety,
+            runtime_metadata_text = runtime_text,
         )
     end
 end
