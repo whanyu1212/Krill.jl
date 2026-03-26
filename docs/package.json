@@ -1,0 +1,15 @@
+{
+  "name": "krill-docs",
+  "version": "0.0.1",
+  "scripts": {
+    "docs:dev": "vitepress dev build/.documenter",
+    "docs:build": "vitepress build build/.documenter",
+    "docs:preview": "vitepress preview build/.documenter"
+  },
+  "devDependencies": {
+    "debug": "^4.4.3",
+    "mermaid": "^11.13.0",
+    "vitepress": "^1.6.0",
+    "vitepress-plugin-mermaid": "^2.0.17"
+  }
+}
