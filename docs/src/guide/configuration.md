@@ -9,7 +9,6 @@ Krill configuration is layered: `krill.toml` for durable project defaults, `.env
 | `context/` | Agent file sandbox — bootstrap docs and skills (committed to git) |
 | `~/.krill/` | Runtime state — sessions, memory, cron, dead letters (machine-local) |
 
----
 
 ## `krill.toml`
 
@@ -63,7 +62,6 @@ args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
 
 Token values beginning with `$` are expanded from the environment at startup, so secrets stay in `.env` and `krill.toml` can be safely version-controlled (without the tokens).
 
----
 
 ## Environment Variables
 
@@ -76,7 +74,6 @@ The recommended approach is to keep tokens in `.env` and reference them from `kr
 | `OPENAI_API_KEY` | OpenAI provider key |
 | `GEMINI_API_KEY` | Gemini provider key |
 
----
 
 ## Tools
 
@@ -91,7 +88,7 @@ Run on the provider's infrastructure. Pass them through via `provider_builtins =
 | OpenAI | `web_search`, `code_interpreter`, `image_generation` |
 | Gemini | `googleSearch`, `urlContext`, `codeExecution` |
 
-OpenAI `web_search` and Gemini `googleSearch` return clean, cited results. Krill's local `web_search` uses DuckDuckGo with basic HTML scraping — useful for simple lookups, but noticeably weaker. Set `provider_builtins = true` for most bots.
+OpenAI `web_search` and Gemini `googleSearch` return clean, cited results. Set `provider_builtins = true` for most bots. If native search returns poor results, the agent can delegate deeper research to `claude_code` or `codex`.
 
 ### Krill local tools
 
@@ -100,27 +97,26 @@ Implemented by Krill and registered in a local `ToolRegistry`.
 | Tool | Description |
 | --- | --- |
 | `read_file`, `write_file`, `edit_file`, `list_dir` | File operations within the context directory |
-| `web_search` | DuckDuckGo search (basic quality) |
-| `web_fetch` | Fetch a URL as markdown (no JS rendering) |
+| `web_fetch` | Fetch a specific URL as markdown |
 | `github` | Wraps the `gh` CLI |
-| `message` | Send a message to a chat ID from a tool call |
+| `google_workspace` _(optional)_ | Wraps the `gws` CLI for Gmail, Calendar, Drive |
 | `exec` _(optional)_ | Shell commands — disabled by default |
 | `claude_code` _(optional)_ | Delegate to Claude Code CLI |
 | `codex` _(optional)_ | Delegate to OpenAI Codex CLI |
 | `cron_add/list/remove` | Schedule management when cron is enabled |
+| `spawn/spawn_list/spawn_cancel` | Subagent management when subagents are enabled |
 
 `claude_code` and `codex` run their own internal search and file pipelines. Enable them when the task involves multi-step research or code changes across multiple files.
 
-:::details Recommended tool combinations
+**Recommended tool combinations**
+
 | Use case | Setup |
 | --- | --- |
 | General assistant with web search | `provider_builtins = true`, `local_builtins = true` |
 | File-focused agent, no web search | `provider_builtins = false`, `local_builtins = true` |
 | Research or coding tasks | `claude_code` or `codex` + provider tools |
 | Minimal / echo bot | Both off; pass tools explicitly via `llm_tools` |
-:::
 
----
 
 ## MCP Servers
 
@@ -152,7 +148,6 @@ MCP is the right choice for tools not in Krill's built-ins: database queries, ca
 
 **Note:** Krill has no official Julia MCP SDK — the client is built from scratch. It handles common cases well but may have edge-case issues with non-standard servers. See [Known Limitations](/guide/features#Known-Limitations).
 
----
 
 ## Filesystem Layout
 
@@ -168,14 +163,14 @@ Bootstrap docs and skills live here. The agent can read and write inside this di
 | `TOOLS.md` | Yes | Non-obvious tool constraints |
 | `skills/` | Yes | Local skill definitions |
 
-:::details Tips for writing bootstrap docs
+**Tips for writing bootstrap docs**
+
 - **Keep them short.** Every character costs context budget on every turn. 20 tight lines beats 200 sprawling ones.
 - **`SOUL.md`** — personality and communication style only. Don't list capabilities here.
-- **`AGENTS.md`** — your actual project paths, directory layout, tool selection rules. Machine-specific, so gitignore it.
-- **`USER.md`** — who you are: name, timezone, technical level, preferences. Also machine-specific.
+- **`AGENTS.md`** — tool selection rules and agent constraints. Machine-specific paths go here.
+- **`USER.md`** — who you are: name, timezone, technical level, preferences.
 - **`TOOLS.md`** — timeouts, auth requirements, non-obvious quirks. Generic enough to commit.
-- **Don't duplicate `system_prompt`.** If you set one in `RuntimeState`, don't repeat the same content in `SOUL.md` — both get injected.
-:::
+- **Don't duplicate `system_prompt`.** The base prompt in `krill.toml` and bootstrap docs are both injected — avoid repeating the same content.
 
 ### `~/.krill/` — runtime state (machine-local, never committed)
 

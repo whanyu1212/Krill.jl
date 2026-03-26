@@ -68,16 +68,16 @@ Krill.has_seen
 
 ```@docs
 Krill.AbstractChannel
+Krill.ChannelState
 Krill.channel_name
 Krill.make_sender
 Krill.normalize
+Krill.register_channel!
+Krill.make_inbound_handler
 Krill.start_channel!
 Krill.stop_channel!
 Krill.send_typing
 Krill.send_direct
-Krill.ChannelState
-Krill.register_channel!
-Krill.make_inbound_handler
 Krill.TelegramClient
 Krill.TelegramAPIError
 Krill.TelegramChannel
@@ -130,6 +130,7 @@ Krill.make_memory_consolidator
 Krill.ToolDef
 Krill.SkillDef
 Krill.load_always_skills
+Krill.register_builtin_tools!
 ```
 
 ## Prompt Context
@@ -145,8 +146,9 @@ Krill.make_prompt_builder
 ## LLM Providers
 
 ```@docs
-Krill.OpenAIAPIError
+Krill.AbstractLLMProvider
 Krill.OpenAIProvider
+Krill.OpenAIAPIError
 Krill.GeminiProvider
 Krill.GeminiOpenAICompatProvider
 Krill.LLMUsage
@@ -156,7 +158,13 @@ Krill.chat_completion
 Krill.make_llm_processor
 ```
 
-## Cron and Subagents
+## MCP
+
+```@docs
+Krill.MCPServer
+```
+
+## Cron
 
 ```@docs
 Krill.CronJob
@@ -170,6 +178,11 @@ Krill.parse_schedule
 Krill.parse_cron
 Krill.save_jobs!
 Krill.load_jobs!
+```
+
+## Subagents
+
+```@docs
 Krill.SubagentTask
 Krill.SubagentManager
 Krill.spawn_subagent!

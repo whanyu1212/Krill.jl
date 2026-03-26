@@ -76,9 +76,7 @@ scripts/       helper scripts (deploy, test, GCP setup)
 
 ## Deployment
 
-Krill runs anywhere Julia runs — a local machine, a VPS, or a container platform. A `Dockerfile` is included for containerized deployments.
-
-Session data, memory, and cron state are written to `data_dir` (default `~/.krill`). For stateless container deployments, mount a persistent volume or remote filesystem at that path.
+The `Dockerfile` and `scripts/deploy.sh` in this repo target **Google Cloud Run**, which is the only platform tested so far. Cold starts are slow due to Julia's compilation overhead, and stateless containers require a persistent volume for `data_dir` (default `~/.krill`) — session data, memory, and cron state are all written there. More testing is needed to compare platforms (e.g., a long-running VM or VPS may be a better fit than serverless containers).
 
 ## Testing
 

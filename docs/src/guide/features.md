@@ -108,10 +108,9 @@ Enabled with `llm_enable_builtin_tools=true`. Always available regardless of pro
 | Tool | What it does |
 | --- | --- |
 | `read_file`, `write_file`, `edit_file`, `list_dir` | File operations inside `workspace` |
-| `web_search` | DuckDuckGo search (basic — prefer provider search when available) |
-| `web_fetch` | Fetch a URL as markdown |
+| `web_fetch` | Fetch a specific URL as markdown |
 | `github` | Wraps the `gh` CLI |
-| `message` | Send a message to a chat ID from within a tool call |
+| `message` | Send a message to a chat ID (only registered when a send function is available) |
 | `exec` | Shell commands — opt-in via `llm_builtin_enable_exec=true` |
 | `google_workspace` | Wraps the `gws` CLI for Gmail, Calendar, Drive — opt-in via `llm_enable_google_workspace=true` |
 | `claude_code` | Delegate a task to Claude Code CLI — opt-in via `llm_enable_claude_code=true` |
@@ -139,6 +138,18 @@ llm_tools = [
 ```
 
 For most bots, enable both: provider tools for web search quality, local tools for file access and GitHub. Use `claude_code` or `codex` for multi-step research or coding tasks.
+
+### Provider tools not yet enabled
+
+Both providers offer additional built-in tools that Krill doesn't enable by default. I may come back to these later, but most are not high-value items for a personal assistant use case right now.
+
+| Tool | Provider | Value | Notes |
+| --- | --- | --- | --- |
+| `image_generation` | OpenAI | High | "Generate an image of X" is a natural request. Easy to enable on the API side, but Krill's pipeline currently assumes text-only responses — displaying images in Telegram/Discord requires changes to parsing, message types, and channel senders. |
+| `googleMaps` | Gemini | Medium | Useful for location queries ("restaurants near me", "directions to X"). Has compatibility constraints — can't combine with `googleSearch`, `codeExecution`, or `urlContext` in the same request. The agent loses other tools when maps is active. `_sanitize_gemini_tools` in `parsing.jl` already handles this. |
+| `file_search` | Both | Low | Requires pre-uploading documents to vector stores (OpenAI) or file search stores (Gemini). Not useful unless you set up a knowledge base. Could be valuable later for searching over a document library. |
+| `computerUse` | Gemini | None | Krill runs headless — there's no screen to interact with. |
+| `mcp` (remote) | OpenAI | None | OpenAI's server-side MCP. Krill already has local MCP support which is more flexible. |
 
 ## MCP Servers
 
@@ -358,6 +369,23 @@ Krill's MCP client is built from scratch with no official Julia SDK. Known edge 
 - **Session continuity** — HTTP re-initialization after reconnect may break servers that tie context to session state
 
 Open an issue with the raw JSON-RPC exchange and server name if you hit one of these.
+
+### Memory
+
+- **No cross-session memory** — session key is per-chat (e.g. `telegram:123`), so the same user on different channels or chats has separate memory stores
+- **No explicit "remember this"** — users can't directly write to memory; consolidation is automatic and LLM-driven
+- **No memory retrieval tool** — the full `MEMORY.md` is dumped into context every turn; the LLM can't search or query it selectively
+- **No memory size cap** — if `MEMORY.md` grows large, it eats into the context window with no automatic pruning
+- **Consolidation quality depends on the LLM** — the summarizer may drop facts the user considers important, or retain noise
+
+### Telegram rendering
+
+Krill converts markdown to Telegram HTML before sending — bold, italic, strikethrough, code blocks, inline code, links, and headings all translate. Tables are converted to aligned monospace `<pre>` blocks. Known rough edges:
+
+- **Complex tables** — Tables with very wide columns or mixed-width content may not align well on mobile screens
+- **Nested formatting in tables** — Bold/italic inside table cells is stripped (the table is rendered as plain text inside `<pre>`)
+- **Long messages** — Telegram has a 4096-character limit per message; Krill does not currently split long responses automatically (Discord does)
+- **HTML fallback** — If Telegram rejects the HTML (malformed tags from unusual LLM output), Krill retries as plain text, losing all formatting
 
 ### Current boundaries
 

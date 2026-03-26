@@ -52,9 +52,18 @@
             session_key="telegram:5376052137",
             tool_name="shell",
             result=Dict{String,Any}("status" => "ok"),
+            duration_ms=42.5,
         )
         @test success_result.error === nothing
         @test success_result.result["status"] == "ok"
+        @test success_result.duration_ms == 42.5
+
+        no_duration_result = ToolResultEvent(
+            session_key="telegram:5376052137",
+            tool_name="shell",
+            result="ok",
+        )
+        @test no_duration_result.duration_ms === nothing
 
         err = ErrorEnvelope("E_TIMEOUT", "tool timed out", true, Dict{String,Any}("attempt" => 1))
         failed_result = ToolResultEvent(
@@ -62,11 +71,13 @@
             tool_name="shell",
             result=nothing,
             error=err,
+            duration_ms=1500.0,
         )
 
         @test failed_result.error !== nothing
         @test failed_result.error.code == "E_TIMEOUT"
         @test failed_result.error.retriable == true
+        @test failed_result.duration_ms == 1500.0
     end
 
     @testset "DeliveryPolicy validation" begin

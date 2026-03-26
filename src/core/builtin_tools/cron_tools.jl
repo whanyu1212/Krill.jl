@@ -94,7 +94,7 @@ function register_cron_tools!(
 
     push!(defs, ToolDef(
         name="cron_add",
-        description="Schedule a recurring or one-shot task. For 'in X minutes/hours' use schedule_type='interval' with schedule_value like '5m' or '2h' — do NOT use 'at' for relative times. Use 'at' only when you know the exact UTC datetime. Use 'cron' for wall-clock schedules like 'every day at 9am'.",
+        description="Schedule a recurring or one-shot task. For one-shot delays like 'in 5 minutes' or 'remind me in 1 hour', use schedule_type='at' — compute the absolute UTC datetime (now + offset) and pass it as schedule_value in ISO 8601 format. Use 'interval' (or 'every') only for truly recurring tasks that repeat at a fixed interval (e.g. 'every 10m'). Use 'cron' for wall-clock schedules like 'every day at 9am'.",
         parameters=Dict{String,Any}(
             "type" => "object",
             "properties" => Dict{String,Any}(

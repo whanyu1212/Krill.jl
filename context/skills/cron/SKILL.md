@@ -1,6 +1,7 @@
 ---
 name: cron
 description: Schedule reminders and recurring tasks using cron_add, cron_list, and cron_remove tools. Use when the user asks to set timers, reminders, periodic checks, or any time-based automation.
+always: true
 ---
 
 # Cron

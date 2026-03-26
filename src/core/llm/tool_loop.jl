@@ -127,6 +127,7 @@ function _execute_tool_calls(
         is_error = false
         result_text = ""
         error_envelope = nothing
+        duration_ms = nothing  # set by dispatch; nothing for cache hits / permission denied
 
         # Permission check
         if allowed_tools !== nothing && !(call.name in allowed_tools)
@@ -164,14 +165,17 @@ function _execute_tool_calls(
                     end
                 end
 
+                t0 = time()
                 try
                     result = dispatch_tool(registry, call.name, call.arguments)
+                    duration_ms = (time() - t0) * 1000.0
                     result_text = _truncate_text(_stringify_tool_result(result), per_tool_limit)
                     if tool !== nothing && tool.return_direct && return_direct_text === nothing
                         return_direct_text = result_text
                     end
+                    @info "tool executed" tool=call.name status=:ok duration_ms=round(Int, duration_ms) result_chars=length(result_text)
 
-                    # on_tool_result hook (success only)
+                    # on_tool_result hook
                     if hooks !== nothing && hooks.on_tool_result !== nothing
                         try
                             hooks.on_tool_result(call.name, result_text)
@@ -180,6 +184,7 @@ function _execute_tool_calls(
                         end
                     end
                 catch e
+                    duration_ms = (time() - t0) * 1000.0
                     is_error = true
                     result_text = _truncate_text(sprint(showerror, e), per_tool_limit)
                     error_code = if occursin("timeout", lowercase(result_text)) || occursin("timed out", lowercase(result_text))
@@ -195,6 +200,16 @@ function _execute_tool_calls(
                         error_code == "E_TIMEOUT",
                         Dict{String,Any}("tool_name" => call.name),
                     )
+                    @info "tool executed" tool=call.name status=:error error_code=error_code duration_ms=round(Int, duration_ms)
+
+                    # on_tool_result hook (also fires on errors)
+                    if hooks !== nothing && hooks.on_tool_result !== nothing
+                        try
+                            hooks.on_tool_result(call.name, result_text)
+                        catch e2
+                            @warn "on_tool_result hook failed" tool=call.name exception=(e2, catch_backtrace())
+                        end
+                    end
                 end
 
                 # Store in cache
@@ -221,6 +236,7 @@ function _execute_tool_calls(
             correlation_id=call_event.event_id,
             result=is_error ? nothing : result_text,
             error=error_envelope,
+            duration_ms=duration_ms,
         )
         push!(events, (call=call_event, result=result_event))
     end

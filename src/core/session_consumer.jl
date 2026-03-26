@@ -75,11 +75,31 @@ const _SLASH_NEW = "new"
 const _SLASH_HELP = "help"
 const _SLASH_STOP = "stop"
 
-const _SLASH_HELP_TEXT = """
-/help — show available commands
-/new — clear this session and reset history
-/stop — stop the running assistant task for this session
-"""
+function _format_help_text(store::SessionStore, session_key::AbstractString)
+    history = load_history(store, session_key)
+    n_turns = length(history)
+    session_age = if n_turns > 0
+        first_ts = history[1].timestamp
+        delta = now(UTC) - first_ts
+        mins = round(Int, Dates.value(delta) / 60_000)
+        if mins < 60
+            "$(mins)m"
+        elseif mins < 1440
+            "$(mins ÷ 60)h $(mins % 60)m"
+        else
+            "$(mins ÷ 1440)d $(mins % 1440 ÷ 60)h"
+        end
+    else
+        "new"
+    end
+
+    return """*Commands*
+/help — this message
+/new — clear session and start fresh
+/stop — interrupt the running task
+
+*Session*: $(n_turns) turns, age $(session_age)"""
+end
 
 function _strip_message_prefixes(text::AbstractString)
     return strip(String(text))
@@ -136,29 +156,39 @@ function _handle_slash_command!(
     cancel_scope::Union{Nothing,SessionCancelScope}=nothing,
 )
     if command == _SLASH_HELP
-        _publish_command_reply!(hub, msg, _SLASH_HELP_TEXT)
+        help_text = _format_help_text(store, msg.session_key)
+        _publish_command_reply!(hub, msg, help_text)
         return
     end
 
     if command == _SLASH_NEW
-        lock(get_session_lock!(store, msg.session_key)) do
+        n_cleared = lock(get_session_lock!(store, msg.session_key)) do
+            history = load_history(store, msg.session_key)
+            n = length(history)
             clear_session!(store, msg.session_key)
+            n
         end
-        _publish_command_reply!(hub, msg, "Session cleared. Start a new conversation.")
+        reply = if n_cleared > 0
+            "Cleared $(n_cleared) turns. Fresh session."
+        else
+            "Session was already empty. Fresh start."
+        end
+        _publish_command_reply!(hub, msg, reply)
         return
     end
 
     if command == _SLASH_STOP
         # Cooperative cancellation via flag (checked between tool iterations)
+        had_flag = false
         if cancel_scope !== nothing
-            request_cancel!(cancel_scope, msg.session_key)
+            had_flag = request_cancel!(cancel_scope, msg.session_key)
         end
         # Also try the blunt interrupt as fallback (catches non-tool-loop blocking)
         was_interrupted = _interrupt_active_session_task!(session_tasks, msg.session_key)
-        if was_interrupted || (cancel_scope !== nothing && is_cancelled(cancel_scope, msg.session_key))
-            _publish_command_reply!(hub, msg, "Stopped active assistant task.")
+        if was_interrupted || had_flag
+            _publish_command_reply!(hub, msg, "Stopped. The running task has been cancelled.")
         else
-            _publish_command_reply!(hub, msg, "No active assistant task to stop.")
+            _publish_command_reply!(hub, msg, "Nothing running to stop.")
         end
         return
     end

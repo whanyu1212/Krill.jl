@@ -138,6 +138,11 @@ function make_llm_processor(
             memory_text=memory_for_context,
             history_summarizer=history_summarizer,
         )
+        _instructions_chars = ctx.instructions === nothing ? 0 : length(ctx.instructions)
+        _n_messages = length(ctx.messages)
+        @info "turn prompt" session_key=msg.session_key instructions_chars=_instructions_chars context_messages=_n_messages
+        @debug "turn prompt instructions" session_key=msg.session_key instructions=ctx.instructions
+
         resolved_tool_progress = if tool_progress === nothing
             nothing
         else
