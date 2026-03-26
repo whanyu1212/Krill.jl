@@ -17,15 +17,15 @@ Which channels start is controlled entirely by `krill.toml` — no code change n
 ```toml
 # LLM provider
 [provider]
-name    = "openai"           # "openai" or "gemini"
-model   = "gpt-4o-mini"
-api_key = "$OPENAI_API_KEY"  # or set in .env
+name    = "openai"              # "openai" or "gemini"
+model   = "gpt-5.4"
+api_key = "$OPENAI_API_KEY"     # or set in .env
 
 # Channels — enable as many as you need
 [telegram]
 enabled    = true
 bot_token  = "$TELEGRAM_BOT_TOKEN"
-allow_from = ["*"]           # Telegram user IDs, or "*" for everyone
+allow_from = ["*"]              # Telegram user IDs, or "*" for everyone
 
 [discord]
 enabled    = false
@@ -35,22 +35,30 @@ allow_from = ["*"]
 # Runtime paths
 [llm]
 workspace                     = "context"
-builtin_restrict_to_workspace = true
+data_dir                      = "$KRILL_DATA_DIR"   # defaults to ~/.krill
+builtin_restrict_to_workspace = false
 
 # Agent identity and tool toggles
 [profile]
-system_prompt = "You are a helpful assistant. Be concise and friendly."
+system_prompt = """You are Krill — a personal AI assistant. \
+Your personality is in SOUL.md, tool rules in AGENTS.md, \
+per-tool docs in TOOLS.md. Follow those documents."""
 
 [profile.tools]
-provider_builtins    = true   # provider web search + code interpreter
+provider_builtins    = true     # provider web search + code interpreter
 local_builtins       = true
 builtin_skills       = true
 memory               = true
+memory_consolidation = true
 cron                 = true
 subagents            = true
 exec                 = false
 claude_code          = false
+claude_code_model    = "sonnet"
 codex                = false
+codex_model          = ""
+google_workspace     = false
+history_summarization = false
 
 # MCP servers (add as many blocks as needed)
 [[profile.mcp]]
@@ -85,7 +93,7 @@ Run on the provider's infrastructure. Pass them through via `provider_builtins =
 
 | Provider | Tools |
 | --- | --- |
-| OpenAI | `web_search`, `code_interpreter`, `image_generation` |
+| OpenAI | `web_search`, `code_interpreter` |
 | Gemini | `googleSearch`, `urlContext`, `codeExecution` |
 
 OpenAI `web_search` and Gemini `googleSearch` return clean, cited results. Set `provider_builtins = true` for most bots. If native search returns poor results, the agent can delegate deeper research to `claude_code` or `codex`.

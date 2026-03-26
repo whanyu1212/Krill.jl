@@ -10,7 +10,7 @@ Pass everything directly as `llm_*` keyword arguments (flat API):
 
 ```julia
 rt = RuntimeState(channel;
-    llm_provider  = OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-4o-mini"),
+    llm_provider  = OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-5.4"),
     system_prompt = "You are a helpful assistant.",
     workspace     = "context",
     data_dir      = joinpath(homedir(), ".krill"),
@@ -24,7 +24,7 @@ shutdown!(rt)
 Or compose an `Agent` struct first and pass it directly (Agent API):
 
 ```julia
-agent = Agent(OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-4o-mini");
+agent = Agent(OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-5.4");
     system_prompt = "You are a helpful assistant.",
     workspace     = "context",
     hooks = AgentHooks(

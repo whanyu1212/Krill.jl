@@ -46,7 +46,7 @@ npm --prefix docs install
 ```toml
 [provider]
 name    = "openai"
-model   = "gpt-4o-mini"
+model   = "gpt-5.4"
 api_key = "$OPENAI_API_KEY"
 
 [telegram]
