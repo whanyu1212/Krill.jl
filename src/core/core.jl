@@ -92,7 +92,8 @@ using .Memory: MemoryStore,
 
 using .Echo: run_echo_loop!
 
-using .SessionConsumer: run_session_loop!,
+using .SessionConsumer:
+    run_session_loop!,
     echo_processor,
     SessionCancelScope,
     request_cancel!,

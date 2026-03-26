@@ -1,11 +1,11 @@
 @testset "Krill.jl Core types" begin
     @testset "InboundMessage defaults and text extraction" begin
         inbound = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:5376052137",
-            user_id="5376052137",
-            chat_id="5376052137",
-            text="hello from inbound",
+            channel = :telegram,
+            session_key = "telegram:5376052137",
+            user_id = "5376052137",
+            chat_id = "5376052137",
+            text = "hello from inbound",
         )
 
         @test inbound.version == 1
@@ -18,14 +18,14 @@
     end
 
     @testset "OutboundMessage with delivery policy" begin
-        policy = DeliveryPolicy(max_retries=5, timeout_ms=5_000, priority=2, drop_if_late=true)
+        policy = DeliveryPolicy(max_retries = 5, timeout_ms = 5_000, priority = 2, drop_if_late = true)
         outbound = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:5376052137",
-            chat_id="5376052137",
-            text="hello from outbound",
-            format=:telegram_html,
-            delivery_policy=policy,
+            channel = :telegram,
+            session_key = "telegram:5376052137",
+            chat_id = "5376052137",
+            text = "hello from outbound",
+            format = :telegram_html,
+            delivery_policy = policy,
         )
 
         @test outbound.version == 1
@@ -39,9 +39,9 @@
 
     @testset "Tool call/result events and error envelope" begin
         call_event = ToolCallEvent(
-            session_key="telegram:5376052137",
-            tool_name="shell",
-            arguments=Dict{String,Any}("command" => "ls -la"),
+            session_key = "telegram:5376052137",
+            tool_name = "shell",
+            arguments = Dict{String,Any}("command" => "ls -la"),
         )
 
         @test call_event.version == 1
@@ -49,29 +49,29 @@
         @test call_event.arguments["command"] == "ls -la"
 
         success_result = ToolResultEvent(
-            session_key="telegram:5376052137",
-            tool_name="shell",
-            result=Dict{String,Any}("status" => "ok"),
-            duration_ms=42.5,
+            session_key = "telegram:5376052137",
+            tool_name = "shell",
+            result = Dict{String,Any}("status" => "ok"),
+            duration_ms = 42.5,
         )
         @test success_result.error === nothing
         @test success_result.result["status"] == "ok"
         @test success_result.duration_ms == 42.5
 
         no_duration_result = ToolResultEvent(
-            session_key="telegram:5376052137",
-            tool_name="shell",
-            result="ok",
+            session_key = "telegram:5376052137",
+            tool_name = "shell",
+            result = "ok",
         )
         @test no_duration_result.duration_ms === nothing
 
         err = ErrorEnvelope("E_TIMEOUT", "tool timed out", true, Dict{String,Any}("attempt" => 1))
         failed_result = ToolResultEvent(
-            session_key="telegram:5376052137",
-            tool_name="shell",
-            result=nothing,
-            error=err,
-            duration_ms=1500.0,
+            session_key = "telegram:5376052137",
+            tool_name = "shell",
+            result = nothing,
+            error = err,
+            duration_ms = 1500.0,
         )
 
         @test failed_result.error !== nothing
@@ -81,8 +81,7 @@
     end
 
     @testset "DeliveryPolicy validation" begin
-        @test_throws ArgumentError DeliveryPolicy(max_retries=-1)
-        @test_throws ArgumentError DeliveryPolicy(timeout_ms=-1)
+        @test_throws ArgumentError DeliveryPolicy(max_retries = -1)
+        @test_throws ArgumentError DeliveryPolicy(timeout_ms = -1)
     end
 end
-

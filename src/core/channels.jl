@@ -127,7 +127,7 @@ Returns a `ChannelState` ready for `start_channel!`.
 function register_channel!(
     manager::ChannelManagerState,
     ch::AbstractChannel;
-    on_send::Union{Nothing,Function}=nothing,
+    on_send::Union{Nothing,Function} = nothing,
 )
     sender = make_sender(ch)
     wrapped_sender = if on_send !== nothing
@@ -169,10 +169,10 @@ last_successful_poll_at).
 function make_inbound_handler(
     ch::AbstractChannel,
     hub::MessageHubState;
-    dedup::Union{Nothing,BoundedDedup}=nothing,
-    on_poll::Union{Nothing,Function}=nothing,
+    dedup::Union{Nothing,BoundedDedup} = nothing,
+    on_poll::Union{Nothing,Function} = nothing,
 )
-    return function(raw_event)
+    return function (raw_event)
         on_poll !== nothing && on_poll()
 
         # Dedup by platform-specific ID if available

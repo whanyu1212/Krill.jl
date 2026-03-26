@@ -1,33 +1,33 @@
 @testset "Krill.jl MessageHub" begin
     @testset "inbound/outbound FIFO and take APIs" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
 
         in1 = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:1",
-            user_id="u1",
-            chat_id="1",
-            text="first inbound",
+            channel = :telegram,
+            session_key = "telegram:1",
+            user_id = "u1",
+            chat_id = "1",
+            text = "first inbound",
         )
         in2 = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:1",
-            user_id="u1",
-            chat_id="1",
-            text="second inbound",
+            channel = :telegram,
+            session_key = "telegram:1",
+            user_id = "u1",
+            chat_id = "1",
+            text = "second inbound",
         )
 
         out1 = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
-            text="first outbound",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
+            text = "first outbound",
         )
         out2 = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
-            text="second outbound",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
+            text = "second outbound",
         )
 
         publish_inbound!(hub, in1)
@@ -53,24 +53,24 @@
     end
 
     @testset "capacity validation" begin
-        @test_throws ArgumentError MessageHubState(inbound_capacity=0)
-        @test_throws ArgumentError MessageHubState(outbound_capacity=0)
+        @test_throws ArgumentError MessageHubState(inbound_capacity = 0)
+        @test_throws ArgumentError MessageHubState(outbound_capacity = 0)
     end
 end
 
 @testset "Krill.jl ChannelManager" begin
     @testset "register sender and dispatch outbound" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         delivered = OutboundMessage[]
         register_sender!(manager, :telegram, msg -> push!(delivered, msg))
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="dispatch me",
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "dispatch me",
         )
 
         start_dispatch!(manager)
@@ -85,14 +85,14 @@ end
     end
 
     @testset "unknown channel logs warning but does not crash" begin
-        hub = MessageHubState(outbound_capacity=2)
+        hub = MessageHubState(outbound_capacity = 2)
         manager = ChannelManagerState(hub)
 
         msg = OutboundMessage(
-            channel=:unknown,
-            session_key="unknown:1",
-            chat_id="1",
-            text="no sender",
+            channel = :unknown,
+            session_key = "unknown:1",
+            chat_id = "1",
+            text = "no sender",
         )
 
         start_dispatch!(manager)
@@ -106,11 +106,11 @@ end
     end
 
     @testset "sender exception does not crash dispatch" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         delivered = OutboundMessage[]
-        register_sender!(manager, :telegram, function(msg)
+        register_sender!(manager, :telegram, function (msg)
             if message_text(msg) == "boom"
                 error("sender kaboom")
             end
@@ -120,10 +120,10 @@ end
         start_dispatch!(manager)
 
         publish_outbound!(hub, OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="boom",
+            channel = :telegram, session_key = "t:1", chat_id = "1", text = "boom",
         ))
         publish_outbound!(hub, OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="ok",
+            channel = :telegram, session_key = "t:1", chat_id = "1", text = "ok",
         ))
 
         sleep(0.1)
@@ -134,12 +134,12 @@ end
     end
 
     @testset "delivery policy retries retriable sender failures" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         attempts = Ref(0)
         delivered = OutboundMessage[]
-        register_sender!(manager, :telegram, function(msg)
+        register_sender!(manager, :telegram, function (msg)
             attempts[] += 1
             if attempts[] == 1
                 throw(TelegramAPIError("sendMessage", "rate limited", 429))
@@ -148,11 +148,11 @@ end
         end)
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="retry me",
-            delivery_policy=DeliveryPolicy(max_retries=1, timeout_ms=1_000),
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "retry me",
+            delivery_policy = DeliveryPolicy(max_retries = 1, timeout_ms = 1_000),
         )
 
         start_dispatch!(manager)
@@ -166,17 +166,17 @@ end
     end
 
     @testset "delivery policy timeout marks failure and records dead letter" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         register_sender!(manager, :telegram, msg -> sleep(0.05))
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="timeout me",
-            delivery_policy=DeliveryPolicy(max_retries=0, timeout_ms=10),
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "timeout me",
+            delivery_policy = DeliveryPolicy(max_retries = 0, timeout_ms = 10),
         )
 
         start_dispatch!(manager)
@@ -190,19 +190,19 @@ end
     end
 
     @testset "drop_if_late skips stale outbound message" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         calls = Ref(0)
         register_sender!(manager, :telegram, msg -> (calls[] += 1))
 
         msg = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="late",
-            timestamp=now(UTC) - Millisecond(250),
-            delivery_policy=DeliveryPolicy(max_retries=0, timeout_ms=25, drop_if_late=true),
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "late",
+            timestamp = now(UTC) - Millisecond(250),
+            delivery_policy = DeliveryPolicy(max_retries = 0, timeout_ms = 25, drop_if_late = true),
         )
 
         start_dispatch!(manager)
@@ -215,25 +215,25 @@ end
     end
 
     @testset "higher priority messages dispatch first" begin
-        hub = MessageHubState(outbound_capacity=8)
+        hub = MessageHubState(outbound_capacity = 8)
         manager = ChannelManagerState(hub)
 
         delivered_texts = String[]
         register_sender!(manager, :telegram, msg -> push!(delivered_texts, message_text(msg)))
 
         low = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="low",
-            delivery_policy=DeliveryPolicy(priority=0),
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "low",
+            delivery_policy = DeliveryPolicy(priority = 0),
         )
         high = OutboundMessage(
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
-            text="high",
-            delivery_policy=DeliveryPolicy(priority=10),
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
+            text = "high",
+            delivery_policy = DeliveryPolicy(priority = 10),
         )
 
         publish_outbound!(hub, low)

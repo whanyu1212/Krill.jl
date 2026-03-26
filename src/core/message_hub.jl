@@ -25,7 +25,7 @@ struct MessageHubState
     outbound::Channel{OutboundMessage}
 end
 
-function MessageHubState(; inbound_capacity::Int=32, outbound_capacity::Int=32)
+function MessageHubState(; inbound_capacity::Int = 32, outbound_capacity::Int = 32)
     inbound_capacity > 0 || throw(ArgumentError("inbound_capacity must be > 0"))
     outbound_capacity > 0 || throw(ArgumentError("outbound_capacity must be > 0"))
     return MessageHubState(

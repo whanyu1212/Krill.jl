@@ -48,16 +48,16 @@ end
 
 function MCPServer(;
     name::AbstractString,
-    transport::Union{Symbol,AbstractString}=:auto,
-    command::Union{Nothing,AbstractString}=nothing,
-    args::Vector{String}=String[],
-    env::Dict{String,String}=Dict{String,String}(),
-    url::Union{Nothing,AbstractString}=nothing,
-    headers::Dict{String,String}=Dict{String,String}(),
-    request_timeout_s::Real=30.0,
-    tool_timeout_s::Real=30.0,
-    enabled_tools::AbstractVector=Any["*"],
-    cache_tools::Bool=true,
+    transport::Union{Symbol,AbstractString} = :auto,
+    command::Union{Nothing,AbstractString} = nothing,
+    args::Vector{String} = String[],
+    env::Dict{String,String} = Dict{String,String}(),
+    url::Union{Nothing,AbstractString} = nothing,
+    headers::Dict{String,String} = Dict{String,String}(),
+    request_timeout_s::Real = 30.0,
+    tool_timeout_s::Real = 30.0,
+    enabled_tools::AbstractVector = Any["*"],
+    cache_tools::Bool = true,
 )
     sname = strip(String(name))
     isempty(sname) && throw(ArgumentError("MCPServer name must not be empty"))
@@ -234,8 +234,8 @@ end
 function _rpc(
     client::MCPStdioClient,
     method::String,
-    params=nothing;
-    timeout_s::Real=client.server.request_timeout_s,
+    params = nothing;
+    timeout_s::Real = client.server.request_timeout_s,
 )
     # Auto-reconnect if process has died (but not for the initial `initialize` call)
     if method != "initialize" && !_stdio_process_alive(client)
@@ -306,7 +306,7 @@ function _rpc(
         end
     end
 
-    wait_status = timedwait(() -> istaskdone(read_task), Float64(timeout_s); pollint=0.01)
+    wait_status = timedwait(() -> istaskdone(read_task), Float64(timeout_s); pollint = 0.01)
     if wait_status == :timed_out
         throw(ErrorException("MCP timeout ($(timeout_s)s) waiting for response to $(method)"))
     end
@@ -392,8 +392,8 @@ end
 function _rpc(
     client::MCPHTTPClient,
     method::String,
-    params=nothing;
-    timeout_s::Real=client.server.request_timeout_s,
+    params = nothing;
+    timeout_s::Real = client.server.request_timeout_s,
 )
     request_id = _next_id!(client)
     req = Dict{String,Any}(
@@ -417,14 +417,17 @@ function _rpc(
                 String(client.server.url),
                 headers,
                 JSON3.write(req);
-                readtimeout=_http_readtimeout(timeout_s),
-                status_exception=false,
+                readtimeout = _http_readtimeout(timeout_s),
+                status_exception = false,
             )
         catch e
             if attempt <= _MCP_HTTP_MAX_RETRIES && _is_retriable_http_error(e)
                 last_error = e
                 delay = _MCP_HTTP_RETRY_BASE_DELAY * (2.0 ^ (attempt - 1))
-                @warn "MCP HTTP request failed, retrying" method=method attempt=attempt delay_s=delay error=sprint(showerror, e)
+                @warn "MCP HTTP request failed, retrying" method=method attempt=attempt delay_s=delay error=sprint(
+                    showerror,
+                    e,
+                )
                 sleep(delay)
                 continue
             end
@@ -509,7 +512,7 @@ function _send_initialized_notification!(client::MCPHTTPClient)
             String(client.server.url),
             headers,
             JSON3.write(notif);
-            readtimeout=_http_readtimeout(client.server.request_timeout_s),
+            readtimeout = _http_readtimeout(client.server.request_timeout_s),
         )
     catch _
         # Best effort notification.
@@ -532,14 +535,14 @@ function connect!(client::MCPStdioClient)
             Dict{String,String}(String(k) => String(v) for (k, v) in ENV),
             server.env,
         )
-        cmd = Cmd(cmd; env=merged_env)
+        cmd = Cmd(cmd; env = merged_env)
     end
 
     inp = Pipe()
     out = Pipe()
 
     try
-        proc = run(pipeline(cmd; stdin=inp, stdout=out, stderr=devnull); wait=false)
+        proc = run(pipeline(cmd; stdin = inp, stdout = out, stderr = devnull); wait = false)
         close(inp.out)
         close(out.in)
         client.proc = proc
@@ -559,7 +562,7 @@ function connect!(client::MCPStdioClient)
                     "version" => "0.1",
                 ),
             );
-            timeout_s=server.request_timeout_s,
+            timeout_s = server.request_timeout_s,
         )
         _send_initialized_notification!(client)
         return client
@@ -581,7 +584,7 @@ function connect!(client::MCPHTTPClient)
                 "version" => "0.1",
             ),
         );
-        timeout_s=client.server.request_timeout_s,
+        timeout_s = client.server.request_timeout_s,
     )
     _send_initialized_notification!(client)
     return client
@@ -629,14 +632,18 @@ function close!(client::MCPHTTPClient)
 end
 
 function close!(client::MCPStdioClient)
-    client.proc_stdin === nothing || (try
-        close(client.proc_stdin)
-    catch _
-    end)
-    client.proc_stdout === nothing || (try
-        close(client.proc_stdout)
-    catch _
-    end)
+    client.proc_stdin === nothing || (
+        try
+            close(client.proc_stdin)
+        catch _
+        end
+    )
+    client.proc_stdout === nothing || (
+        try
+            close(client.proc_stdout)
+        catch _
+        end
+    )
     if client.proc !== nothing && process_running(client.proc)
         try
             kill(client.proc)
@@ -679,7 +686,7 @@ function list_tools(client::AbstractMCPClient)
             client,
             "tools/list",
             Dict{String,Any}();
-            timeout_s=client.server.request_timeout_s,
+            timeout_s = client.server.request_timeout_s,
         )
         result = _to_plain(get(resp, "result", Dict{String,Any}()))
         raw_tools = if result isa AbstractDict
@@ -739,7 +746,7 @@ function call_tool(
     client::AbstractMCPClient,
     name::AbstractString,
     arguments::Dict{String,Any};
-    timeout_s::Real=client.server.tool_timeout_s,
+    timeout_s::Real = client.server.tool_timeout_s,
 )
     lock(client.lock) do
         resp = _rpc(
@@ -749,7 +756,7 @@ function call_tool(
                 "name" => String(name),
                 "arguments" => _to_plain(arguments),
             );
-            timeout_s=Float64(timeout_s),
+            timeout_s = Float64(timeout_s),
         )
         result = get(resp, "result", Dict{String,Any}())
         return _render_tool_result(result)
@@ -782,10 +789,10 @@ namespaced names. Returns the list of registered tool names.
 function register_mcp_tools!(
     registry::ToolRegistry,
     client::AbstractMCPClient;
-    server_name::Union{Nothing,AbstractString}=nothing,
-    enabled_tools::Union{Nothing,AbstractVector}=nothing,
-    tool_timeout_s::Union{Nothing,Real}=nothing,
-    replace::Bool=true,
+    server_name::Union{Nothing,AbstractString} = nothing,
+    enabled_tools::Union{Nothing,AbstractVector} = nothing,
+    tool_timeout_s::Union{Nothing,Real} = nothing,
+    replace::Bool = true,
 )
     sname = server_name === nothing ? client.server.name : String(server_name)
     enabled = enabled_tools === nothing ? client.server.enabled_tools : String[String(v) for v in enabled_tools]
@@ -815,12 +822,12 @@ function register_mcp_tools!(
         schema = _schema_from_tool_descriptor(descriptor)
 
         tool = ToolDef(
-            name=wrapped_name,
-            description=desc,
-            parameters=schema,
-            execute=function(args::Dict{String,Any})
+            name = wrapped_name,
+            description = desc,
+            parameters = schema,
+            execute = function (args::Dict{String,Any})
                 try
-                    call_tool(client, raw_name, args; timeout_s=timeout_val)
+                    call_tool(client, raw_name, args; timeout_s = timeout_val)
                 catch e
                     if _is_timeout_error(e)
                         return "(MCP tool call timed out after $(timeout_val)s)"
@@ -829,7 +836,7 @@ function register_mcp_tools!(
                 end
             end,
         )
-        register_tool!(registry, tool; replace=replace)
+        register_tool!(registry, tool; replace = replace)
         push!(registered, wrapped_name)
     end
 
@@ -850,8 +857,8 @@ an [`MCPConnectionSet`](@ref) with live clients and any connection failures.
 function connect_mcp_servers!(
     registry::ToolRegistry,
     servers::Vector{MCPServer};
-    replace::Bool=true,
-    connect_fn::Function=connect,
+    replace::Bool = true,
+    connect_fn::Function = connect,
 )
     clients = AbstractMCPClient[]
     registered_tools = Dict{String,Vector{String}}()
@@ -864,19 +871,21 @@ function connect_mcp_servers!(
             names = register_mcp_tools!(
                 registry,
                 client;
-                server_name=server.name,
-                enabled_tools=server.enabled_tools,
-                tool_timeout_s=server.tool_timeout_s,
-                replace=replace,
+                server_name = server.name,
+                enabled_tools = server.enabled_tools,
+                tool_timeout_s = server.tool_timeout_s,
+                replace = replace,
             )
             registered_tools[server.name] = names
             push!(clients, client)
         catch e
             failed_servers[server.name] = sprint(showerror, e)
-            client === nothing || (try
-                close!(client)
-            catch _
-            end)
+            client === nothing || (
+                try
+                    close!(client)
+                catch _
+                end
+            )
         end
     end
 

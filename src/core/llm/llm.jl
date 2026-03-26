@@ -12,7 +12,8 @@ using Base64
 using HTTP
 using JSON3
 
-using ..Types: BinaryPart, ContentPart, ErrorEnvelope, InboundMessage, TextPart, ToolCallEvent, ToolResultEvent, message_text
+using ..Types:
+    BinaryPart, ContentPart, ErrorEnvelope, InboundMessage, TextPart, ToolCallEvent, ToolResultEvent, message_text
 using ..Sessions: TurnRecord
 using ..Memory: MemoryStore, load_memory
 using ..Tools: ToolRegistry, ToolDef, tools_schema, dispatch_tool, register_tool!, get_tool, tool_names

@@ -4,7 +4,8 @@ using Dates
 
 using ..Types: InboundMessage
 using ..Sessions: TurnRecord
-using ..Memory: MemoryStore, MemoryState, load_memory, save_memory!, append_history!, load_memory_state, save_memory_state!
+using ..Memory:
+    MemoryStore, MemoryState, load_memory, save_memory!, append_history!, load_memory_state, save_memory_state!
 using ..LLM: AbstractLLMProvider, chat_completion
 
 export MemoryConsolidatorConfig,
@@ -47,14 +48,15 @@ struct MemoryConsolidatorConfig
 end
 
 function MemoryConsolidatorConfig(;
-    unconsolidated_token_threshold::Int=2_000,
-    max_output_tokens::Union{Nothing,Integer}=800,
-    max_input_turn_chars::Int=2_000,
-    max_consolidation_turns::Int=50,
-    max_failures::Int=3,
+    unconsolidated_token_threshold::Int = 2_000,
+    max_output_tokens::Union{Nothing,Integer} = 800,
+    max_input_turn_chars::Int = 2_000,
+    max_consolidation_turns::Int = 50,
+    max_failures::Int = 3,
 )
     unconsolidated_token_threshold > 0 || throw(ArgumentError("unconsolidated_token_threshold must be > 0"))
-    max_output_tokens === nothing || Int(max_output_tokens) > 0 || throw(ArgumentError("max_output_tokens must be > 0 when provided"))
+    max_output_tokens === nothing || Int(max_output_tokens) > 0 ||
+        throw(ArgumentError("max_output_tokens must be > 0 when provided"))
     max_input_turn_chars > 0 || throw(ArgumentError("max_input_turn_chars must be > 0"))
     max_consolidation_turns > 0 || throw(ArgumentError("max_consolidation_turns must be > 0"))
     max_failures > 0 || throw(ArgumentError("max_failures must be > 0"))
@@ -107,22 +109,28 @@ function _render_archive_block(turns::Vector{TurnRecord}, start_index::Int)
     return join(lines, "\n")
 end
 
-function _build_consolidation_prompt(existing_memory::AbstractString, turns::Vector{TurnRecord}, start_index::Int, max_turn_chars::Int)
+function _build_consolidation_prompt(
+    existing_memory::AbstractString,
+    turns::Vector{TurnRecord},
+    start_index::Int,
+    max_turn_chars::Int,
+)
     turns_block = _render_turns_for_prompt(turns, start_index, max_turn_chars)
     memory_block = strip(String(existing_memory))
     if isempty(memory_block)
         memory_block = "(empty)"
     end
 
-    return join(String[
-        "Current MEMORY.md:",
-        memory_block,
-        "",
-        "New unconsolidated turns:",
-        turns_block,
-        "",
-        "Rewrite MEMORY.md now.",
-    ], "\n")
+    return join(
+        String[
+            "Current MEMORY.md:",
+            memory_block,
+            "",
+            "New unconsolidated turns:",
+            turns_block,
+            "",
+            "Rewrite MEMORY.md now.",
+        ], "\n")
 end
 
 function _unconsolidated_turns(history::Vector{TurnRecord}, last_consolidated::Int)
@@ -142,7 +150,12 @@ end
 Raw-dump turns to HISTORY.md without LLM summarization.
 Returns the new `last_consolidated` value.
 """
-function _raw_dump_fallback!(memory_store::MemoryStore, session_key::AbstractString, turns::Vector{TurnRecord}, start_index::Int)
+function _raw_dump_fallback!(
+    memory_store::MemoryStore,
+    session_key::AbstractString,
+    turns::Vector{TurnRecord},
+    start_index::Int,
+)
     append_history!(memory_store, session_key, _render_archive_block(turns, start_index))
     return start_index + length(turns) - 1
 end
@@ -166,14 +179,15 @@ function consolidate_session_memory!(
     memory_store::MemoryStore,
     session_key::AbstractString,
     history::Vector{TurnRecord};
-    config::MemoryConsolidatorConfig=MemoryConsolidatorConfig(),
+    config::MemoryConsolidatorConfig = MemoryConsolidatorConfig(),
 )
     state = load_memory_state(memory_store, session_key)
     last = clamp(state.last_consolidated, 0, length(history))
     failures = state.consolidation_failures
 
     turns, start_index = _unconsolidated_turns(history, last)
-    isempty(turns) && return (consolidated=false, reason=:no_unconsolidated_turns, token_estimate=0, last_consolidated=last)
+    isempty(turns) &&
+        return (consolidated = false, reason = :no_unconsolidated_turns, token_estimate = 0, last_consolidated = last)
 
     # Cap batch size
     if length(turns) > config.max_consolidation_turns
@@ -182,20 +196,27 @@ function consolidate_session_memory!(
 
     token_estimate = estimate_turns_tokens(turns)
     if token_estimate < config.unconsolidated_token_threshold
-        return (consolidated=false, reason=:below_threshold, token_estimate=token_estimate, last_consolidated=last)
+        return (
+            consolidated = false,
+            reason = :below_threshold,
+            token_estimate = token_estimate,
+            last_consolidated = last,
+        )
     end
 
     # Fallback: too many consecutive LLM failures — raw dump without summary
     if failures >= config.max_failures
-        @warn "memory consolidation: $(failures) consecutive LLM failures, falling back to raw archive" session_key=session_key turns=length(turns)
+        @warn "memory consolidation: $(failures) consecutive LLM failures, falling back to raw archive" session_key=session_key turns=length(
+            turns,
+        )
         new_last = _raw_dump_fallback!(memory_store, session_key, turns, start_index)
         save_memory_state!(memory_store, session_key, MemoryState(new_last, 0))
         return (
-            consolidated=true,
-            reason=:fallback_raw_dump,
-            token_estimate=token_estimate,
-            consolidated_turns=length(turns),
-            last_consolidated=new_last,
+            consolidated = true,
+            reason = :fallback_raw_dump,
+            token_estimate = token_estimate,
+            consolidated_turns = length(turns),
+            last_consolidated = new_last,
         )
     end
 
@@ -214,8 +235,8 @@ function consolidate_session_memory!(
         response = chat_completion(
             provider,
             input;
-            instructions=CONSOLIDATION_INSTRUCTIONS,
-            max_output_tokens=config.max_output_tokens,
+            instructions = CONSOLIDATION_INSTRUCTIONS,
+            max_output_tokens = config.max_output_tokens,
         )
         consolidated_memory = strip(response.text)
         if isempty(consolidated_memory)
@@ -226,11 +247,11 @@ function consolidate_session_memory!(
         save_memory_state!(memory_store, session_key, MemoryState(last, new_failures))
         @warn "memory consolidation LLM call failed" session_key=session_key failures=new_failures max_failures=config.max_failures error=err
         return (
-            consolidated=false,
-            reason=:llm_error,
-            token_estimate=token_estimate,
-            last_consolidated=last,
-            error=err,
+            consolidated = false,
+            reason = :llm_error,
+            token_estimate = token_estimate,
+            last_consolidated = last,
+            error = err,
         )
     end
 
@@ -241,11 +262,11 @@ function consolidate_session_memory!(
     save_memory_state!(memory_store, session_key, MemoryState(new_last, 0))
 
     return (
-        consolidated=true,
-        reason=:ok,
-        token_estimate=token_estimate,
-        consolidated_turns=length(turns),
-        last_consolidated=new_last,
+        consolidated = true,
+        reason = :ok,
+        token_estimate = token_estimate,
+        consolidated_turns = length(turns),
+        last_consolidated = new_last,
     )
 end
 
@@ -257,27 +278,27 @@ Create an `after_process(msg, history)` hook for `run_session_loop!`.
 function make_memory_consolidator(
     provider::AbstractLLMProvider,
     memory_store::MemoryStore;
-    unconsolidated_token_threshold::Int=2_000,
-    max_output_tokens::Union{Nothing,Integer}=800,
-    max_input_turn_chars::Int=2_000,
-    max_consolidation_turns::Int=50,
-    max_failures::Int=3,
+    unconsolidated_token_threshold::Int = 2_000,
+    max_output_tokens::Union{Nothing,Integer} = 800,
+    max_input_turn_chars::Int = 2_000,
+    max_consolidation_turns::Int = 50,
+    max_failures::Int = 3,
 )
     config = MemoryConsolidatorConfig(;
-        unconsolidated_token_threshold=unconsolidated_token_threshold,
-        max_output_tokens=max_output_tokens,
-        max_input_turn_chars=max_input_turn_chars,
-        max_consolidation_turns=max_consolidation_turns,
-        max_failures=max_failures,
+        unconsolidated_token_threshold = unconsolidated_token_threshold,
+        max_output_tokens = max_output_tokens,
+        max_input_turn_chars = max_input_turn_chars,
+        max_consolidation_turns = max_consolidation_turns,
+        max_failures = max_failures,
     )
 
-    return function(msg::InboundMessage, history::Vector{TurnRecord})
+    return function (msg::InboundMessage, history::Vector{TurnRecord})
         result = consolidate_session_memory!(
             provider,
             memory_store,
             msg.session_key,
             history;
-            config=config,
+            config = config,
         )
         if result.consolidated
             @info "session memory consolidated" session_key=msg.session_key reason=result.reason token_estimate=result.token_estimate consolidated_turns=result.consolidated_turns last_consolidated=result.last_consolidated

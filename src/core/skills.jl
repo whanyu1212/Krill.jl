@@ -59,7 +59,7 @@ function _parse_frontmatter(content::AbstractString)
         value = String(m.captures[2])
         # Strip surrounding quotes
         if length(value) >= 2 && ((value[1] == '"' && value[end] == '"') || (value[1] == '\'' && value[end] == '\''))
-            value = value[2:end-1]
+            value = value[2:(end - 1)]
         end
         meta[key] = value
     end
@@ -76,7 +76,7 @@ function _strip_frontmatter(content::AbstractString)
     startswith(text, "---\n") || return text
     fm_match = match(r"^---\n.*?\n---\n?"s, text)
     fm_match === nothing && return text
-    return strip(text[fm_match.offset + length(fm_match.match):end])
+    return strip(text[(fm_match.offset + length(fm_match.match)):end])
 end
 
 function _extract_description(content::AbstractString, fallback::AbstractString)
@@ -130,7 +130,12 @@ function _check_requirements(meta::Dict{String,String})
     return (isempty(missing), missing)
 end
 
-function _collect_skills!(dest::Dict{String,SkillDef}, base_dir::AbstractString, source::AbstractString; override_existing::Bool)
+function _collect_skills!(
+    dest::Dict{String,SkillDef},
+    base_dir::AbstractString,
+    source::AbstractString;
+    override_existing::Bool,
+)
     isdir(base_dir) || return dest
     for entry in sort(readdir(base_dir))
         skill_dir = joinpath(base_dir, entry)
@@ -172,22 +177,22 @@ end
 
 function discover_skills(
     workspace::AbstractString;
-    builtin_skills_dir::Union{Nothing,AbstractString}=nothing,
+    builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
 )
     discovered = Dict{String,SkillDef}()
-    _collect_skills!(discovered, joinpath(workspace, "skills"), "workspace"; override_existing=true)
+    _collect_skills!(discovered, joinpath(workspace, "skills"), "workspace"; override_existing = true)
     if builtin_skills_dir !== nothing
-        _collect_skills!(discovered, String(builtin_skills_dir), "builtin"; override_existing=false)
+        _collect_skills!(discovered, String(builtin_skills_dir), "builtin"; override_existing = false)
     end
     skills = collect(values(discovered))
-    sort!(skills; by=s -> lowercase(s.name))
+    sort!(skills; by = s -> lowercase(s.name))
     return skills
 end
 
 function read_skill(
     workspace::AbstractString,
     name::AbstractString;
-    builtin_skills_dir::Union{Nothing,AbstractString}=nothing,
+    builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
 )
     skill_name = strip(String(name))
     isempty(skill_name) && return nothing
@@ -262,19 +267,19 @@ end
 function register_read_skill_tool!(
     registry::ToolRegistry;
     workspace::AbstractString,
-    builtin_skills_dir::Union{Nothing,AbstractString}=nothing,
-    skills::Union{Nothing,Vector{SkillDef}}=nothing,
-    replace::Bool=false,
+    builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
+    skills::Union{Nothing,Vector{SkillDef}} = nothing,
+    replace::Bool = false,
 )
     skill_list = skills === nothing ?
-        discover_skills(workspace; builtin_skills_dir=builtin_skills_dir) :
-        skills
+                 discover_skills(workspace; builtin_skills_dir = builtin_skills_dir) :
+                 skills
 
     names = isempty(skill_list) ? "(none)" : join((s.name for s in skill_list), ", ")
     tool = ToolDef(
-        name="read_skill",
-        description="Load the full instructions for a skill. Available skills: $(names).",
-        parameters=Dict{String,Any}(
+        name = "read_skill",
+        description = "Load the full instructions for a skill. Available skills: $(names).",
+        parameters = Dict{String,Any}(
             "type" => "object",
             "properties" => Dict{String,Any}(
                 "name" => Dict{String,Any}(
@@ -284,10 +289,10 @@ function register_read_skill_tool!(
             ),
             "required" => Any["name"],
         ),
-        execute=function(args::Dict{String,Any})
+        execute = function (args::Dict{String,Any})
             name = get(args, "name", nothing)
             name isa AbstractString || return "Error: `name` must be a string"
-            content = read_skill(workspace, String(name); builtin_skills_dir=builtin_skills_dir)
+            content = read_skill(workspace, String(name); builtin_skills_dir = builtin_skills_dir)
             if content === nothing
                 return "Error: skill '$(name)' not found. Available: $(names)."
             end
@@ -295,7 +300,7 @@ function register_read_skill_tool!(
         end,
     )
 
-    register_tool!(registry, tool; replace=replace)
+    register_tool!(registry, tool; replace = replace)
     return tool
 end
 

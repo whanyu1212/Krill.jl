@@ -7,7 +7,7 @@ function _read_file_impl(
     path isa AbstractString || return "Error: `path` must be a string"
 
     resolved = try
-        _resolve_path(String(path), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(path), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -19,7 +19,7 @@ function _read_file_impl(
         return "Error reading file: $(sprint(showerror, e))"
     end
 
-    lines = split(content, "\n"; keepempty=true)
+    lines = split(content, "\n"; keepempty = true)
     total = length(lines)
     total == 0 && return "(Empty file: $(path))"
 
@@ -65,7 +65,7 @@ function _write_file_impl(
     content isa AbstractString || return "Error: `content` must be a string"
 
     resolved = try
-        _resolve_path(String(path), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(path), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -87,14 +87,14 @@ function _edit_file_impl(
     path = get(args, "path", nothing)
     old_text = get(args, "old_text", nothing)
     new_text = get(args, "new_text", nothing)
-    replace_all = _parse_bool(get(args, "replace_all", false); default=false)
+    replace_all = _parse_bool(get(args, "replace_all", false); default = false)
 
     path isa AbstractString || return "Error: `path` must be a string"
     old_text isa AbstractString || return "Error: `old_text` must be a string"
     new_text isa AbstractString || return "Error: `new_text` must be a string"
 
     resolved = try
-        _resolve_path(String(path), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(path), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -116,8 +116,8 @@ function _edit_file_impl(
     end
 
     updated = replace_all ?
-        replace(content, needle => replacement) :
-        replace(content, needle => replacement; count=1)
+              replace(content, needle => replacement) :
+              replace(content, needle => replacement; count = 1)
 
     try
         write(resolved, updated)
@@ -136,7 +136,7 @@ function _delete_file_impl(
     path isa AbstractString || return "Error: `path` must be a string"
 
     resolved = try
-        _resolve_path(String(path), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(path), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -161,12 +161,12 @@ function _move_file_impl(
     dst isa AbstractString || return "Error: `dst` must be a string"
 
     resolved_src = try
-        _resolve_path(String(src), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(src), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
     resolved_dst = try
-        _resolve_path(String(dst), workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(String(dst), workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -175,7 +175,7 @@ function _move_file_impl(
 
     try
         mkpath(dirname(resolved_dst))
-        mv(resolved_src, resolved_dst; force=true)
+        mv(resolved_src, resolved_dst; force = true)
     catch e
         return "Error moving file: $(sprint(showerror, e))"
     end
@@ -192,7 +192,7 @@ function _search_files_impl(
 
     path = String(get(args, "path", "."))
     resolved = try
-        _resolve_path(path, workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(path, workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end
@@ -258,7 +258,7 @@ function _list_dir_impl(
     restrict_to_workspace::Bool,
 )
     path = String(get(args, "path", "."))
-    recursive = _parse_bool(get(args, "recursive", false); default=false)
+    recursive = _parse_bool(get(args, "recursive", false); default = false)
     max_entries = try
         max(1, Int(get(args, "max_entries", _DEFAULT_LIST_LIMIT)))
     catch _
@@ -266,7 +266,7 @@ function _list_dir_impl(
     end
 
     resolved = try
-        _resolve_path(path, workspace; restrict_to_workspace=restrict_to_workspace)
+        _resolve_path(path, workspace; restrict_to_workspace = restrict_to_workspace)
     catch e
         return "Error: $(sprint(showerror, e))"
     end

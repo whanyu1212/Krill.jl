@@ -15,11 +15,11 @@ function _message_tool_impl(
 
     disable_web_page_preview = _parse_bool(
         get(args, "disable_web_page_preview", false);
-        default=false,
+        default = false,
     )
 
     try
-        send_message_fn(string(chat_id), text; disable_web_page_preview=disable_web_page_preview)
+        send_message_fn(string(chat_id), text; disable_web_page_preview = disable_web_page_preview)
     catch e
         return "Error sending message: $(sprint(showerror, e))"
     end

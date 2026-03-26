@@ -42,7 +42,7 @@ mutable struct MemoryStore
     workspace::String
 end
 
-function MemoryStore(; workspace::AbstractString="workspace")
+function MemoryStore(; workspace::AbstractString = "workspace")
     return MemoryStore(String(workspace))
 end
 
@@ -59,7 +59,8 @@ end
 
 memory_path(store::MemoryStore, session_key::AbstractString) = joinpath(memory_dir(store, session_key), "MEMORY.md")
 history_path(store::MemoryStore, session_key::AbstractString) = joinpath(memory_dir(store, session_key), "HISTORY.md")
-memory_state_path(store::MemoryStore, session_key::AbstractString) = joinpath(memory_dir(store, session_key), "state.json")
+memory_state_path(store::MemoryStore, session_key::AbstractString) =
+    joinpath(memory_dir(store, session_key), "state.json")
 
 """
     load_memory(store, session_key) -> String
@@ -94,7 +95,7 @@ function append_history!(
     store::MemoryStore,
     session_key::AbstractString,
     entry::AbstractString;
-    timestamp::DateTime=now(UTC),
+    timestamp::DateTime = now(UTC),
 )
     text = strip(String(entry))
     isempty(text) && return nothing

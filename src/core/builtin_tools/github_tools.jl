@@ -1,7 +1,7 @@
 const _GITHUB_TIMEOUT_S = 30.0
 const _MAX_GITHUB_OUTPUT_CHARS = 10_000
 
-function _github_impl(args::Dict{String,Any}; timeout_s::Float64=_GITHUB_TIMEOUT_S)
+function _github_impl(args::Dict{String,Any}; timeout_s::Float64 = _GITHUB_TIMEOUT_S)
     command = get(args, "command", nothing)
     command isa AbstractString || return "Error: `command` must be a string"
     cmd_text = strip(String(command))
@@ -19,7 +19,7 @@ function _github_impl(args::Dict{String,Any}; timeout_s::Float64=_GITHUB_TIMEOUT
     out_pipe = Pipe()
     err_pipe = Pipe()
     proc = try
-        run(pipeline(shell_cmd; stdout=out_pipe, stderr=err_pipe); wait=false)
+        run(pipeline(shell_cmd; stdout = out_pipe, stderr = err_pipe); wait = false)
     catch e
         return "Error executing gh: $(sprint(showerror, e))"
     end
@@ -27,12 +27,24 @@ function _github_impl(args::Dict{String,Any}; timeout_s::Float64=_GITHUB_TIMEOUT
     close(out_pipe.in)
     close(err_pipe.in)
 
-    out_task = @async try; String(read(out_pipe)); catch _; ""; end
-    err_task = @async try; String(read(err_pipe)); catch _; ""; end
+    out_task = @async try
+        ; String(read(out_pipe));
+    catch _
+        ; "";
+    end
+    err_task = @async try
+        ; String(read(err_pipe));
+    catch _
+        ; "";
+    end
 
-    wait_status = timedwait(() -> !process_running(proc), timeout_s; pollint=0.05)
+    wait_status = timedwait(() -> !process_running(proc), timeout_s; pollint = 0.05)
     if wait_status == :timed_out
-        try; kill(proc); catch _; end
+        try
+            ; kill(proc);
+        catch _
+            ;
+        end
         return "Error: gh command timed out after $(timeout_s)s"
     end
 

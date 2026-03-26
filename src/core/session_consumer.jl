@@ -124,11 +124,11 @@ end
 
 function _publish_command_reply!(hub::MessageHubState, msg::InboundMessage, reply::AbstractString)
     reply_msg = OutboundMessage(
-        channel=msg.channel,
-        session_key=msg.session_key,
-        chat_id=msg.chat_id,
-        text=String(reply),
-        correlation_id=msg.message_id,
+        channel = msg.channel,
+        session_key = msg.session_key,
+        chat_id = msg.chat_id,
+        text = String(reply),
+        correlation_id = msg.message_id,
     )
     publish_outbound!(hub, reply_msg)
     return nothing
@@ -153,7 +153,7 @@ function _handle_slash_command!(
     msg::InboundMessage,
     command::AbstractString,
     session_tasks::Dict{String,Task};
-    cancel_scope::Union{Nothing,SessionCancelScope}=nothing,
+    cancel_scope::Union{Nothing,SessionCancelScope} = nothing,
 )
     if command == _SLASH_HELP
         help_text = _format_help_text(store, msg.session_key)
@@ -216,11 +216,11 @@ Drains remaining inbound messages sequentially on shutdown.
 function run_session_loop!(
     hub::MessageHubState,
     running::Ref{Bool};
-    store::SessionStore=SessionStore(),
-    processor::Function=echo_processor,
-    before_process::Union{Nothing,Function}=nothing,
-    after_process::Union{Nothing,Function}=nothing,
-    cancel_scope::Union{Nothing,SessionCancelScope}=nothing,
+    store::SessionStore = SessionStore(),
+    processor::Function = echo_processor,
+    before_process::Union{Nothing,Function} = nothing,
+    after_process::Union{Nothing,Function} = nothing,
+    cancel_scope::Union{Nothing,SessionCancelScope} = nothing,
 )
     # Track the last spawned task per session to enforce FIFO ordering
     session_tasks = Dict{String,Task}()
@@ -237,7 +237,7 @@ function run_session_loop!(
         if command !== nothing
             lock(session_tasks_lock) do
                 _handle_slash_command!(hub, store, msg, command, session_tasks;
-                    cancel_scope=resolved_cancel_scope)
+                    cancel_scope = resolved_cancel_scope)
             end
             continue
         end
@@ -321,7 +321,11 @@ function _process_message!(
         history = load_history(store, session_key)
 
         user_text = message_text(msg)
-        @info "message received" session_key=session_key chat_id=msg.chat_id chars=length(user_text) source=get(msg.metadata, "source", "user")
+        @info "message received" session_key=session_key chat_id=msg.chat_id chars=length(user_text) source=get(
+            msg.metadata,
+            "source",
+            "user",
+        )
 
         user_turn = TurnRecord(
             :user,
@@ -335,7 +339,10 @@ function _process_message!(
             try
                 before_process(msg, history)
             catch e
-                @warn "before_process hook failed" session_key=session_key message_id=msg.message_id exception=(e, catch_backtrace())
+                @warn "before_process hook failed" session_key=session_key message_id=msg.message_id exception=(
+                    e,
+                    catch_backtrace(),
+                )
             end
         end
 
@@ -383,13 +390,13 @@ function _process_message!(
         end
 
         reply = OutboundMessage(
-            channel=msg.channel,
-            session_key=session_key,
-            chat_id=msg.chat_id,
-            text=reply_text,
-            format=reply_format,
-            correlation_id=msg.message_id,
-            metadata=assistant_metadata,
+            channel = msg.channel,
+            session_key = session_key,
+            chat_id = msg.chat_id,
+            text = reply_text,
+            format = reply_format,
+            correlation_id = msg.message_id,
+            metadata = assistant_metadata,
         )
 
         assistant_turn = TurnRecord(
@@ -408,7 +415,11 @@ function _process_message!(
 
         usage = get(assistant_metadata, "usage", nothing)
         if usage !== nothing
-            @info "response sent" session_key=session_key chars=length(reply_text) input_tokens=get(usage, "input_tokens", 0) output_tokens=get(usage, "output_tokens", 0)
+            @info "response sent" session_key=session_key chars=length(reply_text) input_tokens=get(
+                usage,
+                "input_tokens",
+                0,
+            ) output_tokens=get(usage, "output_tokens", 0)
         else
             @info "response sent" session_key=session_key chars=length(reply_text)
         end
@@ -419,7 +430,10 @@ function _process_message!(
             try
                 after_process(msg, history)
             catch e
-                @warn "after_process hook failed" session_key=session_key message_id=msg.message_id exception=(e, catch_backtrace())
+                @warn "after_process hook failed" session_key=session_key message_id=msg.message_id exception=(
+                    e,
+                    catch_backtrace(),
+                )
             end
         end
     end

@@ -9,22 +9,22 @@ using JSON3
 # Helpers
 # ============================================================================
 
-function make_test_inbound(; text="hello", chat_id="42", channel=:telegram)
+function make_test_inbound(; text = "hello", chat_id = "42", channel = :telegram)
     return InboundMessage(
-        channel=channel,
-        session_key="$(channel):$(chat_id)",
-        user_id="100",
-        chat_id=chat_id,
-        text=text,
+        channel = channel,
+        session_key = "$(channel):$(chat_id)",
+        user_id = "100",
+        chat_id = chat_id,
+        text = text,
     )
 end
 
-function make_test_outbound(; text="reply", chat_id="42", channel=:telegram)
+function make_test_outbound(; text = "reply", chat_id = "42", channel = :telegram)
     return OutboundMessage(
-        channel=channel,
-        session_key="$(channel):$(chat_id)",
-        chat_id=chat_id,
-        text=text,
+        channel = channel,
+        session_key = "$(channel):$(chat_id)",
+        chat_id = chat_id,
+        text = text,
     )
 end
 
@@ -33,11 +33,10 @@ end
 # ============================================================================
 
 @testset "DurableQueue" begin
-
     @testset "constructor creates WAL directory" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "subdir", "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
             @test isdir(dirname(wal_path))
             @test dq.enqueued_count == 0
             @test dq.acked_count == 0
@@ -48,8 +47,8 @@ end
     @testset "enqueue! persists inbound message" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
-            msg = make_test_inbound(text="test message")
+            dq = DurableQueueState(wal_path = wal_path)
+            msg = make_test_inbound(text = "test message")
             mid = enqueue!(dq, msg)
             @test mid == msg.message_id
             @test dq.enqueued_count == 1
@@ -69,8 +68,8 @@ end
     @testset "enqueue! persists outbound message" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
-            msg = make_test_outbound(text="response")
+            dq = DurableQueueState(wal_path = wal_path)
+            msg = make_test_outbound(text = "response")
             enqueue!(dq, msg)
             @test dq.enqueued_count == 1
 
@@ -84,7 +83,7 @@ end
     @testset "ack! records acknowledgement" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
             msg = make_test_inbound()
             enqueue!(dq, msg)
             ack!(dq, msg.message_id)
@@ -102,11 +101,11 @@ end
     @testset "replay returns unacked messages" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            msg1 = make_test_inbound(text="first")
-            msg2 = make_test_inbound(text="second")
-            msg3 = make_test_outbound(text="third")
+            msg1 = make_test_inbound(text = "first")
+            msg2 = make_test_inbound(text = "second")
+            msg3 = make_test_outbound(text = "third")
 
             enqueue!(dq, msg1)
             enqueue!(dq, msg2)
@@ -124,7 +123,7 @@ end
     @testset "replay on empty WAL returns empty" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
             result = replay(dq)
             @test isempty(result.inbound)
             @test isempty(result.outbound)
@@ -134,7 +133,7 @@ end
     @testset "replay on nonexistent WAL returns empty" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "nonexistent.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
             result = replay(dq)
             @test isempty(result.inbound)
             @test isempty(result.outbound)
@@ -144,9 +143,9 @@ end
     @testset "replay preserves message fields" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            msg = make_test_inbound(text="preserve me", chat_id="99", channel=:telegram)
+            msg = make_test_inbound(text = "preserve me", chat_id = "99", channel = :telegram)
             enqueue!(dq, msg)
 
             result = replay(dq)
@@ -162,15 +161,15 @@ end
     @testset "replay preserves outbound delivery policy" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            policy = DeliveryPolicy(max_retries=5, timeout_ms=10_000, priority=2, drop_if_late=true)
+            policy = DeliveryPolicy(max_retries = 5, timeout_ms = 10_000, priority = 2, drop_if_late = true)
             msg = OutboundMessage(
-                channel=:telegram,
-                session_key="telegram:42",
-                chat_id="42",
-                text="with policy",
-                delivery_policy=policy,
+                channel = :telegram,
+                session_key = "telegram:42",
+                chat_id = "42",
+                text = "with policy",
+                delivery_policy = policy,
             )
             enqueue!(dq, msg)
 
@@ -186,9 +185,9 @@ end
     @testset "replay deduplicates re-enqueued messages" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            msg = make_test_inbound(text="dedup me")
+            msg = make_test_inbound(text = "dedup me")
             enqueue!(dq, msg)
             enqueue!(dq, msg)  # same message_id
 
@@ -200,9 +199,9 @@ end
     @testset "replay preserves insertion order" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            msgs = [make_test_inbound(text="msg$i") for i in 1:5]
+            msgs = [make_test_inbound(text = "msg$i") for i in 1:5]
             for m in msgs
                 enqueue!(dq, m)
             end
@@ -219,10 +218,10 @@ end
     @testset "compact! removes acked entries" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
-            msg1 = make_test_inbound(text="keep")
-            msg2 = make_test_inbound(text="remove")
+            msg1 = make_test_inbound(text = "keep")
+            msg2 = make_test_inbound(text = "remove")
             enqueue!(dq, msg1)
             enqueue!(dq, msg2)
             ack!(dq, msg2.message_id)
@@ -241,7 +240,7 @@ end
     @testset "compact! handles all-acked WAL" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
             msg = make_test_inbound()
             enqueue!(dq, msg)
@@ -257,10 +256,10 @@ end
     @testset "auto-compaction on threshold" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path, auto_compact_threshold=6)
+            dq = DurableQueueState(wal_path = wal_path, auto_compact_threshold = 6)
 
             # Enqueue 3, ack 3 = 6 lines -> triggers auto-compact
-            msgs = [make_test_inbound(text="msg$i") for i in 1:3]
+            msgs = [make_test_inbound(text = "msg$i") for i in 1:3]
             for m in msgs
                 enqueue!(dq, m)
             end
@@ -279,7 +278,7 @@ end
     @testset "queue_stats returns correct values" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
             msg1 = make_test_inbound()
             msg2 = make_test_inbound()
@@ -298,13 +297,13 @@ end
     @testset "fresh DurableQueueState counts existing lines" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq1 = DurableQueueState(wal_path=wal_path)
+            dq1 = DurableQueueState(wal_path = wal_path)
             msg = make_test_inbound()
             enqueue!(dq1, msg)
             @test dq1.wal_lines == 1
 
             # Create fresh state pointing to same WAL
-            dq2 = DurableQueueState(wal_path=wal_path)
+            dq2 = DurableQueueState(wal_path = wal_path)
             @test dq2.wal_lines == 1
         end
     end
@@ -314,13 +313,13 @@ end
             wal_path = joinpath(dir, "queue.wal")
 
             # "Process 1" enqueues but crashes before acking
-            dq1 = DurableQueueState(wal_path=wal_path)
-            msg = make_test_inbound(text="important")
+            dq1 = DurableQueueState(wal_path = wal_path)
+            msg = make_test_inbound(text = "important")
             enqueue!(dq1, msg)
             # dq1 is "crashed" — no ack
 
             # "Process 2" restarts and replays
-            dq2 = DurableQueueState(wal_path=wal_path)
+            dq2 = DurableQueueState(wal_path = wal_path)
             result = replay(dq2)
             @test length(result.inbound) == 1
             @test Krill.message_text(result.inbound[1]) == "important"
@@ -335,8 +334,8 @@ end
     @testset "replay skips malformed lines" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
-            msg = make_test_inbound(text="valid")
+            dq = DurableQueueState(wal_path = wal_path)
+            msg = make_test_inbound(text = "valid")
             enqueue!(dq, msg)
 
             # Append a malformed line
@@ -354,10 +353,10 @@ end
     @testset "concurrent enqueue is safe" begin
         mktempdir() do dir
             wal_path = joinpath(dir, "queue.wal")
-            dq = DurableQueueState(wal_path=wal_path)
+            dq = DurableQueueState(wal_path = wal_path)
 
             tasks = [Threads.@spawn begin
-                msg = make_test_inbound(text="concurrent $i")
+                msg = make_test_inbound(text = "concurrent $i")
                 enqueue!(dq, msg)
             end for i in 1:20]
 
@@ -371,5 +370,4 @@ end
             @test length(result.inbound) == 20
         end
     end
-
 end

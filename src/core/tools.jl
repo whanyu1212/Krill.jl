@@ -37,10 +37,10 @@ function ToolDef(;
     name::AbstractString,
     parameters::Dict{String,Any},
     execute::Function,
-    description::Union{Nothing,AbstractString}=nothing,
-    return_direct::Bool=false,
-    max_output_chars::Int=0,
-    strict::Union{Nothing,Bool}=nothing,
+    description::Union{Nothing,AbstractString} = nothing,
+    return_direct::Bool = false,
+    max_output_chars::Int = 0,
+    strict::Union{Nothing,Bool} = nothing,
 )
     isempty(strip(String(name))) && throw(ArgumentError("tool name must not be empty"))
     max_output_chars < 0 && throw(ArgumentError("max_output_chars must be >= 0"))
@@ -100,7 +100,7 @@ function Base.showerror(io::IO, err::ToolExecutionError)
     print(io, "Tool execution failed (", err.tool_name, "): ", sprint(showerror, err.error))
 end
 
-function register_tool!(registry::ToolRegistry, tool::ToolDef; replace::Bool=false)
+function register_tool!(registry::ToolRegistry, tool::ToolDef; replace::Bool = false)
     if haskey(registry.tools, tool.name) && !replace
         throw(ArgumentError("tool already registered: $(tool.name)"))
     end
@@ -138,7 +138,8 @@ tools_schema(registry::ToolRegistry) = tools_schema(collect(values(registry.tool
 
 _schema_properties(schema::AbstractDict) = get(schema, "properties", get(schema, :properties, Dict{String,Any}()))
 _schema_required(schema::AbstractDict) = get(schema, "required", get(schema, :required, String[]))
-_schema_additional(schema::AbstractDict) = get(schema, "additionalProperties", get(schema, :additionalProperties, nothing))
+_schema_additional(schema::AbstractDict) =
+    get(schema, "additionalProperties", get(schema, :additionalProperties, nothing))
 
 function _string_key_dict(args::Dict)
     out = Dict{String,Any}()
@@ -365,7 +366,8 @@ function _schema_expr_from_type(type_expr)
     elseif type_expr isa Expr && type_expr.head == :curly
         base = type_expr.args[1]
         if base in (:Vector, :AbstractVector, :Array)
-            item_schema = length(type_expr.args) >= 2 ? _schema_expr_from_type(type_expr.args[2]) : :(Dict{String,Any}())
+            item_schema =
+                length(type_expr.args) >= 2 ? _schema_expr_from_type(type_expr.args[2]) : :(Dict{String,Any}())
             return :(Dict{String,Any}("type" => "array", "items" => $item_schema))
         elseif base in (:Dict, :AbstractDict)
             return :(Dict{String,Any}("type" => "object"))
@@ -425,7 +427,7 @@ function _parse_macro_arg(arg)
     end
 
     name isa Symbol || error("@tool could not parse argument: $(arg)")
-    return (name=name, type_expr=type_expr, has_default=has_default, default_expr=default_expr)
+    return (name = name, type_expr = type_expr, has_default = has_default, default_expr = default_expr)
 end
 
 """
@@ -494,13 +496,13 @@ macro tool(args...)
         end
 
         $(esc(tool_var)) = ToolDef(
-            name=$(string(bare_name)),
-            parameters=_params,
-            execute=_execute,
-            description=$docs_expr,
-            return_direct=$(esc(return_direct_expr)),
-            max_output_chars=$(esc(max_output_chars_expr)),
-            strict=$(esc(strict_expr)),
+            name = $(string(bare_name)),
+            parameters = _params,
+            execute = _execute,
+            description = $docs_expr,
+            return_direct = $(esc(return_direct_expr)),
+            max_output_chars = $(esc(max_output_chars_expr)),
+            strict = $(esc(strict_expr)),
         )
     end
 

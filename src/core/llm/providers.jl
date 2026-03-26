@@ -72,12 +72,12 @@ struct GeminiOpenAICompatProvider <: AbstractLLMProvider
 end
 
 function GeminiProvider(;
-    api_key::AbstractString=get(ENV, "GEMINI_API_KEY", ""),
-    base_url::AbstractString="https://generativelanguage.googleapis.com/v1beta",
-    model::AbstractString="gemini-3-flash-preview",
-    request::Function=HTTP.request,
-    max_retries::Int=3,
-    retry_base_seconds::Real=0.5,
+    api_key::AbstractString = get(ENV, "GEMINI_API_KEY", ""),
+    base_url::AbstractString = "https://generativelanguage.googleapis.com/v1beta",
+    model::AbstractString = "gemini-3-flash-preview",
+    request::Function = HTTP.request,
+    max_retries::Int = 3,
+    retry_base_seconds::Real = 0.5,
 )
     isempty(api_key) && throw(ArgumentError("Missing GEMINI_API_KEY (or pass api_key explicitly)"))
     max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
@@ -93,13 +93,13 @@ function GeminiProvider(;
 end
 
 function GeminiOpenAICompatProvider(;
-    api_key::AbstractString=get(ENV, "GEMINI_API_KEY", ""),
-    base_url::AbstractString="https://generativelanguage.googleapis.com/v1beta/openai",
-    model::AbstractString="gemini-3-flash-preview",
-    request::Function=HTTP.request,
-    max_retries::Int=3,
-    retry_base_seconds::Real=0.5,
-    extra_body::Union{Nothing,Dict{String,Any}}=nothing,
+    api_key::AbstractString = get(ENV, "GEMINI_API_KEY", ""),
+    base_url::AbstractString = "https://generativelanguage.googleapis.com/v1beta/openai",
+    model::AbstractString = "gemini-3-flash-preview",
+    request::Function = HTTP.request,
+    max_retries::Int = 3,
+    retry_base_seconds::Real = 0.5,
+    extra_body::Union{Nothing,Dict{String,Any}} = nothing,
 )
     isempty(api_key) && throw(ArgumentError("Missing GEMINI_API_KEY (or pass api_key explicitly)"))
     max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))
@@ -116,12 +116,12 @@ function GeminiOpenAICompatProvider(;
 end
 
 function OpenAIProvider(;
-    api_key::AbstractString=get(ENV, "OPENAI_API_KEY", ""),
-    base_url::AbstractString="https://api.openai.com/v1",
-    model::AbstractString="gpt-5.4-mini",
-    request::Function=HTTP.request,
-    max_retries::Int=3,
-    retry_base_seconds::Real=0.5,
+    api_key::AbstractString = get(ENV, "OPENAI_API_KEY", ""),
+    base_url::AbstractString = "https://api.openai.com/v1",
+    model::AbstractString = "gpt-5.4-mini",
+    request::Function = HTTP.request,
+    max_retries::Int = 3,
+    retry_base_seconds::Real = 0.5,
 )
     isempty(api_key) && throw(ArgumentError("Missing OPENAI_API_KEY (or pass api_key explicitly)"))
     max_retries < 0 && throw(ArgumentError("max_retries must be >= 0"))

@@ -1,49 +1,49 @@
 if !KRILL_FAST_TESTS
     @testset "Krill.jl end-to-end integration" begin
         @testset "Telegram update flows through hub to sender" begin
-        # 1. Simulate a raw Telegram update
-        raw_update = Dict{Symbol,Any}(
-            :update_id => 200,
-            :message => Dict{Symbol,Any}(
-                :message_id => 50,
-                :text => "ping",
-                :chat => Dict{Symbol,Any}(:id => 7777),
-                :from => Dict{Symbol,Any}(:id => 7777),
-            ),
-        )
+            # 1. Simulate a raw Telegram update
+            raw_update = Dict{Symbol,Any}(
+                :update_id => 200,
+                :message => Dict{Symbol,Any}(
+                    :message_id => 50,
+                    :text => "ping",
+                    :chat => Dict{Symbol,Any}(:id => 7777),
+                    :from => Dict{Symbol,Any}(:id => 7777),
+                ),
+            )
 
-        # 2. Normalize to InboundMessage
-        inbound = normalize_update(raw_update)
-        @test inbound !== nothing
-        @test message_text(inbound) == "ping"
+            # 2. Normalize to InboundMessage
+            inbound = normalize_update(raw_update)
+            @test inbound !== nothing
+            @test message_text(inbound) == "ping"
 
-        # 3. Set up hub + manager with a capturing sender
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
-        manager = ChannelManagerState(hub)
-        sent_texts = String[]
-        register_sender!(manager, :telegram, msg -> push!(sent_texts, message_text(msg)))
-        start_dispatch!(manager)
+            # 3. Set up hub + manager with a capturing sender
+            hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
+            manager = ChannelManagerState(hub)
+            sent_texts = String[]
+            register_sender!(manager, :telegram, msg -> push!(sent_texts, message_text(msg)))
+            start_dispatch!(manager)
 
-        # 4. Publish inbound, consume it, create outbound reply
-        publish_inbound!(hub, inbound)
-        received = take_inbound!(hub)
-        @test message_text(received) == "ping"
+            # 4. Publish inbound, consume it, create outbound reply
+            publish_inbound!(hub, inbound)
+            received = take_inbound!(hub)
+            @test message_text(received) == "ping"
 
-        reply = OutboundMessage(
-            channel=received.channel,
-            session_key=received.session_key,
-            chat_id=received.chat_id,
-            text="pong",
-            correlation_id=received.message_id,
-        )
-        publish_outbound!(hub, reply)
+            reply = OutboundMessage(
+                channel = received.channel,
+                session_key = received.session_key,
+                chat_id = received.chat_id,
+                text = "pong",
+                correlation_id = received.message_id,
+            )
+            publish_outbound!(hub, reply)
 
-        # 5. Wait for dispatch and verify
-        sleep(0.05)
-        stop_dispatch!(manager)
+            # 5. Wait for dispatch and verify
+            sleep(0.05)
+            stop_dispatch!(manager)
 
-        @test length(sent_texts) == 1
-        @test sent_texts[1] == "pong"
+            @test length(sent_texts) == 1
+            @test sent_texts[1] == "pong"
         end
     end
 end
@@ -54,30 +54,30 @@ end
 
 @testset "Krill.jl try_publish_inbound!/try_publish_outbound!" begin
     @testset "returns true when queue has room" begin
-        hub = MessageHubState(inbound_capacity=2, outbound_capacity=2)
+        hub = MessageHubState(inbound_capacity = 2, outbound_capacity = 2)
 
         msg = InboundMessage(
-            channel=:telegram, session_key="t:1", user_id="1", chat_id="1", text="a",
+            channel = :telegram, session_key = "t:1", user_id = "1", chat_id = "1", text = "a",
         )
         @test try_publish_inbound!(hub, msg) == true
         @test try_publish_inbound!(hub, msg) == true
     end
 
     @testset "returns false when inbound queue is full" begin
-        hub = MessageHubState(inbound_capacity=1, outbound_capacity=1)
+        hub = MessageHubState(inbound_capacity = 1, outbound_capacity = 1)
 
         msg = InboundMessage(
-            channel=:telegram, session_key="t:1", user_id="1", chat_id="1", text="a",
+            channel = :telegram, session_key = "t:1", user_id = "1", chat_id = "1", text = "a",
         )
         @test try_publish_inbound!(hub, msg) == true
         @test try_publish_inbound!(hub, msg) == false
     end
 
     @testset "returns false when outbound queue is full" begin
-        hub = MessageHubState(inbound_capacity=1, outbound_capacity=1)
+        hub = MessageHubState(inbound_capacity = 1, outbound_capacity = 1)
 
         msg = OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="a",
+            channel = :telegram, session_key = "t:1", chat_id = "1", text = "a",
         )
         @test try_publish_outbound!(hub, msg) == true
         @test try_publish_outbound!(hub, msg) == false
@@ -86,7 +86,7 @@ end
 
 @testset "Krill.jl ChannelManager non-destructive stop" begin
     @testset "hub remains usable after stop_dispatch!" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         delivered = OutboundMessage[]
@@ -98,13 +98,13 @@ end
 
         # Hub outbound channel should still be open — we can publish to it
         msg = OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="after stop",
+            channel = :telegram, session_key = "t:1", chat_id = "1", text = "after stop",
         )
         @test try_publish_outbound!(hub, msg) == true
     end
 
     @testset "manager can be restarted after stop" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         delivered = OutboundMessage[]
@@ -112,17 +112,23 @@ end
 
         # First cycle
         start_dispatch!(manager)
-        publish_outbound!(hub, OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="round1",
-        ))
+        publish_outbound!(
+            hub,
+            OutboundMessage(
+                channel = :telegram, session_key = "t:1", chat_id = "1", text = "round1",
+            ),
+        )
         sleep(0.05)
         stop_dispatch!(manager)
 
         # Second cycle
         start_dispatch!(manager)
-        publish_outbound!(hub, OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="round2",
-        ))
+        publish_outbound!(
+            hub,
+            OutboundMessage(
+                channel = :telegram, session_key = "t:1", chat_id = "1", text = "round2",
+            ),
+        )
         sleep(0.05)
         stop_dispatch!(manager)
 
@@ -132,16 +138,19 @@ end
     end
 
     @testset "drains remaining messages on stop" begin
-        hub = MessageHubState(outbound_capacity=4)
+        hub = MessageHubState(outbound_capacity = 4)
         manager = ChannelManagerState(hub)
 
         delivered = OutboundMessage[]
         register_sender!(manager, :telegram, msg -> push!(delivered, msg))
 
         # Publish before starting dispatch
-        publish_outbound!(hub, OutboundMessage(
-            channel=:telegram, session_key="t:1", chat_id="1", text="pre-queued",
-        ))
+        publish_outbound!(
+            hub,
+            OutboundMessage(
+                channel = :telegram, session_key = "t:1", chat_id = "1", text = "pre-queued",
+            ),
+        )
 
         start_dispatch!(manager)
         sleep(0.05)
@@ -156,29 +165,34 @@ end
     @testset "stops when running is set to false" begin
         call_count = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_count[] += 1
-            return HTTP.Response(200, JSON3.write(Dict(
-                "ok" => true,
-                "result" => Any[
-                    Dict("update_id" => 40 + call_count[], "message" => Dict("text" => "x")),
-                ],
-            )))
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "ok" => true,
+                        "result" => Any[
+                            Dict("update_id" => 40 + call_count[], "message" => Dict("text" => "x")),
+                        ],
+                    ),
+                ),
+            )
         end
 
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
 
         running = Ref(true)
         handler_calls = Ref(0)
         processed = Ref(0)
 
         t = Threads.@spawn begin
-            processed[] = run_polling(client, function(update)
-                handler_calls[] += 1
-                if handler_calls[] >= 2
-                    running[] = false
-                end
-            end; timeout=0, poll_interval=0.0, running=running)
+            processed[] = run_polling(client, function (update)
+                    handler_calls[] += 1
+                    if handler_calls[] >= 2
+                        running[] = false
+                    end
+                end; timeout = 0, poll_interval = 0.0, running = running)
         end
 
         wait(t)
@@ -233,10 +247,10 @@ end
 
 @testset "Krill.jl Echo consumer" begin
     @testset "echoes inbound text with correlation_id" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
 
         inbound = InboundMessage(
-            channel=:telegram, session_key="t:42", user_id="42", chat_id="42", text="echo me",
+            channel = :telegram, session_key = "t:42", user_id = "42", chat_id = "42", text = "echo me",
         )
         publish_inbound!(hub, inbound)
 
@@ -253,12 +267,15 @@ end
     end
 
     @testset "drains multiple messages" begin
-        hub = MessageHubState(inbound_capacity=4, outbound_capacity=4)
+        hub = MessageHubState(inbound_capacity = 4, outbound_capacity = 4)
 
         for i in 1:3
-            publish_inbound!(hub, InboundMessage(
-                channel=:telegram, session_key="t:1", user_id="1", chat_id="1", text="msg$i",
-            ))
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "t:1", user_id = "1", chat_id = "1", text = "msg$i",
+                ),
+            )
         end
 
         run_echo_loop!(hub, Ref(false))

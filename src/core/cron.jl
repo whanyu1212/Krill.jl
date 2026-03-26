@@ -42,7 +42,7 @@ struct CronSchedule
     day_of_week::Vector{Int}  # 0=Sunday, 1=Monday, ..., 6=Saturday
 end
 
-const Schedule = Union{AtSchedule, IntervalSchedule, CronSchedule}
+const Schedule = Union{AtSchedule,IntervalSchedule,CronSchedule}
 
 """Parse a cron field into a sorted vector of matching integers."""
 function _parse_cron_field(field::AbstractString, min_val::Int, max_val::Int)::Vector{Int}
@@ -56,7 +56,7 @@ function _parse_cron_field(field::AbstractString, min_val::Int, max_val::Int)::V
             step > 0 || throw(ArgumentError("Invalid cron step: $part"))
             union!(results, min_val:step:max_val)
         elseif occursin('-', part)
-            lo, hi = split(part, '-'; limit=2)
+            lo, hi = split(part, '-'; limit = 2)
             lo_val = parse(Int, lo)
             hi_val = parse(Int, hi)
             min_val <= lo_val <= max_val || throw(ArgumentError("Cron range out of bounds: $part"))
@@ -75,10 +75,10 @@ end
 function parse_cron(expr::AbstractString)::CronSchedule
     fields = split(strip(expr))
     length(fields) == 5 || throw(ArgumentError("Cron expression must have 5 fields, got $(length(fields)): \"$expr\""))
-    minute      = _parse_cron_field(fields[1], 0, 59)
-    hour        = _parse_cron_field(fields[2], 0, 23)
+    minute = _parse_cron_field(fields[1], 0, 59)
+    hour = _parse_cron_field(fields[2], 0, 23)
     day_of_month = _parse_cron_field(fields[3], 1, 31)
-    month       = _parse_cron_field(fields[4], 1, 12)
+    month = _parse_cron_field(fields[4], 1, 12)
     day_of_week = _parse_cron_field(fields[5], 0, 6)
     return CronSchedule(expr, minute, hour, day_of_month, month, day_of_week)
 end
@@ -102,11 +102,11 @@ end
 function _parse_interval(s::AbstractString)::Float64
     s = strip(s)
     if endswith(s, 's')
-        return parse(Float64, s[1:end-1])
+        return parse(Float64, s[1:(end - 1)])
     elseif endswith(s, 'm')
-        return parse(Float64, s[1:end-1]) * 60.0
+        return parse(Float64, s[1:(end - 1)]) * 60.0
     elseif endswith(s, 'h')
-        return parse(Float64, s[1:end-1]) * 3600.0
+        return parse(Float64, s[1:(end - 1)]) * 3600.0
     else
         return parse(Float64, s)
     end
@@ -148,8 +148,8 @@ function CronJob(;
     channel::Symbol,
     session_key::AbstractString,
     chat_id::AbstractString,
-    from_cron::Bool=false,
-    once::Bool=false,
+    from_cron::Bool = false,
+    once::Bool = false,
 )
     from_cron && throw(ArgumentError("Cannot schedule cron jobs from within a cron execution"))
     return CronJob(
@@ -160,7 +160,7 @@ function CronJob(;
     )
 end
 
-function _record_execution!(job::CronJob, success::Bool; error_message::Union{Nothing,String}=nothing)
+function _record_execution!(job::CronJob, success::Bool; error_message::Union{Nothing,String} = nothing)
     push!(job.history, JobExecution(now(UTC), success, error_message))
     while length(job.history) > _MAX_HISTORY_ENTRIES
         popfirst!(job.history)
@@ -196,11 +196,12 @@ function _schedule_is_due(sched::CronSchedule, now_utc::DateTime, last_fired::Un
     mon = Dates.month(now_utc)
     dow = Dates.dayofweek(now_utc) % 7  # Julia: Mon=1..Sun=7 → 0=Sun,1=Mon..6=Sat
 
-    matches = (m in sched.minute) &&
-              (h in sched.hour) &&
-              (dom in sched.day_of_month) &&
-              (mon in sched.month) &&
-              (dow in sched.day_of_week)
+    matches =
+        (m in sched.minute) &&
+        (h in sched.hour) &&
+        (dom in sched.day_of_month) &&
+        (mon in sched.month) &&
+        (dow in sched.day_of_week)
     matches || return false
 
     # Don't fire twice in the same minute
@@ -235,9 +236,9 @@ mutable struct CronService
 end
 
 function CronService(;
-    workspace::AbstractString="workspace",
-    tick_interval_s::Float64=15.0,
-    publish_fn::Union{Nothing,Function}=nothing,
+    workspace::AbstractString = "workspace",
+    tick_interval_s::Float64 = 15.0,
+    publish_fn::Union{Nothing,Function} = nothing,
 )
     tick_interval_s > 0 || throw(ArgumentError("tick_interval_s must be > 0"))
     jobs_path = joinpath(workspace, "cron", "jobs.json")
@@ -311,22 +312,26 @@ function _job_to_dict(job::CronJob)
         "session_key" => job.session_key,
         "chat_id" => job.chat_id,
         "created_at" => Dates.format(job.created_at, dateformat"yyyy-mm-ddTHH:MM:SS"),
-        "last_fired_at" => job.last_fired_at === nothing ? nothing : Dates.format(job.last_fired_at, dateformat"yyyy-mm-ddTHH:MM:SS"),
+        "last_fired_at" =>
+            job.last_fired_at === nothing ? nothing : Dates.format(job.last_fired_at, dateformat"yyyy-mm-ddTHH:MM:SS"),
         "fire_count" => job.fire_count,
         "enabled" => job.enabled,
         "once" => job.once,
-        "history" => [Dict{String,Any}(
-            "started_at" => Dates.format(h.started_at, dateformat"yyyy-mm-ddTHH:MM:SS"),
-            "success" => h.success,
-            "error_message" => h.error_message,
-        ) for h in job.history],
+        "history" => [
+            Dict{String,Any}(
+                "started_at" => Dates.format(h.started_at, dateformat"yyyy-mm-ddTHH:MM:SS"),
+                "success" => h.success,
+                "error_message" => h.error_message,
+            ) for h in job.history
+        ],
     )
 end
 
 function _dict_to_job(d::AbstractDict)
     sched_d = d["schedule"]
     schedule = parse_schedule(sched_d["type"], sched_d["value"])
-    last_fired = d["last_fired_at"] === nothing ? nothing : DateTime(d["last_fired_at"], dateformat"yyyy-mm-ddTHH:MM:SS")
+    last_fired =
+        d["last_fired_at"] === nothing ? nothing : DateTime(d["last_fired_at"], dateformat"yyyy-mm-ddTHH:MM:SS")
     history = JobExecution[
         JobExecution(
             DateTime(h["started_at"], dateformat"yyyy-mm-ddTHH:MM:SS"),
@@ -467,15 +472,15 @@ function _parse_value(s, pos)
     elseif c == '['
         return _parse_array(s, pos)
     elseif c == 't'
-        s[pos[]:pos[]+3] == "true" || error("Invalid JSON at $(pos[])")
+        s[pos[]:(pos[] + 3)] == "true" || error("Invalid JSON at $(pos[])")
         pos[] += 4
         return true
     elseif c == 'f'
-        s[pos[]:pos[]+4] == "false" || error("Invalid JSON at $(pos[])")
+        s[pos[]:(pos[] + 4)] == "false" || error("Invalid JSON at $(pos[])")
         pos[] += 5
         return false
     elseif c == 'n'
-        s[pos[]:pos[]+3] == "null" || error("Invalid JSON at $(pos[])")
+        s[pos[]:(pos[] + 3)] == "null" || error("Invalid JSON at $(pos[])")
         pos[] += 4
         return nothing
     elseif c == '-' || isdigit(c)
@@ -497,13 +502,26 @@ function _parse_string(s, pos)
             pos[] += 1
             pos[] > length(s) && error("Unexpected end of string escape")
             esc = s[pos[]]
-            if esc == '"'; write(buf, '"')
-            elseif esc == '\\'; write(buf, '\\')
-            elseif esc == 'n'; write(buf, '\n')
-            elseif esc == 'r'; write(buf, '\r')
-            elseif esc == 't'; write(buf, '\t')
-            elseif esc == '/'; write(buf, '/')
-            else write(buf, esc)
+            if esc == '"'
+                ;
+                write(buf, '"')
+            elseif esc == '\\'
+                ;
+                write(buf, '\\')
+            elseif esc == 'n'
+                ;
+                write(buf, '\n')
+            elseif esc == 'r'
+                ;
+                write(buf, '\r')
+            elseif esc == 't'
+                ;
+                write(buf, '\t')
+            elseif esc == '/'
+                ;
+                write(buf, '/')
+            else
+                write(buf, esc)
             end
         else
             write(buf, c)
@@ -521,7 +539,7 @@ function _parse_number(s, pos)
     while pos[] <= length(s) && (isdigit(s[pos[]]) || s[pos[]] == '.' || s[pos[]] in ('e', 'E', '+', '-'))
         pos[] += 1
     end
-    num_str = s[start:pos[]-1]
+    num_str = s[start:(pos[] - 1)]
     if occursin('.', num_str) || occursin('e', num_str) || occursin('E', num_str)
         return parse(Float64, num_str)
     else
@@ -653,12 +671,12 @@ _schedule_summary(s::CronSchedule) = "cron '$(s.expression)'"
 function _fire_job!(svc::CronService, job::CronJob, now_utc::DateTime)
     @info "cron job firing" label=job.label schedule=_schedule_summary(job.schedule) fire_count=job.fire_count+1
     msg = InboundMessage(
-        channel=job.channel,
-        session_key=job.session_key,
-        user_id="cron",
-        chat_id=job.chat_id,
-        text=job.prompt,
-        metadata=Dict{String,Any}(
+        channel = job.channel,
+        session_key = job.session_key,
+        user_id = "cron",
+        chat_id = job.chat_id,
+        text = job.prompt,
+        metadata = Dict{String,Any}(
             "source" => "cron",
             "job_id" => string(job.id),
             "job_label" => job.label,
@@ -677,7 +695,7 @@ function _fire_job!(svc::CronService, job::CronJob, now_utc::DateTime)
         job.fire_count += 1
         job.once && (job.enabled = false)
         error_msg = success ? nothing : "publish_fn returned false (queue full?)"
-        _record_execution!(job, success; error_message=error_msg)
+        _record_execution!(job, success; error_message = error_msg)
     end
 end
 

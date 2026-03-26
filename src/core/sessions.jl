@@ -53,7 +53,7 @@ mutable struct SessionStore
     lock_map_lock::ReentrantLock
 end
 
-function SessionStore(; workspace::AbstractString="workspace")
+function SessionStore(; workspace::AbstractString = "workspace")
     return SessionStore(String(workspace), Dict{String,ReentrantLock}(), ReentrantLock())
 end
 
@@ -179,7 +179,7 @@ function clear_session!(store::SessionStore, session_key::AbstractString)
     dir = session_dir(store, String(session_key))
     isdir(dir) || return nothing
     try
-        rm(dir; recursive=true, force=true)
+        rm(dir; recursive = true, force = true)
     catch _
         # Ignore cleanup failures; callers can retry.
     end

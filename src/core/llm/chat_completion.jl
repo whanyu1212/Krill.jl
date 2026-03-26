@@ -26,20 +26,20 @@ Reference: https://platform.openai.com/docs/api-reference/responses
 function chat_completion(
     provider::OpenAIProvider,
     input;
-    model::Union{Nothing,AbstractString}=nothing,
-    instructions::Union{Nothing,AbstractString}=nothing,
-    reasoning=nothing,
-    tools=nothing,
-    tool_choice=nothing,
-    include=nothing,
-    max_output_tokens::Union{Nothing,Integer}=nothing,
-    temperature::Union{Nothing,Real}=nothing,
-    top_p::Union{Nothing,Real}=nothing,
-    stream::Bool=false,
-    parallel_tool_calls::Union{Nothing,Bool}=nothing,
-    metadata::Union{Nothing,Dict{String,Any}}=nothing,
-    previous_response_id::Union{Nothing,AbstractString}=nothing,
-    retry_config=nothing,
+    model::Union{Nothing,AbstractString} = nothing,
+    instructions::Union{Nothing,AbstractString} = nothing,
+    reasoning = nothing,
+    tools = nothing,
+    tool_choice = nothing,
+    include = nothing,
+    max_output_tokens::Union{Nothing,Integer} = nothing,
+    temperature::Union{Nothing,Real} = nothing,
+    top_p::Union{Nothing,Real} = nothing,
+    stream::Bool = false,
+    parallel_tool_calls::Union{Nothing,Bool} = nothing,
+    metadata::Union{Nothing,Dict{String,Any}} = nothing,
+    previous_response_id::Union{Nothing,AbstractString} = nothing,
+    retry_config = nothing,
 )
     payload = Dict{String,Any}(
         "model" => isnothing(model) ? provider.model : String(model),
@@ -65,7 +65,7 @@ function chat_completion(
         payload["stream"] = true
     end
 
-    body = _post_responses(provider, payload; retry_config=retry_config)
+    body = _post_responses(provider, payload; retry_config = retry_config)
     parsed = try
         JSON3.read(body)
     catch e
@@ -82,20 +82,20 @@ end
 function chat_completion(
     provider::GeminiProvider,
     input;
-    model::Union{Nothing,AbstractString}=nothing,
-    instructions::Union{Nothing,AbstractString}=nothing,
-    reasoning=nothing,
-    tools=nothing,
-    tool_choice=nothing,
-    include=nothing,
-    max_output_tokens::Union{Nothing,Integer}=nothing,
-    temperature::Union{Nothing,Real}=nothing,
-    top_p::Union{Nothing,Real}=nothing,
-    stream::Bool=false,
-    parallel_tool_calls::Union{Nothing,Bool}=nothing,
-    metadata::Union{Nothing,Dict{String,Any}}=nothing,
-    previous_response_id::Union{Nothing,AbstractString}=nothing,
-    retry_config=nothing,
+    model::Union{Nothing,AbstractString} = nothing,
+    instructions::Union{Nothing,AbstractString} = nothing,
+    reasoning = nothing,
+    tools = nothing,
+    tool_choice = nothing,
+    include = nothing,
+    max_output_tokens::Union{Nothing,Integer} = nothing,
+    temperature::Union{Nothing,Real} = nothing,
+    top_p::Union{Nothing,Real} = nothing,
+    stream::Bool = false,
+    parallel_tool_calls::Union{Nothing,Bool} = nothing,
+    metadata::Union{Nothing,Dict{String,Any}} = nothing,
+    previous_response_id::Union{Nothing,AbstractString} = nothing,
+    retry_config = nothing,
 )
     include === nothing || @debug "Gemini native API ignores `include` field"
     parallel_tool_calls === nothing || @debug "Gemini native API ignores `parallel_tool_calls` field"
@@ -107,9 +107,9 @@ function chat_completion(
     contents = if input isa AbstractString
         Any[
             Dict{String,Any}(
-                "role" => "user",
-                "parts" => Any[Dict{String,Any}("text" => String(input))],
-            ),
+            "role" => "user",
+            "parts" => Any[Dict{String,Any}("text" => String(input))],
+        ),
         ]
     else
         _responses_messages_to_gemini_contents(Vector{Any}(input))
@@ -140,24 +140,36 @@ function chat_completion(
         _thinking_config_for_gemini(reasoning),
         tools,
     )
-    _maybe_add!(payload, "generationConfig", _gemini_generation_config(
-        max_output_tokens=max_output_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        thinking_config=thinking_config,
-    ))
+    _maybe_add!(
+        payload,
+        "generationConfig",
+        _gemini_generation_config(
+            max_output_tokens = max_output_tokens,
+            temperature = temperature,
+            top_p = top_p,
+            thinking_config = thinking_config,
+        ),
+    )
 
-    body = _post_generate_content(provider, effective_model, payload; retry_config=retry_config)
+    body = _post_generate_content(provider, effective_model, payload; retry_config = retry_config)
     parsed = try
         JSON3.read(body)
     catch e
-        throw(OpenAIAPIError("POST /models/$(effective_model):generateContent", "Invalid JSON response: $(sprint(showerror, e))", 0, false))
+        throw(
+            OpenAIAPIError(
+                "POST /models/$(effective_model):generateContent",
+                "Invalid JSON response: $(sprint(showerror, e))",
+                0,
+                false,
+            ),
+        )
     end
 
     text = _extract_gemini_output_text(parsed)
     usage = _extract_gemini_usage(parsed)
     tool_calls = _extract_gemini_tool_calls(parsed)
-    response_id = haskey(parsed, :responseId) ? String(parsed[:responseId]) :
+    response_id =
+        haskey(parsed, :responseId) ? String(parsed[:responseId]) :
         (haskey(parsed, :id) ? String(parsed[:id]) : nothing)
     return LLMResponse(text, usage, parsed, tool_calls, response_id)
 end
@@ -165,20 +177,20 @@ end
 function chat_completion(
     provider::GeminiOpenAICompatProvider,
     input;
-    model::Union{Nothing,AbstractString}=nothing,
-    instructions::Union{Nothing,AbstractString}=nothing,
-    reasoning=nothing,
-    tools=nothing,
-    tool_choice=nothing,
-    include=nothing,
-    max_output_tokens::Union{Nothing,Integer}=nothing,
-    temperature::Union{Nothing,Real}=nothing,
-    top_p::Union{Nothing,Real}=nothing,
-    stream::Bool=false,
-    parallel_tool_calls::Union{Nothing,Bool}=nothing,
-    metadata::Union{Nothing,Dict{String,Any}}=nothing,
-    previous_response_id::Union{Nothing,AbstractString}=nothing,
-    retry_config=nothing,
+    model::Union{Nothing,AbstractString} = nothing,
+    instructions::Union{Nothing,AbstractString} = nothing,
+    reasoning = nothing,
+    tools = nothing,
+    tool_choice = nothing,
+    include = nothing,
+    max_output_tokens::Union{Nothing,Integer} = nothing,
+    temperature::Union{Nothing,Real} = nothing,
+    top_p::Union{Nothing,Real} = nothing,
+    stream::Bool = false,
+    parallel_tool_calls::Union{Nothing,Bool} = nothing,
+    metadata::Union{Nothing,Dict{String,Any}} = nothing,
+    previous_response_id::Union{Nothing,AbstractString} = nothing,
+    retry_config = nothing,
 )
     include === nothing || @debug "Gemini OpenAI compatibility ignores `include` field for chat/completions"
     previous_response_id === nothing || @debug "Gemini OpenAI compatibility ignores `previous_response_id` field"
@@ -215,7 +227,7 @@ function chat_completion(
         payload["stream"] = true
     end
 
-    body = _post_chat_completions(provider, payload; retry_config=retry_config)
+    body = _post_chat_completions(provider, payload; retry_config = retry_config)
     parsed = try
         JSON3.read(body)
     catch e

@@ -18,7 +18,7 @@ mutable struct BoundedDedup
     index::Int
 end
 
-function BoundedDedup(capacity::Int=1000)
+function BoundedDedup(capacity::Int = 1000)
     capacity > 0 || throw(ArgumentError("capacity must be > 0"))
     return BoundedDedup(capacity, Vector{Int}(undef, capacity), Set{Int}(), 0)
 end

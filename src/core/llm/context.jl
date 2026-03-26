@@ -118,9 +118,9 @@ function build_context(
     system_prompt,
     history::Vector{TurnRecord},
     current_msg::InboundMessage;
-    max_context_tokens::Int=8_000,
-    memory_text::Union{Nothing,AbstractString}=nothing,
-    history_summarizer::Union{Nothing,Function}=nothing,
+    max_context_tokens::Int = 8_000,
+    memory_text::Union{Nothing,AbstractString} = nothing,
+    history_summarizer::Union{Nothing,Function} = nothing,
 )
     max_context_tokens <= 0 && throw(ArgumentError("max_context_tokens must be > 0"))
 
@@ -174,5 +174,5 @@ function build_context(
     end
 
     push!(selected, current_message)
-    return (instructions=instructions, messages=Any[selected...])
+    return (instructions = instructions, messages = Any[selected...])
 end
