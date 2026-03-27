@@ -24,12 +24,14 @@ jobs:
       - uses: julia-actions/cache@v2
 
       - name: Install dependencies
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        run: |
+          julia --project=. -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
 
       - name: Run tests
         env:
           KRILL_FAST_TESTS: "1"
-        run: julia --project=. -e 'include("test/runtests.jl")'
+        run: julia --project=test -e 'include("test/runtests.jl")'
 
   format:
     name: Formatting
