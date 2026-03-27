@@ -26,29 +26,10 @@ jobs:
       - name: Install dependencies
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
-      - name: Run tests (with coverage)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+      - name: Run tests
         env:
           KRILL_FAST_TESTS: "1"
-        run: julia --project=. -e 'using Pkg; Pkg.test(; coverage=true)'
-
-      - name: Run tests (no coverage)
-        if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop'
-        env:
-          KRILL_FAST_TESTS: "1"
-        run: julia --project=. -e 'using Pkg; Pkg.test()'
-
-      - name: Process coverage
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-        uses: julia-actions/julia-processcoverage@v1
-
-      - name: Upload coverage
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-        uses: codecov/codecov-action@v5
-        with:
-          files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+        run: julia --project=. -e 'include("test/runtests.jl")'
 
   format:
     name: Formatting

@@ -190,7 +190,7 @@
 
         @test length(replies) >= 3
         @test message_text(replies[1]) == "first"
-        @test message_text(replies[2]) == "Session cleared. Start a new conversation."
+        @test message_text(replies[2]) == "Cleared 2 turns. Fresh session."
         @test message_text(replies[3]) == "second"
 
         history = load_history(store, "telegram:clear")
