@@ -242,7 +242,7 @@ function _execute_tool_calls(
             error = error_envelope,
             duration_ms = duration_ms,
         )
-        push!(events, (call = call_event, result = result_event))
+        push!(events, (call = call_event, result = result_event, call_id = call_id))
     end
 
     return (
@@ -279,6 +279,15 @@ function _tool_event_name(event)::String
         return event.call.tool_name
     end
     return String(get(event, "tool_name", "tool"))
+end
+
+function _tool_event_call_id(event)::Union{Nothing,String}
+    if event isa NamedTuple && hasproperty(event, :call_id)
+        id = event.call_id
+        return isempty(id) ? nothing : String(id)
+    end
+    id = get(event, "call_id", nothing)
+    return id === nothing ? nothing : String(id)
 end
 
 function _tool_events_to_text(events::Vector{Any})
@@ -392,13 +401,8 @@ function _tool_events_to_function_response_parts(events::Vector{Any})
             "name" => tool_name,
             "response" => response_payload,
         )
-        # Extract call_id from the ToolCallEvent arguments or event structure
-        if event isa NamedTuple || (event isa Any && hasproperty(event, :call))
-            # ToolCallEvent doesn't carry call_id; use event_id as fallback
-        else
-            call_id = get(event, "call_id", nothing)
-            call_id === nothing || (part["id"] = String(call_id))
-        end
+        call_id = _tool_event_call_id(event)
+        call_id === nothing || (part["id"] = call_id)
         push!(parts, part)
     end
     return parts
