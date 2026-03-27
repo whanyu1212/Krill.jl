@@ -169,19 +169,22 @@ function unregister_tool!(registry::ToolRegistry, name::AbstractString)
 end
 
 """Return the `ToolDef` for `name`, or `nothing` if not registered."""
-get_tool(registry::ToolRegistry, name::AbstractString) = lock(registry.lock) do
-    get(registry.tools, String(name), nothing)
-end
+get_tool(registry::ToolRegistry, name::AbstractString) =
+    lock(registry.lock) do
+        get(registry.tools, String(name), nothing)
+    end
 
 """Return `true` if a tool with `name` is registered."""
-has_tool(registry::ToolRegistry, name::AbstractString) = lock(registry.lock) do
-    haskey(registry.tools, String(name))
-end
+has_tool(registry::ToolRegistry, name::AbstractString) =
+    lock(registry.lock) do
+        haskey(registry.tools, String(name))
+    end
 
 """Return a list of all registered tool names."""
-tool_names(registry::ToolRegistry) = lock(registry.lock) do
-    collect(keys(registry.tools))
-end
+tool_names(registry::ToolRegistry) =
+    lock(registry.lock) do
+        collect(keys(registry.tools))
+    end
 
 """
     tools_schema(tools) -> Vector{Dict{String,Any}}
@@ -206,9 +209,10 @@ function tools_schema(tools::Vector{<:AbstractToolDef})
     end
 end
 
-tools_schema(registry::ToolRegistry) = lock(registry.lock) do
-    tools_schema(collect(values(registry.tools)))
-end
+tools_schema(registry::ToolRegistry) =
+    lock(registry.lock) do
+        tools_schema(collect(values(registry.tools)))
+    end
 
 _schema_properties(schema::AbstractDict) = get(schema, "properties", get(schema, :properties, Dict{String,Any}()))
 _schema_required(schema::AbstractDict) = get(schema, "required", get(schema, :required, String[]))

@@ -460,7 +460,8 @@ function _extract_media_parts(msg)
         is_animated = try
             Bool(get(sticker, :is_animated, false))
         catch _
-            ; false
+            ;
+            false
         end
         mime = is_animated ? "application/x-tgsticker" : "image/webp"
         push!(parts, BinaryPart(mime, nothing, nothing, file_id))

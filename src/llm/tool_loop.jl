@@ -125,7 +125,7 @@ function _execute_tool_calls(
     for call in calls
         # should_interrupt gate: stop tool loop before dispatching this call
         if hooks !== nothing &&
-            _safe_call(hooks.should_interrupt, "should_interrupt hook", false, call.name, call.arguments)
+           _safe_call(hooks.should_interrupt, "should_interrupt hook", false, call.name, call.arguments)
             interrupted = true
             break
         end
@@ -462,7 +462,8 @@ function _chat_with_tool_loop(
         return LLMResponse(
             "Stopped by user request.", response.usage, response.raw,
             LLMToolCall[], response.response_id,
-        ), tool_events
+        ),
+        tool_events
     end
 
     tool_registry === nothing && return response, tool_events
@@ -513,21 +514,24 @@ function _chat_with_tool_loop(
             return LLMResponse(
                 exec_result.return_direct_text, current.usage, current.raw,
                 LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         if _safe_call(stop_check, "stop_check callback", false)
             return LLMResponse(
                 "Stopped by user request.", current.usage, current.raw,
                 LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         if iteration >= max_tool_iterations
             return LLMResponse(
                 _tool_loop_fallback_text(current, max_tool_iterations),
                 current.usage, current.raw, LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         # OpenAI requires response_id for continuation; bail if missing
@@ -587,13 +591,16 @@ function _continue_after_tool_calls(
     provider::AbstractLLMProvider, current::LLMResponse, exec_result, messages,
     instructions, cc_kwargs,
 )
-    push!(messages, Dict{String,Any}(
-        "role" => "user",
-        "content" => Any[Dict{String,Any}(
-            "type" => "input_text",
-            "text" => _tool_events_to_text(exec_result.events),
-        )],
-    ))
+    push!(
+        messages,
+        Dict{String,Any}(
+            "role" => "user",
+            "content" => Any[Dict{String,Any}(
+                "type" => "input_text",
+                "text" => _tool_events_to_text(exec_result.events),
+            )],
+        ),
+    )
 
     return chat_completion(provider, messages; instructions = instructions, cc_kwargs...)
 end

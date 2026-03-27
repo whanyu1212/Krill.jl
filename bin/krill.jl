@@ -30,8 +30,8 @@ end
 
 config_path = let
     i = findfirst(==("--config"), ARGS)
-    (i !== nothing && i < length(ARGS)) ? ARGS[i+1] :
-        joinpath(@__DIR__, "..", "krill.toml")
+    (i !== nothing && i < length(ARGS)) ? ARGS[i + 1] :
+    joinpath(@__DIR__, "..", "krill.toml")
 end
 
 # -- Load & run --------------------------------------------------------------
@@ -40,8 +40,8 @@ end
 flush(stderr)
 
 config = try
-    load_config(config_path=config_path,
-                project_root=joinpath(@__DIR__, ".."))
+    load_config(config_path = config_path,
+        project_root = joinpath(@__DIR__, ".."))
 catch e
     @error "Failed to load config" exception=(e, catch_backtrace())
     flush(stderr)

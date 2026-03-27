@@ -246,7 +246,10 @@ function consolidate_session_memory!(
         new_failures = failures + 1
         save_memory_state!(memory_store, session_key, MemoryState(last, new_failures))
         mce = MemoryConsolidationError(session_key, sprint(showerror, err), new_failures)
-        @warn "memory consolidation LLM call failed" session_key=session_key failures=new_failures max_failures=config.max_failures exception=(err, catch_backtrace())
+        @warn "memory consolidation LLM call failed" session_key=session_key failures=new_failures max_failures=config.max_failures exception=(
+            err,
+            catch_backtrace(),
+        )
         return (
             consolidated = false,
             reason = :llm_error,

@@ -67,109 +67,147 @@ end
 # ─── File tools ──────────────────────────────────────────────────────
 
 function _register_file_tools!(defs::Vector{ToolDef}, workspace, restrict_to_workspace)
-    push!(defs, ToolDef(
-        name = "read_file",
-        description = "Read file contents with numbered lines. Use offset/limit for pagination.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "path" => Dict{String,Any}("type" => "string", "description" => "File path to read"),
-                "offset" => Dict{String,Any}("type" => "integer", "description" => "Starting line (1-indexed)"),
-                "limit" => Dict{String,Any}("type" => "integer", "description" => "Maximum lines to read"),
+    push!(
+        defs,
+        ToolDef(
+            name = "read_file",
+            description = "Read file contents with numbered lines. Use offset/limit for pagination.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "path" => Dict{String,Any}("type" => "string", "description" => "File path to read"),
+                    "offset" => Dict{String,Any}("type" => "integer", "description" => "Starting line (1-indexed)"),
+                    "limit" => Dict{String,Any}("type" => "integer", "description" => "Maximum lines to read"),
+                ),
+                "required" => Any["path"],
             ),
-            "required" => Any["path"],
+            execute = args -> _read_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _read_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "write_file",
-        description = "Write text content to a file, creating parent directories if needed.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "path" => Dict{String,Any}("type" => "string", "description" => "File path to write"),
-                "content" => Dict{String,Any}("type" => "string", "description" => "Content to write"),
+    push!(
+        defs,
+        ToolDef(
+            name = "write_file",
+            description = "Write text content to a file, creating parent directories if needed.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "path" => Dict{String,Any}("type" => "string", "description" => "File path to write"),
+                    "content" => Dict{String,Any}("type" => "string", "description" => "Content to write"),
+                ),
+                "required" => Any["path", "content"],
             ),
-            "required" => Any["path", "content"],
+            execute = args -> _write_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _write_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "edit_file",
-        description = "Replace old_text with new_text in a file.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "path" => Dict{String,Any}("type" => "string", "description" => "File path to edit"),
-                "old_text" => Dict{String,Any}("type" => "string", "description" => "Text to find"),
-                "new_text" => Dict{String,Any}("type" => "string", "description" => "Replacement text"),
-                "replace_all" => Dict{String,Any}("type" => "boolean", "description" => "Replace all matches"),
+    push!(
+        defs,
+        ToolDef(
+            name = "edit_file",
+            description = "Replace old_text with new_text in a file.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "path" => Dict{String,Any}("type" => "string", "description" => "File path to edit"),
+                    "old_text" => Dict{String,Any}("type" => "string", "description" => "Text to find"),
+                    "new_text" => Dict{String,Any}("type" => "string", "description" => "Replacement text"),
+                    "replace_all" => Dict{String,Any}("type" => "boolean", "description" => "Replace all matches"),
+                ),
+                "required" => Any["path", "old_text", "new_text"],
             ),
-            "required" => Any["path", "old_text", "new_text"],
+            execute = args -> _edit_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _edit_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "delete_file",
-        description = "Delete a file from the workspace.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "path" => Dict{String,Any}("type" => "string", "description" => "File path to delete"),
+    push!(
+        defs,
+        ToolDef(
+            name = "delete_file",
+            description = "Delete a file from the workspace.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "path" => Dict{String,Any}("type" => "string", "description" => "File path to delete"),
+                ),
+                "required" => Any["path"],
             ),
-            "required" => Any["path"],
+            execute = args -> _delete_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _delete_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "move_file",
-        description = "Move or rename a file or directory.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "src" => Dict{String,Any}("type" => "string", "description" => "Source path"),
-                "dst" => Dict{String,Any}("type" => "string", "description" => "Destination path"),
+    push!(
+        defs,
+        ToolDef(
+            name = "move_file",
+            description = "Move or rename a file or directory.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "src" => Dict{String,Any}("type" => "string", "description" => "Source path"),
+                    "dst" => Dict{String,Any}("type" => "string", "description" => "Destination path"),
+                ),
+                "required" => Any["src", "dst"],
             ),
-            "required" => Any["src", "dst"],
+            execute = args -> _move_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _move_file_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "search_files",
-        description = "Search for a regex pattern across files in a directory. Returns matching lines with file path and line number.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "pattern" => Dict{String,Any}("type" => "string", "description" => "Regex pattern to search for"),
-                "path" => Dict{String,Any}("type" => "string", "description" => "Directory to search in (default '.')"),
-                "glob" => Dict{String,Any}("type" => "string", "description" => "Filename glob filter, e.g. '*.jl', '*.py' (default '*')"),
-                "case_sensitive" => Dict{String,Any}("type" => "boolean", "description" => "Case sensitive match (default true)"),
-                "max_results" => Dict{String,Any}("type" => "integer", "description" => "Maximum number of matching lines to return (default 50)"),
+    push!(
+        defs,
+        ToolDef(
+            name = "search_files",
+            description = "Search for a regex pattern across files in a directory. Returns matching lines with file path and line number.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "pattern" =>
+                        Dict{String,Any}("type" => "string", "description" => "Regex pattern to search for"),
+                    "path" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Directory to search in (default '.')",
+                    ),
+                    "glob" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Filename glob filter, e.g. '*.jl', '*.py' (default '*')",
+                    ),
+                    "case_sensitive" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "Case sensitive match (default true)",
+                    ),
+                    "max_results" => Dict{String,Any}(
+                        "type" => "integer",
+                        "description" => "Maximum number of matching lines to return (default 50)",
+                    ),
+                ),
+                "required" => Any["pattern"],
             ),
-            "required" => Any["pattern"],
+            execute = args -> _search_files_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _search_files_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 
-    push!(defs, ToolDef(
-        name = "list_dir",
-        description = "List directory contents with optional recursive traversal.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "path" => Dict{String,Any}("type" => "string", "description" => "Directory path (default '.')"),
-                "recursive" => Dict{String,Any}("type" => "boolean", "description" => "Whether to recurse into subdirectories"),
-                "max_entries" => Dict{String,Any}("type" => "integer", "description" => "Maximum entries to return"),
+    push!(
+        defs,
+        ToolDef(
+            name = "list_dir",
+            description = "List directory contents with optional recursive traversal.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "path" => Dict{String,Any}("type" => "string", "description" => "Directory path (default '.')"),
+                    "recursive" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "Whether to recurse into subdirectories",
+                    ),
+                    "max_entries" =>
+                        Dict{String,Any}("type" => "integer", "description" => "Maximum entries to return"),
+                ),
+                "required" => Any[],
             ),
-            "required" => Any[],
+            execute = args -> _list_dir_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
         ),
-        execute = args -> _list_dir_impl(args, workspace; restrict_to_workspace = restrict_to_workspace),
-    ))
+    )
 end
 
 # ─── Web tools ───────────────────────────────────────────────────────
@@ -179,77 +217,106 @@ function _register_web_tools!(defs::Vector{ToolDef})
     # used instead. If native search returns poor results, the LLM should delegate
     # deeper research to claude_code or codex.
 
-    push!(defs, ToolDef(
-        name = "web_fetch",
-        description = "Fetch a web URL and return markdown-ish content with SSRF-safe checks.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "url" => Dict{String,Any}("type" => "string", "description" => "URL to fetch (http/https only)"),
-                "max_chars" => Dict{String,Any}("type" => "integer", "description" => "Maximum number of returned characters"),
+    push!(
+        defs,
+        ToolDef(
+            name = "web_fetch",
+            description = "Fetch a web URL and return markdown-ish content with SSRF-safe checks.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "url" =>
+                        Dict{String,Any}("type" => "string", "description" => "URL to fetch (http/https only)"),
+                    "max_chars" => Dict{String,Any}(
+                        "type" => "integer",
+                        "description" => "Maximum number of returned characters",
+                    ),
+                ),
+                "required" => Any["url"],
             ),
-            "required" => Any["url"],
+            execute = args -> _web_fetch_impl(args),
         ),
-        execute = args -> _web_fetch_impl(args),
-    ))
+    )
 end
 
 # ─── Integration tools (github, message) ─────────────────────────────
 
 function _register_integration_tools!(defs::Vector{ToolDef}, send_message_fn)
-    push!(defs, ToolDef(
-        name = "github",
-        description = "Run a GitHub CLI (gh) command. Examples: 'gh repo view owner/repo', 'gh issue list', 'gh pr list', 'gh api users/USERNAME', 'gh search repos QUERY'. The 'gh' prefix is optional.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "command" => Dict{String,Any}("type" => "string", "description" => "gh CLI command to run (e.g. 'repo view owner/repo' or 'gh issue list')"),
-            ),
-            "required" => Any["command"],
-        ),
-        execute = args -> _github_impl(args),
-    ))
-
-    if send_message_fn !== nothing
-        push!(defs, ToolDef(
-            name = "message",
-            description = "Send a message to a chat.",
+    push!(
+        defs,
+        ToolDef(
+            name = "github",
+            description = "Run a GitHub CLI (gh) command. Examples: 'gh repo view owner/repo', 'gh issue list', 'gh pr list', 'gh api users/USERNAME', 'gh search repos QUERY'. The 'gh' prefix is optional.",
             parameters = Dict{String,Any}(
                 "type" => "object",
                 "properties" => Dict{String,Any}(
-                    "chat_id" => Dict{String,Any}("type" => "string", "description" => "Target chat identifier"),
-                    "text" => Dict{String,Any}("type" => "string", "description" => "Message text"),
-                    "disable_web_page_preview" => Dict{String,Any}("type" => "boolean", "description" => "Disable URL preview in the sent message"),
+                    "command" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "gh CLI command to run (e.g. 'repo view owner/repo' or 'gh issue list')",
+                    ),
                 ),
-                "required" => Any["chat_id", "text"],
+                "required" => Any["command"],
             ),
-            execute = args -> _message_tool_impl(args; send_message_fn = send_message_fn),
-        ))
+            execute = args -> _github_impl(args),
+        ),
+    )
+
+    if send_message_fn !== nothing
+        push!(
+            defs,
+            ToolDef(
+                name = "message",
+                description = "Send a message to a chat.",
+                parameters = Dict{String,Any}(
+                    "type" => "object",
+                    "properties" => Dict{String,Any}(
+                        "chat_id" =>
+                            Dict{String,Any}("type" => "string", "description" => "Target chat identifier"),
+                        "text" => Dict{String,Any}("type" => "string", "description" => "Message text"),
+                        "disable_web_page_preview" => Dict{String,Any}(
+                            "type" => "boolean",
+                            "description" => "Disable URL preview in the sent message",
+                        ),
+                    ),
+                    "required" => Any["chat_id", "text"],
+                ),
+                execute = args -> _message_tool_impl(args; send_message_fn = send_message_fn),
+            ),
+        )
     end
 end
 
 # ─── Shell exec ──────────────────────────────────────────────────────
 
-function _register_exec_tools!(defs::Vector{ToolDef}, workspace, exec_timeout_s, exec_path_append, restrict_to_workspace)
-    push!(defs, ToolDef(
-        name = "exec",
-        description = "Execute a shell command and return stdout/stderr plus exit code.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "command" => Dict{String,Any}("type" => "string", "description" => "Shell command to execute"),
-                "working_dir" => Dict{String,Any}("type" => "string", "description" => "Working directory"),
-                "timeout" => Dict{String,Any}("type" => "number", "description" => "Timeout in seconds"),
+function _register_exec_tools!(
+    defs::Vector{ToolDef},
+    workspace,
+    exec_timeout_s,
+    exec_path_append,
+    restrict_to_workspace,
+)
+    push!(
+        defs,
+        ToolDef(
+            name = "exec",
+            description = "Execute a shell command and return stdout/stderr plus exit code.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "command" => Dict{String,Any}("type" => "string", "description" => "Shell command to execute"),
+                    "working_dir" => Dict{String,Any}("type" => "string", "description" => "Working directory"),
+                    "timeout" => Dict{String,Any}("type" => "number", "description" => "Timeout in seconds"),
+                ),
+                "required" => Any["command"],
             ),
-            "required" => Any["command"],
+            execute = args -> _exec_impl(
+                args, workspace;
+                timeout_s = Float64(exec_timeout_s),
+                path_append = exec_path_append,
+                restrict_to_workspace = restrict_to_workspace,
+            ),
         ),
-        execute = args -> _exec_impl(
-            args, workspace;
-            timeout_s = Float64(exec_timeout_s),
-            path_append = exec_path_append,
-            restrict_to_workspace = restrict_to_workspace,
-        ),
-    ))
+    )
 end
 
 # ─── Coding agents ───────────────────────────────────────────────────
@@ -258,71 +325,98 @@ function _register_claude_code_tool!(defs::Vector{ToolDef};
     workspace, claude_code_model, claude_code_timeout_s, claude_code_max_budget,
     claude_code_permission_mode, claude_code_progress_fn, claude_code_progress_interval_s,
 )
-    push!(defs, ToolDef(
-        name = "claude_code",
-        description = """Delegate a coding task to Claude Code — an autonomous coding agent that can read, write, and edit files, run shell commands, search code, and manage git. Use this for implementation work: writing code, fixing bugs, refactoring, running tests. The task should be a clear, specific description of what to do. Returns the result along with cost and session ID. Optionally pass session_id to resume a previous conversation, or set resume=true to continue the most recent session.""",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "task" => Dict{String,Any}("type" => "string", "description" => "Clear description of the coding task to perform"),
-                "session_id" => Dict{String,Any}("type" => "string", "description" => "Session ID to resume a previous Claude Code conversation (from a previous result's [Session: ...] field)"),
-                "resume" => Dict{String,Any}("type" => "boolean", "description" => "Resume the most recent Claude Code session in this working directory (ignored if session_id is set)"),
+    push!(
+        defs,
+        ToolDef(
+            name = "claude_code",
+            description = """Delegate a coding task to Claude Code — an autonomous coding agent that can read, write, and edit files, run shell commands, search code, and manage git. Use this for implementation work: writing code, fixing bugs, refactoring, running tests. The task should be a clear, specific description of what to do. Returns the result along with cost and session ID. Optionally pass session_id to resume a previous conversation, or set resume=true to continue the most recent session.""",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "task" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Clear description of the coding task to perform",
+                    ),
+                    "session_id" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Session ID to resume a previous Claude Code conversation (from a previous result's [Session: ...] field)",
+                    ),
+                    "resume" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "Resume the most recent Claude Code session in this working directory (ignored if session_id is set)",
+                    ),
+                ),
+                "required" => Any["task"],
             ),
-            "required" => Any["task"],
+            execute = args -> _claude_code_impl(
+                args;
+                workspace = workspace,
+                timeout_s = Float64(claude_code_timeout_s),
+                model = claude_code_model,
+                permission_mode = claude_code_permission_mode,
+                max_budget = claude_code_max_budget === nothing ? nothing : Float64(claude_code_max_budget),
+                progress_fn = claude_code_progress_fn,
+                progress_interval_s = Float64(claude_code_progress_interval_s),
+            ),
         ),
-        execute = args -> _claude_code_impl(
-            args;
-            workspace = workspace,
-            timeout_s = Float64(claude_code_timeout_s),
-            model = claude_code_model,
-            permission_mode = claude_code_permission_mode,
-            max_budget = claude_code_max_budget === nothing ? nothing : Float64(claude_code_max_budget),
-            progress_fn = claude_code_progress_fn,
-            progress_interval_s = Float64(claude_code_progress_interval_s),
-        ),
-    ))
+    )
 end
 
 function _register_codex_tool!(defs::Vector{ToolDef};
     workspace, codex_model, codex_timeout_s, codex_sandbox_mode,
     codex_progress_fn, codex_progress_interval_s,
 )
-    push!(defs, ToolDef(
-        name = "codex",
-        description = """Delegate a coding task to Codex (OpenAI) — an autonomous coding agent that can read, write, and edit files, run shell commands, and manage code. Use this for implementation work: writing code, fixing bugs, refactoring, running tests. The task should be a clear, specific description of what to do. Returns the result along with token usage and thread ID. Set resume=true to continue the most recent Codex session.""",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "task" => Dict{String,Any}("type" => "string", "description" => "Clear description of the coding task to perform"),
-                "resume" => Dict{String,Any}("type" => "boolean", "description" => "Resume the most recent Codex session in this working directory"),
+    push!(
+        defs,
+        ToolDef(
+            name = "codex",
+            description = """Delegate a coding task to Codex (OpenAI) — an autonomous coding agent that can read, write, and edit files, run shell commands, and manage code. Use this for implementation work: writing code, fixing bugs, refactoring, running tests. The task should be a clear, specific description of what to do. Returns the result along with token usage and thread ID. Set resume=true to continue the most recent Codex session.""",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "task" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "Clear description of the coding task to perform",
+                    ),
+                    "resume" => Dict{String,Any}(
+                        "type" => "boolean",
+                        "description" => "Resume the most recent Codex session in this working directory",
+                    ),
+                ),
+                "required" => Any["task"],
             ),
-            "required" => Any["task"],
+            execute = args -> _codex_impl(
+                args;
+                workspace = workspace,
+                timeout_s = Float64(codex_timeout_s),
+                model = codex_model,
+                sandbox_mode = codex_sandbox_mode,
+                progress_fn = codex_progress_fn,
+                progress_interval_s = Float64(codex_progress_interval_s),
+            ),
         ),
-        execute = args -> _codex_impl(
-            args;
-            workspace = workspace,
-            timeout_s = Float64(codex_timeout_s),
-            model = codex_model,
-            sandbox_mode = codex_sandbox_mode,
-            progress_fn = codex_progress_fn,
-            progress_interval_s = Float64(codex_progress_interval_s),
-        ),
-    ))
+    )
 end
 
 # ─── Google Workspace ────────────────────────────────────────────────
 
 function _register_google_workspace_tool!(defs::Vector{ToolDef})
-    push!(defs, ToolDef(
-        name = "google_workspace",
-        description = "Run a Google Workspace CLI (gws) command. Supports Gmail, Calendar, Drive, and all Google Workspace APIs. Examples: 'gws gmail +send --to user@example.com --subject \"Hello\" --body \"Hi\"', 'gws gmail +triage', 'gws gmail +reply --id MSG_ID --body \"Thanks\"', 'gws calendar events list'. The 'gws' prefix is optional.",
-        parameters = Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict{String,Any}(
-                "command" => Dict{String,Any}("type" => "string", "description" => "gws CLI command to run (e.g. 'gmail +send --to user@example.com --subject \"Hello\" --body \"Hi\"')"),
+    push!(
+        defs,
+        ToolDef(
+            name = "google_workspace",
+            description = "Run a Google Workspace CLI (gws) command. Supports Gmail, Calendar, Drive, and all Google Workspace APIs. Examples: 'gws gmail +send --to user@example.com --subject \"Hello\" --body \"Hi\"', 'gws gmail +triage', 'gws gmail +reply --id MSG_ID --body \"Thanks\"', 'gws calendar events list'. The 'gws' prefix is optional.",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict{String,Any}(
+                    "command" => Dict{String,Any}(
+                        "type" => "string",
+                        "description" => "gws CLI command to run (e.g. 'gmail +send --to user@example.com --subject \"Hello\" --body \"Hi\"')",
+                    ),
+                ),
+                "required" => Any["command"],
             ),
-            "required" => Any["command"],
+            execute = args -> _google_workspace_impl(args),
         ),
-        execute = args -> _google_workspace_impl(args),
-    ))
+    )
 end

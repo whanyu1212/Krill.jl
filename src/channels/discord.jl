@@ -286,7 +286,8 @@ function _gateway_session(
                             msg_id = try
                                 string(event[:d][:id])
                             catch _
-                                ; "unknown"
+                                ;
+                                "unknown"
                             end
                             @error "discord handler failed" message_id=msg_id error=err
                         end
@@ -306,7 +307,8 @@ function _gateway_session(
                     resumable = try
                         Bool(event[:d])
                     catch _
-                        ; false
+                        ;
+                        false
                     end
                     if !resumable
                         state.session_id = nothing
@@ -380,7 +382,8 @@ function normalize_discord_event(event_data)
     is_bot = try
         Bool(get(author, :bot, false))
     catch _
-        ; false
+        ;
+        false
     end
     is_bot && return nothing
 
@@ -419,17 +422,20 @@ function normalize_discord_event(event_data)
             url = try
                 String(att[:url])
             catch _
-                ; continue
+                ;
+                continue
             end
             mime = try
                 String(att[:content_type])
             catch _
-                ; "application/octet-stream"
+                ;
+                "application/octet-stream"
             end
             filename = try
                 String(att[:filename])
             catch _
-                ; nothing
+                ;
+                nothing
             end
             push!(media_parts, BinaryPart(mime, url, nothing, filename))
         end
@@ -453,7 +459,8 @@ function normalize_discord_event(event_data)
             "username" => try
                 String(author[:username])
             catch _
-                ; ""
+                ;
+                ""
             end,
         ),
     )

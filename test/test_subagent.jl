@@ -549,10 +549,11 @@ end
         mgr, _ = make_test_manager(
             published = published,
             max_concurrent = 10,
-            processor_factory = () -> (msg, hist) -> begin
-                Threads.atomic_add!(completed, 1)
-                return (text = "done: $(Krill.message_text(msg))", usage = nothing)
-            end,
+            processor_factory = () ->
+                (msg, hist) -> begin
+                    Threads.atomic_add!(completed, 1)
+                    return (text = "done: $(Krill.message_text(msg))", usage = nothing)
+                end,
         )
 
         # Spawn 10 subagents as fast as possible

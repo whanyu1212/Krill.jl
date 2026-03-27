@@ -10,13 +10,13 @@ using JSON3
 
 # Exercise config loading (will fail on missing env vars — that's fine)
 try
-    load_config(config_path="krill.toml", project_root=".")
+    load_config(config_path = "krill.toml", project_root = ".")
 catch _
 end
 
 # Exercise HTTP client paths (used by LLM providers and Telegram)
 try
-    HTTP.get("https://httpbin.org/status/200"; readtimeout=5)
+    HTTP.get("https://httpbin.org/status/200"; readtimeout = 5)
 catch _
 end
 
@@ -30,6 +30,6 @@ end
 # Exercise tool registry (public API)
 try
     reg = ToolRegistry()
-    register_builtin_tools!(reg; workspace=".")
+    register_builtin_tools!(reg; workspace = ".")
 catch _
 end

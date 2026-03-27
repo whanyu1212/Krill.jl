@@ -114,20 +114,25 @@ function _check_claude_code_rate_limit()
     close(err_pipe.in)
 
     out_task = @async try
-        ; String(read(out_pipe));
+        ;
+        String(read(out_pipe));
     catch _
-        ; "";
+        ;
+        "";
     end
     err_task = @async try
-        ; String(read(err_pipe));
+        ;
+        String(read(err_pipe));
     catch _
-        ; "";
+        ;
+        "";
     end
 
     timedwait(() -> !process_running(proc), 30.0; pollint = 0.05)
     if process_running(proc)
         try
-            ; kill(proc);
+            ;
+            kill(proc);
         catch _
             ;
         end
@@ -238,7 +243,8 @@ function _claude_code_impl(
                     progress_msg = _extract_progress_event(line)
                     if progress_msg !== nothing
                         try
-                            ; progress_fn(progress_msg);
+                            ;
+                            progress_fn(progress_msg);
                         catch _
                             ;
                         end

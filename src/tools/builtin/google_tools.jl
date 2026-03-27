@@ -29,20 +29,25 @@ function _google_workspace_impl(args::Dict{String,Any}; timeout_s::Float64 = _GO
     close(err_pipe.in)
 
     out_task = @async try
-        ; String(read(out_pipe));
+        ;
+        String(read(out_pipe));
     catch _
-        ; "";
+        ;
+        "";
     end
     err_task = @async try
-        ; String(read(err_pipe));
+        ;
+        String(read(err_pipe));
     catch _
-        ; "";
+        ;
+        "";
     end
 
     wait_status = timedwait(() -> !process_running(proc), timeout_s; pollint = 0.05)
     if wait_status == :timed_out
         try
-            ; kill(proc);
+            ;
+            kill(proc);
         catch _
             ;
         end
