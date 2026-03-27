@@ -199,6 +199,7 @@
         @test history[2].text == "second"
     end
 
+    if !KRILL_FAST_TESTS
     @testset "slash command /stop interrupts active task" begin
         hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
         store = SessionStore(; workspace = mktempdir())
@@ -272,6 +273,7 @@
         @test any(r == "after stop" for r in replies)
         @test !any(r == "slow" for r in replies if r != "after stop")
     end
+    end # !KRILL_FAST_TESTS
 end
 
 @testset "Krill.jl concurrent session safety" begin
