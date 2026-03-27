@@ -200,79 +200,80 @@
     end
 
     if !KRILL_FAST_TESTS
-    @testset "slash command /stop interrupts active task" begin
-        hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
-        store = SessionStore(; workspace = mktempdir())
-        running = Ref(true)
+        @testset "slash command /stop interrupts active task" begin
+            hub = MessageHubState(inbound_capacity = 8, outbound_capacity = 8)
+            store = SessionStore(; workspace = mktempdir())
+            running = Ref(true)
 
-        started = Channel{Bool}(1)
-        release = Channel{Nothing}(1)
-        blocking_processor = (msg, history) -> begin
-            if message_text(msg) == "slow"
-                put!(started, true)
-                take!(release)
+            started = Channel{Bool}(1)
+            release = Channel{Nothing}(1)
+            blocking_processor = (msg, history) -> begin
+                if message_text(msg) == "slow"
+                    put!(started, true)
+                    take!(release)
+                end
+                return message_text(msg)
             end
-            return message_text(msg)
-        end
 
-        task = Threads.@spawn run_session_loop!(hub, running;
-            store = store,
-            processor = blocking_processor,
-        )
+            task = Threads.@spawn run_session_loop!(hub, running;
+                store = store,
+                processor = blocking_processor,
+            )
 
-        publish_inbound!(
-            hub,
-            InboundMessage(
-                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300", text = "slow",
-            ),
-        )
-        took = false
-        deadline = time() + 2
-        while time() < deadline && !took
-            if isready(started)
-                took = true
-                break
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300", text = "slow",
+                ),
+            )
+            took = false
+            deadline = time() + 2
+            while time() < deadline && !took
+                if isready(started)
+                    took = true
+                    break
+                end
+                sleep(0.05)
             end
-            sleep(0.05)
+            @test took
+            take!(started)
+
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300",
+                    text = "/stop",
+                ),
+            )
+            sleep(0.1)
+            publish_inbound!(
+                hub,
+                InboundMessage(
+                    channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300",
+                    text = "after stop",
+                ),
+            )
+            sleep(0.3)
+
+            running[] = false
+            try
+                put!(release, nothing)
+            catch
+                # no-op
+            end
+            wait(task)
+
+            replies = String[]
+            while true
+                msg = try_take_outbound!(hub)
+                msg === nothing && break
+                push!(replies, message_text(msg))
+            end
+
+            @test any(r == "Stopped active assistant task." for r in replies)
+            @test any(r == "after stop" for r in replies)
+            @test !any(r == "slow" for r in replies if r != "after stop")
         end
-        @test took
-        take!(started)
-
-        publish_inbound!(
-            hub,
-            InboundMessage(
-                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300", text = "/stop",
-            ),
-        )
-        sleep(0.1)
-        publish_inbound!(
-            hub,
-            InboundMessage(
-                channel = :telegram, session_key = "telegram:stop", user_id = "stop", chat_id = "300",
-                text = "after stop",
-            ),
-        )
-        sleep(0.3)
-
-        running[] = false
-        try
-            put!(release, nothing)
-        catch
-            # no-op
-        end
-        wait(task)
-
-        replies = String[]
-        while true
-            msg = try_take_outbound!(hub)
-            msg === nothing && break
-            push!(replies, message_text(msg))
-        end
-
-        @test any(r == "Stopped active assistant task." for r in replies)
-        @test any(r == "after stop" for r in replies)
-        @test !any(r == "slow" for r in replies if r != "after stop")
-    end
     end # !KRILL_FAST_TESTS
 end
 
