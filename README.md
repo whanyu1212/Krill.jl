@@ -6,6 +6,8 @@
   </p>
   <p align="center">
     <a href="https://whanyu1212.github.io/Krill.jl/"><img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Documentation"></a>
+    <a href="https://github.com/whanyu1212/Krill.jl/actions/workflows/ci.yml"><img src="https://github.com/whanyu1212/Krill.jl/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+    <a href="https://codecov.io/gh/whanyu1212/Krill.jl"><img src="https://codecov.io/gh/whanyu1212/Krill.jl/branch/main/graph/badge.svg" alt="Coverage"></a>
     <a href="https://github.com/whanyu1212/Krill.jl/actions"><img src="https://img.shields.io/github/actions/workflow/status/whanyu1212/Krill.jl/docs.yml?label=docs%20build" alt="Docs Build"></a>
     <img src="https://img.shields.io/badge/Julia-1.12%2B-purple.svg" alt="Julia 1.12+">
     <img src="https://img.shields.io/badge/status-work%20in%20progress-orange.svg" alt="WIP">

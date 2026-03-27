@@ -1,5 +1,6 @@
 using Krill
 using Test
+using Aqua
 using Krill.Telegram: HTTP, JSON3
 using UUIDs
 using Dates
@@ -55,3 +56,13 @@ include("test_gap_fixes.jl")
 include("test_security.jl")
 include("test_skills.jl")
 include("test_subagent.jl")
+
+# ─── Code quality ─────────────────────────────────────────────
+@testset "Aqua" begin
+    Aqua.test_all(
+        Krill;
+        ambiguities = false,
+        stale_deps = (ignore = [:Test, :Dates, :UUIDs],),
+        deps_compat = (ignore = [:Test],),
+    )
+end
