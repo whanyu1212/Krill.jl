@@ -254,13 +254,12 @@
         sleep(0.3)
 
         running[] = false
-        wait(task)
-
         try
             put!(release, nothing)
         catch
             # no-op
         end
+        wait(task)
 
         replies = String[]
         while true
