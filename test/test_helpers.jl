@@ -21,11 +21,16 @@ function make_mock_openai_request(; captured = nothing, response_text = "ok")
     return function (method, url, headers, body)
         payload = JSON3.read(String(body))
         captured !== nothing && (captured[] = payload)
-        return HTTP.Response(200, JSON3.write(Dict(
-            "id" => "resp_mock",
-            "output_text" => response_text,
-            "usage" => Dict("input_tokens" => 10, "output_tokens" => 2, "total_tokens" => 12),
-        )))
+        return HTTP.Response(
+            200,
+            JSON3.write(
+                Dict(
+                    "id" => "resp_mock",
+                    "output_text" => response_text,
+                    "usage" => Dict("input_tokens" => 10, "output_tokens" => 2, "total_tokens" => 12),
+                ),
+            ),
+        )
     end
 end
 
@@ -51,5 +56,10 @@ end
 """Create an OpenAIProvider with a mock request function."""
 function make_mock_openai_provider(; kwargs...)
     request_fn = make_mock_openai_request(; kwargs...)
-    return OpenAIProvider(api_key = "test-key", base_url = "https://mock.test/v1", request = request_fn, max_retries = 0)
+    return OpenAIProvider(
+        api_key = "test-key",
+        base_url = "https://mock.test/v1",
+        request = request_fn,
+        max_retries = 0,
+    )
 end

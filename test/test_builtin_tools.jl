@@ -198,13 +198,14 @@ end
         sent_once = Ref(false)
 
         # Only send the update on the first getUpdates call so the test doesn't loop
-        on_message = () -> begin
-            if !sent_once[]
-                sent_once[] = true
-                return Any[make_telegram_update(; text = "hello", update_id = 6100, chat_id = 7, user_id = 7)]
+        on_message =
+            () -> begin
+                if !sent_once[]
+                    sent_once[] = true
+                    return Any[make_telegram_update(; text = "hello", update_id = 6100, chat_id = 7, user_id = 7)]
+                end
+                return Any[]
             end
-            return Any[]
-        end
 
         client = TelegramClient("token";
             base_url = "https://example.test/botTOKEN",

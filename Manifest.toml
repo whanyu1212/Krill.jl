@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "50f4332369af1f90e5851700a43e75e813402ecc"
+project_hash = "478452067707998f83a04a3f87560c982746c3a0"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -75,7 +75,7 @@ uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
 version = "1.12.0"
 
 [[deps.Krill]]
-deps = ["Base64", "Dates", "HTTP", "JSON3", "UUIDs"]
+deps = ["Base64", "Dates", "HTTP", "JSON3", "Sockets", "TOML", "UUIDs"]
 path = "."
 uuid = "107fffb1-4853-4b1a-a40b-08a16bb6861b"
 version = "1.0.0-DEV"

@@ -153,7 +153,8 @@ function _codex_impl(
                     progress_msg = _extract_codex_progress(line)
                     if progress_msg !== nothing
                         try
-                            ; progress_fn(progress_msg);
+                            ;
+                            progress_fn(progress_msg);
                         catch _
                             ;
                         end

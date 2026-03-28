@@ -128,7 +128,7 @@ Always follow Julia style conventions.
             max_retries = 0,
         )
 
-        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01);
+        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01, allow_from = ["*"]);
             workspace = workspace,
             llm_provider = provider,
             llm_enable_builtin_tools = false,
@@ -226,7 +226,7 @@ Always follow Julia style conventions.
             max_retries = 0,
         )
 
-        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01);
+        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01, allow_from = ["*"]);
             workspace = workspace,
             llm_provider = provider,
             llm_enable_builtin_tools = false,
@@ -310,7 +310,7 @@ Always follow Julia style conventions.
             max_retries = 0,
         )
 
-        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01);
+        runtime = RuntimeState(TelegramChannel(client; poll_timeout = 0, poll_interval = 0.01, allow_from = ["*"]);
             workspace = workspace,
             llm_provider = provider,
             llm_enable_builtin_tools = false,

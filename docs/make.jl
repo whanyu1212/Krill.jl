@@ -63,13 +63,13 @@ function postprocess_markdown(builddir)
             # Restore collapsed ::: containers
             content = replace(content,
                 r"^(::: ?\w+)(?: ([^\n]*?))? (:::)$"m =>
-                    function(m)
+                    function (m)
                         m_match = match(r"^(::: ?\w+)(?: ([^\n]*?))? (:::)$", m)
                         opener = m_match[1]
                         body = m_match[2]
                         body === nothing && return m
                         return string(opener, "\n", body, "\n:::")
-                    end
+                    end,
             )
 
             # Collapse runs of 3+ newlines down to 2 (single blank line)
@@ -95,4 +95,4 @@ let builddir = joinpath(@__DIR__, "build", ".documenter")
 end
 
 # Rebuild VitePress from the post-processed Markdown.
-run(Cmd(`npm run docs:build`; dir=@__DIR__))
+run(Cmd(`npm run docs:build`; dir = @__DIR__))

@@ -720,8 +720,11 @@ function _build_runtime(
     last_successful_send_at = Ref{Union{Nothing,DateTime}}(nothing)
 
     channel_states = ChannelState[]
+    channel_name_set = Set{Symbol}()
     for ch in channels
         name = channel_name(ch)
+        name in channel_name_set && throw(ArgumentError("duplicate channel name: $name"))
+        push!(channel_name_set, name)
         cs = register_channel!(manager, ch;
             on_send = () -> (last_successful_send_at[] = now(UTC)),
         )

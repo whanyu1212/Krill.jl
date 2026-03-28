@@ -125,7 +125,7 @@ function _execute_tool_calls(
     for call in calls
         # should_interrupt gate: stop tool loop before dispatching this call
         if hooks !== nothing &&
-            _safe_call(hooks.should_interrupt, "should_interrupt hook", false, call.name, call.arguments)
+           _safe_call(hooks.should_interrupt, "should_interrupt hook", false, call.name, call.arguments)
             interrupted = true
             break
         end
@@ -242,7 +242,7 @@ function _execute_tool_calls(
             error = error_envelope,
             duration_ms = duration_ms,
         )
-        push!(events, (call = call_event, result = result_event))
+        push!(events, (call = call_event, result = result_event, call_id = call_id))
     end
 
     return (
@@ -279,6 +279,15 @@ function _tool_event_name(event)::String
         return event.call.tool_name
     end
     return String(get(event, "tool_name", "tool"))
+end
+
+function _tool_event_call_id(event)::Union{Nothing,String}
+    if event isa NamedTuple && hasproperty(event, :call_id)
+        id = event.call_id
+        return isempty(id) ? nothing : String(id)
+    end
+    id = get(event, "call_id", nothing)
+    return id === nothing ? nothing : String(id)
 end
 
 function _tool_events_to_text(events::Vector{Any})
@@ -392,13 +401,8 @@ function _tool_events_to_function_response_parts(events::Vector{Any})
             "name" => tool_name,
             "response" => response_payload,
         )
-        # Extract call_id from the ToolCallEvent arguments or event structure
-        if event isa NamedTuple || (event isa Any && hasproperty(event, :call))
-            # ToolCallEvent doesn't carry call_id; use event_id as fallback
-        else
-            call_id = get(event, "call_id", nothing)
-            call_id === nothing || (part["id"] = String(call_id))
-        end
+        call_id = _tool_event_call_id(event)
+        call_id === nothing || (part["id"] = call_id)
         push!(parts, part)
     end
     return parts
@@ -462,7 +466,8 @@ function _chat_with_tool_loop(
         return LLMResponse(
             "Stopped by user request.", response.usage, response.raw,
             LLMToolCall[], response.response_id,
-        ), tool_events
+        ),
+        tool_events
     end
 
     tool_registry === nothing && return response, tool_events
@@ -513,21 +518,24 @@ function _chat_with_tool_loop(
             return LLMResponse(
                 exec_result.return_direct_text, current.usage, current.raw,
                 LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         if _safe_call(stop_check, "stop_check callback", false)
             return LLMResponse(
                 "Stopped by user request.", current.usage, current.raw,
                 LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         if iteration >= max_tool_iterations
             return LLMResponse(
                 _tool_loop_fallback_text(current, max_tool_iterations),
                 current.usage, current.raw, LLMToolCall[], current.response_id,
-            ), tool_events
+            ),
+            tool_events
         end
 
         # OpenAI requires response_id for continuation; bail if missing
@@ -587,13 +595,16 @@ function _continue_after_tool_calls(
     provider::AbstractLLMProvider, current::LLMResponse, exec_result, messages,
     instructions, cc_kwargs,
 )
-    push!(messages, Dict{String,Any}(
-        "role" => "user",
-        "content" => Any[Dict{String,Any}(
-            "type" => "input_text",
-            "text" => _tool_events_to_text(exec_result.events),
-        )],
-    ))
+    push!(
+        messages,
+        Dict{String,Any}(
+            "role" => "user",
+            "content" => Any[Dict{String,Any}(
+                "type" => "input_text",
+                "text" => _tool_events_to_text(exec_result.events),
+            )],
+        ),
+    )
 
     return chat_completion(provider, messages; instructions = instructions, cc_kwargs...)
 end
