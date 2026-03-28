@@ -19,6 +19,21 @@
 
 > **Work in progress** — solo project under active development. APIs may change. Only OpenAI and Gemini providers supported for now.
 
+## Screenshots
+
+<table>
+<tr>
+<td align="center"><b>Web search · Cron scheduling</b></td>
+<td align="center"><b>Code generation</b></td>
+<td align="center"><b>Subagent spawning</b></td>
+</tr>
+<tr>
+<td><img src="assets/IMG_5747.PNG" width="220"/></td>
+<td><img src="assets/IMG_5767.PNG" width="220"/></td>
+<td><img src="assets/IMG_5768.PNG" width="220"/></td>
+</tr>
+</table>
+
 ## What It Does
 
 Connect an LLM to Telegram or Discord with tools, memory, scheduling, and coding agents — all from a single `krill.toml` config file.
