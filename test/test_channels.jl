@@ -177,7 +177,10 @@ end
         running = Ref(true)
         task = start_channel!(ch, hub, running)
         @test task isa Task
-        sleep(0.1)
+        deadline = time() + 5.0
+        while poll_count[] == 0 && time() < deadline
+            sleep(0.05)
+        end
         running[] = false
         wait(task)
         @test poll_count[] > 0

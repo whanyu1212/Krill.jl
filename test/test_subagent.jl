@@ -519,7 +519,7 @@ end
 
 @testset "Runtime integration" begin
     @testset "RuntimeState with subagents disabled" begin
-        tg = TelegramClient("tok"; base_url = "http://localhost:1")
+        tg = TelegramChannel(TelegramClient("tok"; base_url = "http://localhost:1"))
         rt = RuntimeState(tg; llm_enable_subagents = false)
         @test rt.subagent_manager === nothing
         s = status(rt)
@@ -529,7 +529,7 @@ end
     end
 
     @testset "RuntimeState without LLM has no subagent_manager" begin
-        tg = TelegramClient("tok"; base_url = "http://localhost:1")
+        tg = TelegramChannel(TelegramClient("tok"; base_url = "http://localhost:1"))
         rt = RuntimeState(tg)
         @test rt.subagent_manager === nothing
         s = status(rt)

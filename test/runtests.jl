@@ -63,6 +63,6 @@ include("test_subagent.jl")
         Krill;
         ambiguities = false,
         stale_deps = (ignore = [:Test, :Dates, :UUIDs],),
-        deps_compat = (ignore = [:Test],),
+        deps_compat = (ignore = [:Test, :Base64, :Dates, :Sockets, :TOML, :UUIDs],),
     )
 end
