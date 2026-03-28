@@ -85,6 +85,8 @@ jobs:
               -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
               -e GH_PAT=${{ secrets.GH_PAT }} \
               -v $HOME/.krill:/root/.krill \
+              -v $HOME/.claude/.credentials.json:/root/.claude/.credentials.json:ro \
+              -v $HOME/.codex/auth.json:/root/.codex/auth.json:ro \
               ${{ env.IMAGE }}:${{ github.sha }}
 
             # Clean up old images to free disk space

@@ -270,6 +270,10 @@ function _replace_markdown_tables(text::AbstractString)
                 end
                 isempty(parsed) && return String(block)
 
+                # Strip inline markdown markers — <pre> renders as plain text anyway
+                _strip_md = s -> replace(s, r"\*\*|__|\*|_|`" => "")
+                parsed = [[_strip_md(cell) for cell in row] for row in parsed]
+
                 # Calculate column widths
                 ncols = maximum(length.(parsed))
                 widths = zeros(Int, ncols)
