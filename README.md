@@ -62,7 +62,7 @@ julia --project=. -e 'using Pkg; Pkg.instantiate()'
 
 **2.** Configure:
 ```bash
-cp krill.toml.example krill.toml   # edit with your tokens
+edit krill.toml            # fill in your tokens
 ```
 ```bash
 # .env
@@ -83,24 +83,82 @@ julia --project=. --threads=auto bin/krill.jl
 
 ## Configuration
 
-All configuration lives in `krill.toml`. Secrets referenced as `$ENV_VAR` are expanded at startup from the environment or `.env`.
+All configuration lives in `krill.toml`. Secrets use `$VAR` syntax and are expanded at startup from the environment or a `.env` file — no secrets are stored directly in the config.
 
-```toml
-[provider]
-name    = "openai"
-model   = "gpt-5.4"
-api_key = "$OPENAI_API_KEY"
+### `.env`
 
-[telegram]
-enabled   = true
-bot_token = "$TELEGRAM_BOT_TOKEN"
+```bash
+# LLM providers (set whichever you use)
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
 
-[llm]
-workspace = "context"   # agent file sandbox
-data_dir  = ""          # defaults to ~/.krill
+# Channels
+TELEGRAM_BOT_TOKEN=...
+DISCORD_BOT_TOKEN=...
+
+# MCP / integrations
+GH_PAT=github_pat_...
+
+# Optional overrides
+KRILL_DATA_DIR=~/.krill        # where session data, memory, cron jobs are stored
 ```
 
-See [`krill.toml.example`](krill.toml.example) for the full reference.
+### `krill.toml`
+
+```toml
+# LLM provider — "openai" or "gemini"
+[provider]
+name    = "openai"
+model   = "gpt-4o"
+api_key = "$OPENAI_API_KEY"
+
+# Channels — enable the ones you want
+[telegram]
+enabled    = true
+bot_token  = "$TELEGRAM_BOT_TOKEN"
+allow_from = ["*"]          # Telegram user IDs, or "*" for everyone
+
+[discord]
+enabled    = false
+bot_token  = "$DISCORD_BOT_TOKEN"
+allow_from = ["*"]          # Discord user snowflakes, or "*" for everyone
+
+# Runtime paths
+[llm]
+workspace = "context"       # agent file sandbox (skills, bootstrap docs)
+data_dir  = "$KRILL_DATA_DIR"
+
+# Agent identity and tool toggles
+[profile]
+system_prompt = "You are a helpful assistant."
+
+[profile.tools]
+provider_builtins     = true   # provider-native web search / code interpreter
+local_builtins        = true   # file ops, web fetch, shell exec, GitHub CLI
+builtin_skills        = true   # on-demand skill docs
+memory                = true   # per-session persistent memory
+memory_consolidation  = true   # LLM-driven memory summarization
+cron                  = true   # scheduled tasks
+subagents             = true   # background task delegation
+exec                  = true   # shell execution (use with caution)
+claude_code           = false  # delegate to Claude Code CLI
+claude_code_model     = "sonnet"
+codex                 = false  # delegate to Codex CLI
+google_workspace      = false  # Google Workspace tools
+
+# MCP servers — add as many blocks as needed
+[[profile.mcp]]
+name      = "github"
+transport = "streamable_http"
+url       = "https://api.githubcopilot.com/mcp/"
+[profile.mcp.headers]
+Authorization  = "Bearer $GH_PAT"
+X-MCP-Readonly = "true"
+```
+
+See [`krill.toml`](krill.toml) for the complete reference with all options and comments.
+
+> **Note:** For detailed configuration guides, provider setup, and deployment options, refer to the [documentation](https://whanyu1212.github.io/Krill.jl/).
 
 ## Project Structure
 
@@ -120,18 +178,22 @@ test/          test suite
 docs/          Documenter + VitePress documentation
 ```
 
-## Known Limitations
+## Current Scope
 
-| | Area | What's missing |
-|:---:|---|---|
-| ⚠️ | **Providers** | OpenAI and Gemini only — no Anthropic, Ollama, or local models yet |
-| ⚠️ | **Channels** | Telegram and Discord only — no WhatsApp, Slack, or voice |
-| ⚠️ | **Memory** | Per-chat isolation, no explicit "remember this", no size cap |
-| ⚠️ | **MCP** | Built from scratch (no Julia SDK) — edge cases with non-standard servers |
-| ⚠️ | **Telegram** | Tables may misalign on mobile; no auto-split for long messages |
-| ⚠️ | **Images** | Can't display generated images in chat yet |
-| ⚠️ | **Deploy** | Only Cloud Run tested; Julia cold starts are slow |
-| ⚠️ | **Permissions** | All tools are global — no per-user allowlists yet |
+Krill is a focused tool — some things are intentionally out of scope for now, others are on the roadmap.
+
+| Area | Status | Notes |
+|---|:---:|---|
+| **Providers** | 🔜 | OpenAI and Gemini supported; Anthropic, Ollama, and local models planned |
+| **Channels** | 🔜 | Telegram and Discord; WhatsApp, Slack, voice not yet supported |
+| **Memory** | 🔜 | Per-session persistent memory; explicit "remember this" and size caps coming |
+| **MCP** | 🔧 | Custom Julia implementation — may have edge cases with non-standard servers |
+| **Telegram formatting** | 🔧 | Tables may misalign on mobile; long messages not auto-split |
+| **Images** | 🔜 | Generated image display in chat not yet supported |
+| **Deployment** | 🔜 | Cloud Run and Compute Engine tested; Julia cold starts are slow on first run |
+| **Permissions** | 🔜 | Tool access is global per-session; per-user allowlists planned |
+
+> 🔜 planned &nbsp;|&nbsp; 🔧 known quirk
 
 ## Testing
 
@@ -148,10 +210,14 @@ Running locally is the simplest option. The `Dockerfile` targets Google Cloud Ru
 
 Issues and PRs are welcome. If you've tried Krill and hit a bug or have an idea, [open an issue](https://github.com/whanyu1212/Krill.jl/issues).
 
-## AI Disclosure
+## Disclaimer
 
-AI was used as a force multiplier in this project. For onboarding, see [`CLAUDE.md`](CLAUDE.md) or [`AGENTS.md`](AGENTS.md).
+AI was used as a force multiplier in this project — but that doesn't mean the code is untested slop. The test suite covers the core runtime, session handling, tool loop, prompt construction, memory, channels, and concurrency. AI-generated code went through the same review and testing bar as anything written by hand.
+
+Julia is not my first language, so things may be unpolished in places. I'm open to feedback and constructive criticism — if you see something that could be done more idiomatically or efficiently, [open an issue](https://github.com/whanyu1212/Krill.jl/issues) or a PR.
+
+For AI onboarding context, see [`CLAUDE.md`](CLAUDE.md) or [`AGENTS.md`](AGENTS.md).
 
 ## Acknowledgements
 
-See [Acknowledgements](https://whanyu1212.github.io/Krill.jl/notes/acknowledgements) for the projects that inspired Krill.
+Krill.jl was inspired by [nanobot](https://github.com/HKUDS/nanobot) and [OpenClaw](https://github.com/openclaw/openclaw), as well as the broader ecosystem of OpenClaw ports and reimplementations in other languages. Thanks to everyone who built and shared those projects — they laid the groundwork for what Krill tries to do in Julia.
