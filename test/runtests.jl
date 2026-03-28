@@ -57,6 +57,9 @@ include("test_security.jl")
 include("test_skills.jl")
 include("test_subagent.jl")
 
+# ─── Global memory (not in fast mode) ──────────────────────────
+include("test_global_memory.jl")
+
 # ─── Code quality ─────────────────────────────────────────────
 @testset "Aqua" begin
     Aqua.test_all(

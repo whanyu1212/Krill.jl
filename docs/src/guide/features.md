@@ -278,7 +278,11 @@ This is assembled fresh every turn, so changes to bootstrap docs or skills take 
 
 ## Memory
 
-Krill maintains per-session durable memory that persists across restarts.
+Krill has a two-layer memory system: **session memory** (per-chat, automatic) and **global memory** (per-user, explicit).
+
+### Session Memory
+
+Per-session durable memory that persists across restarts. Scoped to a session key (e.g. `telegram:123`), so each chat has its own isolated memory store.
 
 Enable with `llm_enable_memory=true` and `llm_enable_memory_consolidation=true`.
 
@@ -287,7 +291,7 @@ Enable with `llm_enable_memory=true` and `llm_enable_memory_consolidation=true`.
 1. After each turn, a consolidation process scans new history entries
 2. It calls the LLM to extract durable facts and merge them into `MEMORY.md`
 3. Processed history is archived to `HISTORY.md` so `MEMORY.md` stays compact
-4. On the next turn, `MEMORY.md` is injected into the system prompt
+4. On the next turn, `MEMORY.md` is injected into the system prompt as `## Session Memory`
 
 Files written under `~/.krill/memory/<session>/`:
 
@@ -296,6 +300,37 @@ Files written under `~/.krill/memory/<session>/`:
 | `MEMORY.md` | Live consolidated memory — injected each turn |
 | `HISTORY.md` | Archived consolidation batches |
 | `state.json` | Offsets and failure tracking |
+
+### Global Memory
+
+Cross-channel user profile that persists across sessions and channels. Keyed by `user_id` (not session key), so the same user is recognised whether they message from Telegram, Discord, or any other channel.
+
+Enable by passing `llm_global_memory_store` to `RuntimeState`.
+
+**How it works:**
+
+1. Users write facts explicitly with `/remember <fact>`
+2. The LLM merges the new fact into the existing profile — deduplicating, resolving contradictions, and reorganising into coherent sections
+3. The updated profile is saved to `MEMORY.md` for that user
+4. On every turn, the profile is injected into the system prompt as `## User Profile`, above session memory
+
+Files written under `~/.krill/global_memory/<user_id>/`:
+
+| File | Purpose |
+| --- | --- |
+| `MEMORY.md` | Live user profile — injected every turn across all sessions |
+
+**Prompt injection order** (when both layers are enabled):
+
+```
+[Base system prompt]
+[Bootstrap docs]
+[Skills]
+## User Profile       ← global memory (cross-channel)
+## Session Memory     ← session memory (per-chat)
+[Tool safety notice]
+[Runtime metadata]
+```
 
 ## Cron
 
@@ -372,11 +407,10 @@ Open an issue with the raw JSON-RPC exchange and server name if you hit one of t
 
 ### Memory
 
-- **No cross-session memory** — session key is per-chat (e.g. `telegram:123`), so the same user on different channels or chats has separate memory stores
-- **No explicit "remember this"** — users can't directly write to memory; consolidation is automatic and LLM-driven
 - **No memory retrieval tool** — the full `MEMORY.md` is dumped into context every turn; the LLM can't search or query it selectively
 - **No memory size cap** — if `MEMORY.md` grows large, it eats into the context window with no automatic pruning
-- **Consolidation quality depends on the LLM** — the summarizer may drop facts the user considers important, or retain noise
+- **Session memory consolidation quality depends on the LLM** — the summarizer may drop facts the user considers important, or retain noise
+- **Global memory is explicit-only** — the user must invoke `/remember <fact>`; the LLM does not write to global memory automatically
 
 ### Telegram rendering
 

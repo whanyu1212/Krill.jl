@@ -12,7 +12,6 @@ include("transport/durable_queue.jl")
 include("sessions/sessions.jl")
 include("sessions/memory.jl")
 include("sessions/echo.jl")
-include("sessions/consumer.jl")
 
 # ─── Tools, skills, MCP ─────────────────────────────────────────
 include("tools/registry.jl")
@@ -31,8 +30,10 @@ include("tools/mcp.jl")
 # ─── LLM providers ──────────────────────────────────────────────
 include("llm/llm.jl")
 
-# ─── Memory consolidation (depends on LLM + Sessions) ───────────
+# ─── Memory consolidation + global memory (depend on LLM + Sessions) ───
 include("sessions/memory_consolidation.jl")
+include("sessions/global_memory.jl")
+include("sessions/consumer.jl")
 
 # ─── Subagents (depends on LLM + Tools) ─────────────────────────
 include("scheduling/subagent.jl")
@@ -82,6 +83,11 @@ using .Memory: MemoryStore, MemoryState,
     memory_dir, memory_path, history_path, memory_state_path,
     load_memory, save_memory!, append_history!,
     load_memory_state, save_memory_state!
+
+using .GlobalMemory:
+    GlobalMemoryStore,
+    global_memory_path, load_global_memory, save_global_memory!,
+    consolidate_global_memory!
 
 using .Echo: run_echo_loop!
 
@@ -153,7 +159,7 @@ using .Config: KrillConfig, load_config, start_agent!,
 
 export # ─── Submodules ───
     Types, MessageHub, ChannelManager, Dedup, ChannelInterface,
-    Sessions, Memory, Echo, SessionConsumer, Tools, Skills,
+    Sessions, Memory, GlobalMemory, Echo, SessionConsumer, Tools, Skills,
     PromptContext, BuiltinTools, MCP, LLM, MemoryConsolidation,
     Cron, Subagent, AgentModule, DurableQueue,
     Channels, Telegram, Discord,
@@ -193,6 +199,9 @@ export # ─── Submodules ───
     memory_dir, memory_path, history_path, memory_state_path,
     load_memory, save_memory!, append_history!,
     load_memory_state, save_memory_state!,
+    GlobalMemoryStore,
+    global_memory_path, load_global_memory, save_global_memory!,
+    consolidate_global_memory!,
 
     # ─── Echo & session consumer ───
     run_echo_loop!, run_session_loop!, echo_processor,

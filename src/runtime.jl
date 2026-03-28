@@ -13,6 +13,7 @@ using ..Echo: run_echo_loop!
 using ..Sessions: SessionStore
 using ..SessionConsumer: run_session_loop!, echo_processor, SessionCancelScope, is_cancelled, clear_cancel!
 using ..Memory: MemoryStore
+using ..GlobalMemory: GlobalMemoryStore, load_global_memory
 using ..Tools: ToolRegistry, ToolDef, register_tool!, get_tool
 using ..Skills: SkillDef, discover_skills, skills_summary, load_always_skills, register_read_skill_tool!
 using ..PromptContext: DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_builder
@@ -164,6 +165,7 @@ function RuntimeState(
     llm_mcp_connect_fn::Function = connect,
     llm_hooks = nothing,   # expected: AgentHooks or nothing
     llm_retry = nothing,   # expected: RetryConfig or nothing
+    llm_global_memory_store::Union{Nothing,GlobalMemoryStore} = nothing,
     dead_letter_path::Union{Nothing,AbstractString} = nothing,
     on_dispatch::Union{Nothing,Function} = nothing,
 )
@@ -247,6 +249,7 @@ function RuntimeState(
             hub = hub,
             consumer = consumer,
             store = store,
+            global_memory_store = llm_global_memory_store,
             dedup_capacity = dedup_capacity,
             dead_letter_path = dead_letter_path,
             on_dispatch = on_dispatch,
@@ -279,6 +282,7 @@ function RuntimeState(
     dedup_capacity::Int = 1000,
     dead_letter_path::Union{Nothing,AbstractString} = nothing,
     on_dispatch::Union{Nothing,Function} = nothing,
+    global_memory_store::Union{Nothing,GlobalMemoryStore} = nothing,
 )
     workspace = agent.workspace
     data_dir = agent.data_dir
@@ -550,6 +554,7 @@ function RuntimeState(
             system_prompt = system_prompt_for_processor,
             instructions_builder = instructions_builder,
             memory_store = memory_store_for_processor,
+            global_memory_store = global_memory_store,
             max_context_tokens = agent.max_context_tokens,
             reasoning = agent.llm_reasoning,
             tools = tools_for_processor,
@@ -670,6 +675,8 @@ function RuntimeState(
                 before_process = before_process,
                 after_process = after_process,
                 cancel_scope = cancel_scope,
+                global_memory_store = global_memory_store,
+                global_memory_provider = global_memory_store !== nothing ? provider : nothing,
             )
     end
 

@@ -45,11 +45,41 @@ features:
 
 ## Current Scope
 
-<ul style="list-style: none; padding-left: 0;">
-  <li><strong>Agent API:</strong> <code>Agent</code>, <code>AgentHooks</code>, <code>RetryConfig</code> structs — composable, testable, flat-kwarg and struct-based entry points</li>
-  <li><strong>Agent capabilities:</strong> built-in tools, provider-native tools, MCP, skills, cron, subagents, prompt context, memory consolidation, history summarization</li>
-  <li><strong>LLM providers:</strong> OpenAI Responses API (+ web search, code interpreter), Gemini native <code>generateContent</code> (+ Google Search, URL context, code execution), Gemini OpenAI-compat chat completions</li>
-  <li><strong>Persistence:</strong> session history JSONL, memory files, cron job JSON, dead letters, durable queue WAL</li>
-  <li><strong>Channels:</strong> Telegram polling, Telegram webhook server, Discord Gateway + REST</li>
-  <li><strong>Entry point:</strong> <code>bin/krill.jl</code> — channel selection driven entirely by <code>krill.toml</code>, no code changes needed</li>
-</ul>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 16px;">
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Agent API</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);"><code>Agent</code>, <code>AgentHooks</code>, <code>RetryConfig</code> — composable, testable, flat-kwarg and struct-based entry points</div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Agent Capabilities</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);">Built-in tools, provider-native tools, MCP, skills, cron, subagents, prompt context, memory consolidation, history summarization</div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">LLM Providers</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);">OpenAI Responses API · Gemini native <code>generateContent</code> · Gemini OpenAI-compat — with web search, code execution, and URL context</div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Memory</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);">Per-session LLM-consolidated memory + cross-channel global user profile via <code>/remember</code></div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Persistence</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);">Session history JSONL, memory files, cron job JSON, dead letters, durable queue WAL</div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Channels</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);">Telegram polling, Telegram webhook server, Discord Gateway + REST</div>
+</div>
+
+<div style="border: 1px solid var(--vp-c-divider); border-radius: 8px; padding: 16px 20px;">
+<div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--vp-c-brand-1); margin-bottom: 6px;">Entry Point</div>
+<div style="font-size: 0.9rem; color: var(--vp-c-text-2);"><code>bin/krill.jl</code> — channel selection driven entirely by <code>krill.toml</code>, no code changes needed</div>
+</div>
+
+</div>

@@ -4,11 +4,11 @@ Krill.jl exists because of the ideas and work of others.
 
 ## nanobot
 
-This project was directly inspired by [nanobot](https://github.com/HKUDS/nanobot) by [HKUDS](https://github.com/HKUDS). nanobot demonstrated that an AI agent runtime could be lightweight, readable, and composable without the overhead of large frameworks. Krill started as an attempt to bring that same philosophy to Julia — a single-file-readable agent that does the important things well and stays out of the way.
+This project was directly inspired by [nanobot](https://github.com/HKUDS/nanobot) by [HKUDS](https://github.com/HKUDS). nanobot demonstrated that an AI agent runtime could be lightweight, readable, and composable without the overhead of large frameworks. Krill started as an attempt to bring that same philosophy to Julia.
 
 ## OpenClaw / ClawHub
 
-The skills system draws from the [OpenClaw](https://github.com/openclaw/openclaw) ecosystem and its community skill registry [ClawHub](https://clawhub.ai). The idea that agent capabilities should be portable markdown documents — discoverable, installable, and shareable — comes from this lineage. OpenClaw's various language implementations (Ruby, Python, Go) showed that the skill format could be universal across runtimes.
+Krill's skills system is inspired by [OpenClaw](https://github.com/openclaw/openclaw) and its community registry [ClawHub](https://clawhub.ai). OpenClaw is a broader concept: an open protocol for defining agent capabilities in a portable, runtime-agnostic way. The core idea is that what an agent *can do* should be separable from the runtime it runs on — skills are first-class artifacts that can be discovered, shared, and reused across different agent implementations. OpenClaw has been implemented in multiple languages (including Python, Go, and Rust), which validates the protocol's language-agnostic design. Krill participates in this ecosystem by supporting the same skill format and the ClawHub registry.
 
 ## Open-source LLM tooling
 

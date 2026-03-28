@@ -72,6 +72,7 @@ function make_llm_processor(
     system_prompt::Union{Nothing,AbstractString,Function} = "You are a helpful assistant.",
     instructions_builder::Union{Nothing,Function} = nothing,
     memory_store::Union{Nothing,MemoryStore} = nothing,
+    global_memory_store = nothing,
     max_context_tokens::Int = 8_000,
     reasoning = nothing,
     tools = nothing,
@@ -118,14 +119,30 @@ function make_llm_processor(
             end
         end
 
+        global_memory_text = if global_memory_store === nothing
+            nothing
+        else
+            try
+                load_global_memory(global_memory_store, msg.user_id)
+            catch e
+                @warn "failed to load global memory for context build" user_id=msg.user_id exception=(
+                    e,
+                    catch_backtrace(),
+                )
+                nothing
+            end
+        end
+
         system_prompt_for_turn = system_prompt
         memory_for_context = memory_text
         if instructions_builder !== nothing
             try
                 base_instructions = _resolve_instructions(system_prompt, msg.session_key)
-                # Prefer the new 3-arg callback shape, but fall back to legacy
-                # 2-arg builders for backward compatibility.
-                built = _invoke_instructions_builder(instructions_builder, msg, base_instructions, memory_text)
+                built = if applicable(instructions_builder, msg, base_instructions, memory_text, global_memory_text)
+                    instructions_builder(msg, base_instructions, memory_text, global_memory_text)
+                else
+                    _invoke_instructions_builder(instructions_builder, msg, base_instructions, memory_text)
+                end
                 system_prompt_for_turn = built
                 # Memory is already incorporated by the builder path.
                 memory_for_context = nothing
