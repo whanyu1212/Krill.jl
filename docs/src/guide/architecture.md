@@ -238,8 +238,8 @@ The runtime boundary types shared by all subsystems:
 Session history and durable assistant memory are separated on purpose.
 
 - `SessionStore` writes ordered turn history to JSONL
-- `MemoryStore` writes `MEMORY.md`, `HISTORY.md`, and `state.json`
-- the memory consolidator periodically compresses durable facts out of long histories
+- `MemoryStore` writes per-session `MEMORY.md`, `HISTORY.md`, and `state.json` — the consolidator periodically compresses durable facts out of long histories
+- `GlobalMemoryStore` writes a per-user `MEMORY.md` keyed by `user_id` — shared across all channels and sessions for the same user, updated explicitly via `/remember`
 
 
 ### `Tools`, `Skills`, and `MCP`
@@ -261,9 +261,10 @@ Krill composes the instruction stack explicitly on every turn:
 2. workspace bootstrap docs (`SOUL.md`, `AGENTS.md`, `USER.md`, `TOOLS.md`)
 3. skill metadata summary
 4. always-on skill bodies
-5. session memory
-6. tool-output safety notice
-7. runtime metadata (channel, session key, chat ID, UTC timestamp)
+5. global memory (`## User Profile`) — cross-channel user profile, written via `/remember`
+6. session memory (`## Session Memory`) — per-chat consolidated memory
+7. tool-output safety notice
+8. runtime metadata (channel, session key, chat ID, UTC timestamp)
 
 
 ### `LLM`
@@ -302,9 +303,10 @@ The agent can read and write inside this directory. File tools are restricted to
 | Path | Owned by | Purpose |
 | --- | --- | --- |
 | `sessions/.../history.jsonl` | `SessionStore` | ordered user/assistant turns |
-| `memory/.../MEMORY.md` | `MemoryStore` | consolidated durable memory |
+| `memory/.../MEMORY.md` | `MemoryStore` | consolidated per-session memory |
 | `memory/.../HISTORY.md` | `MemoryStore` | archived consolidation batches |
 | `memory/.../state.json` | `MemoryStore` | consolidation offsets and failures |
+| `global_memory/<user_id>/MEMORY.md` | `GlobalMemoryStore` | cross-channel user profile, written via `/remember` |
 | `cron/jobs.json` | `CronService` | persisted schedules |
 | `dead_letters.jsonl` | `ChannelManager` | failed dispatch records |
 

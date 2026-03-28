@@ -3,6 +3,7 @@ module SessionConsumer
 using ..Types: InboundMessage, OutboundMessage, message_text
 using ..MessageHub: MessageHubState, try_take_inbound!, publish_outbound!
 using ..Sessions: SessionStore, TurnRecord, get_session_lock!, load_history, append_turn!, clear_session!
+using ..GlobalMemory: GlobalMemoryStore, consolidate_global_memory!
 
 using Dates
 using UUIDs
@@ -74,6 +75,7 @@ end
 const _SLASH_NEW = "new"
 const _SLASH_HELP = "help"
 const _SLASH_STOP = "stop"
+const _SLASH_REMEMBER = "remember"
 
 function _format_help_text(store::SessionStore, session_key::AbstractString)
     history = load_history(store, session_key)
@@ -97,6 +99,7 @@ function _format_help_text(store::SessionStore, session_key::AbstractString)
 /help — this message
 /new — clear session and start fresh
 /stop — interrupt the running task
+/remember <fact> — save a fact to your global memory
 
 *Session*: $(n_turns) turns, age $(session_age)"""
 end
@@ -116,10 +119,18 @@ end
 function _is_command_message(text::AbstractString)
     cmd = _slash_command(text)
     cmd === nothing && return nothing
-    if cmd in (_SLASH_HELP, _SLASH_NEW, _SLASH_STOP)
+    if cmd in (_SLASH_HELP, _SLASH_NEW, _SLASH_STOP, _SLASH_REMEMBER)
         return cmd
     end
     return nothing
+end
+
+function _remember_fact(text::AbstractString)
+    m = match(r"^/remember\s+(.*)"is, strip(String(text)))
+    m === nothing && return nothing
+    fact = strip(String(m.captures[1]))
+    isempty(fact) && return nothing
+    return fact
 end
 
 function _publish_command_reply!(hub::MessageHubState, msg::InboundMessage, reply::AbstractString)
@@ -154,6 +165,8 @@ function _handle_slash_command!(
     command::AbstractString,
     session_tasks::Dict{String,Task};
     cancel_scope::Union{Nothing,SessionCancelScope} = nothing,
+    global_memory_store::Union{Nothing,GlobalMemoryStore} = nothing,
+    global_memory_provider = nothing,
 )
     if command == _SLASH_HELP
         help_text = _format_help_text(store, msg.session_key)
@@ -192,6 +205,27 @@ function _handle_slash_command!(
         end
         return
     end
+
+    if command == _SLASH_REMEMBER
+        fact = _remember_fact(message_text(msg))
+        if fact === nothing
+            _publish_command_reply!(hub, msg, "Usage: /remember <fact>")
+            return
+        end
+        if global_memory_store === nothing || global_memory_provider === nothing
+            _publish_command_reply!(hub, msg, "Global memory is not enabled.")
+            return
+        end
+        user_id = msg.user_id
+        try
+            consolidate_global_memory!(global_memory_provider, global_memory_store, user_id, fact)
+            _publish_command_reply!(hub, msg, "Remembered.")
+        catch e
+            @error "global memory consolidation failed" user_id=user_id exception=(e, catch_backtrace())
+            _publish_command_reply!(hub, msg, "Failed to save to memory. Please try again.")
+        end
+        return
+    end
 end
 
 """
@@ -221,6 +255,8 @@ function run_session_loop!(
     before_process::Union{Nothing,Function} = nothing,
     after_process::Union{Nothing,Function} = nothing,
     cancel_scope::Union{Nothing,SessionCancelScope} = nothing,
+    global_memory_store::Union{Nothing,GlobalMemoryStore} = nothing,
+    global_memory_provider = nothing,
 )
     # Track the last spawned task per session to enforce FIFO ordering
     session_tasks = Dict{String,Task}()
@@ -237,7 +273,9 @@ function run_session_loop!(
         if command !== nothing
             lock(session_tasks_lock) do
                 _handle_slash_command!(hub, store, msg, command, session_tasks;
-                    cancel_scope = resolved_cancel_scope)
+                    cancel_scope = resolved_cancel_scope,
+                    global_memory_store = global_memory_store,
+                    global_memory_provider = global_memory_provider)
             end
             continue
         end

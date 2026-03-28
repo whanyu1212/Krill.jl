@@ -1,10 +1,21 @@
 # Deployment
 
-Krill is a long-running polling bot with background tasks (cron, subagents, in-memory session state). The `Dockerfile`, `cloudrun.yaml`, and GitHub Actions workflow in this repo all target **Google Cloud Run**, which is the only platform tested so far. It works, but requires significant workarounds — more testing is needed to compare against other platforms.
+Krill is a long-running polling bot with background tasks (cron, subagents, in-memory session state). The recommended production setup is **GCP Compute Engine** with Docker — a standard VM avoids all the constraints of serverless platforms like Cloud Run (no scale-to-zero, no CPU throttling, persistent local filesystem).
+
+## Platform Comparison
+
+| Platform | Est. Monthly Cost | Always-on | Local Filesystem | Notes |
+|---|---|---|---|---|
+| **GCP Compute Engine e2-medium** | ~$20–25/month | ✅ | ✅ | Recommended. Sustained use discount applies at 100% uptime. |
+| **GCP Cloud Run (min-instances=1)** | ~$42–52/month | ✅ | ❌ | ~2× the cost of e2-medium. Scale-to-zero + CPU throttling make it a poor fit for polling bots. |
+| **Mac Mini (M4, base)** | ~$0/month (after ~$600 one-time) | ✅ | ✅ | Home power draw ~7W idle (~$5/year electricity). Great for personal use; no ongoing cloud costs. |
+| **Fly.io** | TBD | TBD | TBD | Persistent volumes available. Worth evaluating for simpler deploys. |
+| **Railway** | TBD | TBD | TBD | Simple git-push deploys. Free tier limited; persistent disk available on paid plans. |
+| **Hetzner VPS (CX22)** | TBD | TBD | ✅ | ~€4/month in EU. Strong value for always-on workloads if EU latency is acceptable. |
 
 ## Persistent Storage
 
-Session data, memory, and cron state are written to `data_dir` (configurable in `krill.toml`, defaults to `~/.krill`). For containerized deployments, mount a persistent volume at that path.
+Session data, memory, and cron state are written to `data_dir` (configurable in `krill.toml`, defaults to `~/.krill`). For containerized deployments, mount a volume at that path so data survives container restarts and redeployments.
 
 ## Local
 
@@ -14,83 +25,123 @@ Running locally is the simplest and most tested option:
 julia --project=. --threads=auto bin/krill.jl
 ```
 
-All features work out of the box — no workarounds needed. If you want to use `claude_code` or `codex`, authenticate both CLIs beforehand:
+All features work out of the box. If you want to use `claude_code` or `codex`, authenticate both CLIs beforehand:
 
 ```bash
 claude auth login    # Claude Code — opens browser for OAuth
 codex auth           # Codex — opens browser for OAuth
 ```
 
-These store session tokens locally (`~/.claude/` for Claude Code). Once authenticated, the agent can delegate coding tasks to either CLI. If you use API keys instead of personal subscriptions, set `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in your environment or `.env` file and the CLIs will pick them up automatically.
+## GCP Compute Engine (Recommended)
 
-## Cloud Run
+### One-time VM Setup
 
-Cloud Run is designed for stateless HTTP request handlers — not long-running polling bots. Krill can run on it, but it fights the model at every level.
-
-### Known Problems
-
-- **Scale-to-zero kills background loops** — polling and cron die when the container shuts down
-- **CPU throttling freezes the bot** — between HTTP requests, CPU is throttled to near-zero, stalling the poll loop
-- **No local filesystem** — sessions, memory, and cron state need external storage (GCS FUSE)
-- **Health checks expect HTTP** — Krill's polling mode doesn't serve HTTP, so a fake health server is needed (`bin/krill.jl` starts one when `PORT` is set)
-- **Julia cold starts** — JIT compilation takes 60-100s on first boot; default Cloud Run timeouts kill the container before the agent starts
-- **No interactive auth for claude_code / codex** — Both CLIs authenticate via browser-based OAuth when used with personal subscriptions (Claude Pro/Max, ChatGPT Plus/Pro). Cloud Run containers can't do interactive login. Options: (1) use API keys instead of subscription auth, set as Cloud Run secrets; (2) disable claude_code/codex in the cloud config and use them locally only; (3) copy auth tokens (`~/.claude/`, etc.) into the container as secrets, but tokens expire and need periodic refresh
-
-### Workarounds Applied
-
-The following settings in `cloudrun.yaml` make Krill work despite these constraints:
-
-| Setting | Why |
-| --- | --- |
-| `min-instances: 1` | Prevent scale-to-zero — keep the polling loop alive |
-| `max-instances: 1` | Only one instance can poll the same Telegram bot token |
-| `cpu-throttling: "false"` | Keep CPU allocated between requests so polling isn't frozen |
-| `startup-cpu-boost: "true"` | Extra CPU during startup to speed up Julia's JIT compilation |
-| Startup probe (600s window) | Julia's JIT can take 60-100s — default timeout kills it |
-| Liveness probe on `/` | Tells Cloud Run the container is still alive between requests |
-| `memory: 2Gi`, `cpu: 2` | Julia's compiler is memory- and CPU-hungry during JIT |
-| GCS FUSE volume mount | Provides persistent storage at `/data` for sessions, memory, and cron |
-
-### Julia Startup Time (JIT / TTFX)
-
-Julia's just-in-time compiler causes slow container startup. Mitigations used:
-
-- **Precompile workload in Dockerfile** — the build step calls `load_config(...)` during `docker build`, caching compilation of hot paths
-- **Startup CPU boost + 2 CPUs** — speeds up the JIT pass
-- **Extended startup probe (600s)** — allows time before marking unhealthy
-- **Disable MCP servers in cloud** — MCP connection code pulls in large JIT dependency chains
-
-If startup time remains a problem, consider [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl) to build a sysimage. This reduces cold start to 1-2 seconds at the cost of longer Docker builds (~10 min) and a larger image (~500MB).
-
-### GCS Storage
-
-The Cloud Run config mounts a GCS bucket via GCS FUSE at `/data` and sets `KRILL_DATA_DIR=/data`. Create the bucket and grant access:
+**1.** Create a VM (e2-medium recommended — Julia's JIT needs headroom):
 
 ```bash
-gcloud storage buckets create gs://krill-data --location=us-central1
-gcloud storage buckets add-iam-policy-binding gs://krill-data \
-  --member="serviceAccount:YOUR_SA@PROJECT.iam.gserviceaccount.com" \
-  --role="roles/storage.objectAdmin"
+gcloud compute instances create krill \
+  --zone=asia-southeast1-c \
+  --machine-type=e2-medium \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
 ```
 
-### GitHub Actions Deploy
+**2.** SSH in:
 
-The workflow in `.github/workflows/deploy.yml` builds the Docker image, pushes to Artifact Registry, and deploys to Cloud Run. It substitutes secrets from GitHub Actions into `cloudrun.yaml` placeholders at deploy time.
+```bash
+gcloud compute ssh krill --zone asia-southeast1-c
+```
 
-Required GitHub secrets:
+**3.** Install Docker:
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+**4.** Install and configure gcloud (needed for Artifact Registry auth):
+
+```bash
+curl https://sdk.cloud.google.com | bash
+exec -l $SHELL
+gcloud init
+```
+
+Select the Compute Engine service account when prompted, and set your project ID (`your-gcp-project-id`).
+
+That's it — you never need to clone the repo or manage the process manually. All deployments are handled by CI.
+
+### GitHub Actions CD
+
+Push to `main` triggers the deploy workflow (`.github/workflows/deploy.yml`):
+
+1. Builds the Docker image
+2. Pushes to Artifact Registry (`asia-southeast1-docker.pkg.dev/your-gcp-project-id/krill`)
+3. SSHs into the VM, pulls the new image, replaces the running container
+
+You can also trigger a manual deploy from any branch via **Actions → Deploy to Compute Engine → Run workflow**.
+
+### Required GitHub Secrets
 
 | Secret | Value |
-| --- | --- |
+|---|---|
 | `GCP_SA_KEY` | Service account key JSON |
+| `GCP_SSH_KEY` | Contents of `~/.ssh/google_compute_engine` (private key) |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `DISCORD_BOT_TOKEN` | Discord bot token |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `GEMINI_API_KEY` | Gemini API key |
 | `GH_PAT` | GitHub personal access token |
 
-## Other Platforms
+### Useful Commands on the VM
 
-No other platforms have been tested yet. A long-running VM or VPS would avoid most of the Cloud Run workarounds (no scale-to-zero, no CPU throttling, local filesystem).
+```bash
+# Check if the container is running
+docker ps
 
-::: warning Work in Progress
-Testing on more platforms (Fly.io, Railway, bare VPS, etc.) is planned. If you've deployed Krill somewhere other than Cloud Run or locally, I'd love to hear about your experience — open an issue on GitHub.
-:::
+# Follow live logs
+docker logs krill -f
+
+# Restart the container
+docker restart krill
+
+# Stop the container
+docker stop krill
+
+# Pull and run a specific image manually
+docker pull asia-southeast1-docker.pkg.dev/your-gcp-project-id/krill/krill:latest
+```
+
+### SSH Access
+
+```bash
+# From local machine
+gcloud compute ssh krill --zone asia-southeast1-c
+
+# Or directly with the generated key
+ssh -i ~/.ssh/google_compute_engine YOUR_USER@YOUR_VM_IP
+```
+
+For VS Code Remote-SSH, add to `~/.ssh/config`:
+
+```
+Host krill-vm
+  HostName YOUR_VM_IP
+  User YOUR_USER
+  IdentityFile ~/.ssh/google_compute_engine
+```
+
+Then **Cmd+Shift+P** → `Remote-SSH: Connect to Host` → `krill-vm`.
+
+## Cloud Run (Not Recommended)
+
+Cloud Run is designed for stateless HTTP request handlers — not long-running polling bots. Krill can run on it but fights the model at every level:
+
+- **Scale-to-zero** kills the polling loop and background tasks
+- **CPU throttling** between requests stalls the poll loop
+- **No local filesystem** — sessions and memory need external storage (GCS FUSE)
+- **Julia cold starts** take 60-100s, hitting Cloud Run's default startup timeouts
+- **No interactive auth** for `claude_code` / `codex` — browser-based OAuth not possible in containers
+
+If you still want to use Cloud Run, the old `cloudrun.yaml` config with all the required workarounds is preserved in the repo.

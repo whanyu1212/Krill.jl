@@ -141,6 +141,7 @@ function compose_instructions(
     skills_summary_text::Union{Nothing,AbstractString} = nothing,
     always_skills_text::Union{Nothing,AbstractString} = nothing,
     memory_text::Union{Nothing,AbstractString} = nothing,
+    global_memory_text::Union{Nothing,AbstractString} = nothing,
     include_tool_safety::Bool = false,
     runtime_metadata_text::Union{Nothing,AbstractString} = nothing,
 )
@@ -169,6 +170,13 @@ function compose_instructions(
     if always_skills_text !== nothing
         always = strip(String(always_skills_text))
         isempty(always) || push!(sections, always)
+    end
+
+    if global_memory_text !== nothing
+        gmem = strip(String(global_memory_text))
+        if !isempty(gmem)
+            push!(sections, "## User Profile\n" * gmem)
+        end
     end
 
     if memory_text !== nothing
@@ -212,6 +220,7 @@ function make_prompt_builder(;
         msg::InboundMessage,
         base_instructions::Union{Nothing,AbstractString},
         memory_text::Union{Nothing,AbstractString} = nothing,
+        global_memory_text::Union{Nothing,AbstractString} = nothing,
     )
         runtime_text = include_runtime_metadata ? render_runtime_metadata(msg; now_fn = now_fn) : nothing
         return compose_instructions(base_instructions;
@@ -219,6 +228,7 @@ function make_prompt_builder(;
             skills_summary_text = skills,
             always_skills_text = always,
             memory_text = memory_text,
+            global_memory_text = global_memory_text,
             include_tool_safety = include_tool_safety,
             runtime_metadata_text = runtime_text,
         )

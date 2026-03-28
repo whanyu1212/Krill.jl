@@ -204,7 +204,9 @@ KRILL_FAST_TESTS=1 bash scripts/test.sh  # fast offline tests
 
 ## Deployment
 
-Running locally is the simplest option. The `Dockerfile` targets Google Cloud Run but more platform testing is planned. See the [deployment guide](https://whanyu1212.github.io/Krill.jl/guide/deployment).
+Running locally is the simplest option. For production, the included CI/CD pipeline deploys via Docker — push to `main` triggers a GitHub Actions workflow that builds the image, pushes to Artifact Registry, and deploys to the VM via SSH. The author currently runs this on **GCP Compute Engine** (e2-medium).
+
+An e2-medium VM (~$20–25/month with sustained use discounts) is the recommended setup — always-on, no cold starts, and full local filesystem for session/memory persistence. See the [deployment guide](https://whanyu1212.github.io/Krill.jl/guide/deployment) for full setup instructions and platform comparisons.
 
 ## Contributing
 
