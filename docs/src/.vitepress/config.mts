@@ -5,13 +5,13 @@ import { withMermaid } from 'vitepress-plugin-mermaid'
 // For local preview (`npm run docs:dev`), the fallback values below are used.
 const defined = (s: string) => !s.startsWith('REPLACE_ME')
 
-const base = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : '/'
+const base = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : '/Krill.jl/'
 const title = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : 'Krill.jl'
 const outDir = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : '../build'
 const logo = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : ''
-const favicon = defined('REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' : '/favicon.ico'
+const favicon = defined('REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' : '/Krill.jl/favicon.ico'
 const editLink = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : undefined
-const socialLink = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : 'https://github.com/hanyuwu/Krill.jl'
+const socialLink = defined('REPLACE_ME_DOCUMENTER_VITEPRESS') ? 'REPLACE_ME_DOCUMENTER_VITEPRESS' : 'https://github.com/whanyu1212/Krill.jl'
 
 export default withMermaid(defineConfig({
   mermaid: {

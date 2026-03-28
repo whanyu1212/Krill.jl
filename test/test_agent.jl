@@ -6,7 +6,7 @@ using Krill.Telegram: HTTP, JSON3
 # Internal modules for white-box tests; use local names to avoid conflicts when
 # included from runtests.jl which may have already defined these.
 const _Agent_MCPServer = Krill.MCP.MCPServer
-const _LLM = Krill.Core.LLM
+const _LLM = Krill.LLM
 
 # ============================================================================
 # RetryConfig
@@ -27,12 +27,12 @@ end
 
 @testset "RetryConfig custom values" begin
     r = RetryConfig(
-        max_retries=5,
-        base_delay_s=1.0,
-        max_delay_s=30.0,
-        multiplier=3.0,
-        jitter=false,
-        retriable_status_codes=Set{Int}([503]),
+        max_retries = 5,
+        base_delay_s = 1.0,
+        max_delay_s = 30.0,
+        multiplier = 3.0,
+        jitter = false,
+        retriable_status_codes = Set{Int}([503]),
     )
     @test r.max_retries == 5
     @test r.base_delay_s == 1.0
@@ -43,10 +43,10 @@ end
 end
 
 @testset "RetryConfig validation" begin
-    @test_throws ArgumentError RetryConfig(max_retries=-1)
-    @test_throws ArgumentError RetryConfig(base_delay_s=-0.1)
-    @test_throws ArgumentError RetryConfig(max_delay_s=-1.0)
-    @test_throws ArgumentError RetryConfig(multiplier=0.9)
+    @test_throws ArgumentError RetryConfig(max_retries = -1)
+    @test_throws ArgumentError RetryConfig(base_delay_s = -0.1)
+    @test_throws ArgumentError RetryConfig(max_delay_s = -1.0)
+    @test_throws ArgumentError RetryConfig(multiplier = 0.9)
 end
 
 # ============================================================================
@@ -65,10 +65,10 @@ end
 @testset "AgentHooks custom callbacks stored" begin
     fired = Dict{String,Any}()
     h = AgentHooks(
-        on_turn_start   = (msg, hist) -> (fired["turn_start"] = true),
-        on_turn_end     = (msg, hist) -> (fired["turn_end"]   = true),
-        on_tool_call    = (name, args) -> (fired["tool_call"] = name),
-        on_tool_result  = (name, res)  -> (fired["tool_result"] = name),
+        on_turn_start = (msg, hist) -> (fired["turn_start"] = true),
+        on_turn_end = (msg, hist) -> (fired["turn_end"] = true),
+        on_tool_call = (name, args) -> (fired["tool_call"] = name),
+        on_tool_result = (name, res) -> (fired["tool_result"] = name),
         should_interrupt = (name, args) -> name == "stop_me",
     )
     @test h.on_turn_start !== nothing
@@ -90,7 +90,7 @@ end
 # ============================================================================
 
 @testset "Agent construction — defaults" begin
-    p = OpenAIProvider(api_key="test-key", model="gpt-4o-mini")
+    p = OpenAIProvider(api_key = "test-key", model = "gpt-4o-mini")
     a = Agent(p)
     @test a.provider === p
     @test a.system_prompt == "You are a helpful assistant."
@@ -104,17 +104,17 @@ end
 end
 
 @testset "Agent construction — custom values" begin
-    p = OpenAIProvider(api_key="k", model="gpt-4o")
-    r = RetryConfig(max_retries=7, jitter=false)
-    h = AgentHooks(on_tool_call=(n, a) -> nothing)
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o")
+    r = RetryConfig(max_retries = 7, jitter = false)
+    h = AgentHooks(on_tool_call = (n, a) -> nothing)
     a = Agent(p;
-        system_prompt="Be terse.",
-        workspace="myctx",
-        hooks=h,
-        retry=r,
-        max_tool_iterations=5,
-        enable_memory=false,
-        enable_cron=false,
+        system_prompt = "Be terse.",
+        workspace = "myctx",
+        hooks = h,
+        retry = r,
+        max_tool_iterations = 5,
+        enable_memory = false,
+        enable_cron = false,
     )
     @test a.system_prompt == "Be terse."
     @test a.workspace == "myctx"
@@ -127,19 +127,19 @@ end
 end
 
 @testset "Agent construction — function system_prompt" begin
-    p = OpenAIProvider(api_key="k", model="gpt-4o-mini")
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini")
     fn = (session_key) -> "Hello $session_key"
-    a = Agent(p; system_prompt=fn)
+    a = Agent(p; system_prompt = fn)
     @test a.system_prompt === fn
 end
 
 @testset "Agent construction — allowed_tools coerced to Vector{String}" begin
-    p = OpenAIProvider(api_key="k", model="gpt-4o-mini")
-    a = Agent(p; allowed_tools=["read_file", "web_search"])
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini")
+    a = Agent(p; allowed_tools = ["read_file", "web_search"])
     @test a.allowed_tools == ["read_file", "web_search"]
     @test a.allowed_tools isa Vector{String}
 
-    a2 = Agent(p; allowed_tools=nothing)
+    a2 = Agent(p; allowed_tools = nothing)
     @test a2.allowed_tools === nothing
 end
 
@@ -151,8 +151,8 @@ const _AGENT_FAST = get(ENV, "KRILL_FAST_TESTS", "0") == "1"
 
 if !_AGENT_FAST
     @testset "_retry_sleep with RetryConfig (no jitter)" begin
-        r = RetryConfig(base_delay_s=1.0, multiplier=2.0, max_delay_s=10.0, jitter=false)
-        p = OpenAIProvider(api_key="k", model="gpt-4o-mini")
+        r = RetryConfig(base_delay_s = 1.0, multiplier = 2.0, max_delay_s = 10.0, jitter = false)
+        p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini")
 
         t1 = @elapsed _LLM._retry_sleep(1, r, p)  # 1.0 * 2^0 = 1.0
         t2 = @elapsed _LLM._retry_sleep(2, r, p)  # 1.0 * 2^1 = 2.0
@@ -165,8 +165,8 @@ if !_AGENT_FAST
 
     @testset "_retry_sleep falls back to provider when retry_config=nothing" begin
         # provider has max_retries=2, retry_base=0.1 — fallback path
-        p = OpenAIProvider(api_key="k", model="gpt-4o-mini",
-            max_retries=2, retry_base_seconds=0.1)
+        p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini",
+            max_retries = 2, retry_base_seconds = 0.1)
         t = @elapsed _LLM._retry_sleep(1, nothing, p)  # 0.1 * 2^0 = 0.1
         @test t >= 0.08 && t < 0.5
     end
@@ -178,20 +178,21 @@ end
 
 @testset "_post_json retries on retriable status codes from RetryConfig" begin
     attempt = Ref(0)
-    mock_req = (method, url, headers, body) -> begin
-        attempt[] += 1
-        attempt[] < 3 ?
+    mock_req =
+        (method, url, headers, body) -> begin
+            attempt[] += 1
+            attempt[] < 3 ?
             HTTP.Response(429, "rate limited") :
             HTTP.Response(200, JSON3.write(Dict("id" => "r1", "output" => [], "usage" => Dict())))
-    end
+        end
 
-    p = OpenAIProvider(api_key="k", model="gpt-4o-mini", request=mock_req,
-        max_retries=0)  # provider retries disabled — only RetryConfig active
-    r = RetryConfig(max_retries=3, base_delay_s=0.01, max_delay_s=0.1, jitter=false,
-        retriable_status_codes=Set{Int}([429]))
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini", request = mock_req,
+        max_retries = 0)  # provider retries disabled — only RetryConfig active
+    r = RetryConfig(max_retries = 3, base_delay_s = 0.01, max_delay_s = 0.1, jitter = false,
+        retriable_status_codes = Set{Int}([429]))
 
     body = _LLM._post_json(p, "https://example.com", Dict{String,Any}();
-        retry_config=r)
+        retry_config = r)
     @test attempt[] == 3
 end
 
@@ -201,31 +202,32 @@ end
         attempt[] += 1
         HTTP.Response(400, "bad request")
     end
-    p = OpenAIProvider(api_key="k", model="gpt-4o-mini", request=mock_req,
-        max_retries=0)
-    r = RetryConfig(max_retries=3, base_delay_s=0.01, jitter=false,
-        retriable_status_codes=Set{Int}([429, 500]))
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini", request = mock_req,
+        max_retries = 0)
+    r = RetryConfig(max_retries = 3, base_delay_s = 0.01, jitter = false,
+        retriable_status_codes = Set{Int}([429, 500]))
 
     @test_throws _LLM.OpenAIAPIError _LLM._post_json(p, "https://example.com",
-        Dict{String,Any}(); retry_config=r)
+        Dict{String,Any}(); retry_config = r)
     @test attempt[] == 1  # no retry — 400 not in retriable set
 end
 
 @testset "_post_json status codes from RetryConfig override provider defaults" begin
     attempt = Ref(0)
-    mock_req = (method, url, headers, body) -> begin
-        attempt[] += 1
-        attempt[] < 2 ?
+    mock_req =
+        (method, url, headers, body) -> begin
+            attempt[] += 1
+            attempt[] < 2 ?
             HTTP.Response(503, "unavailable") :
             HTTP.Response(200, JSON3.write(Dict("id" => "r1", "output" => [], "usage" => Dict())))
-    end
+        end
     # Only 503 is retriable (not the default set)
-    r = RetryConfig(max_retries=2, base_delay_s=0.01, jitter=false,
-        retriable_status_codes=Set{Int}([503]))
-    p = OpenAIProvider(api_key="k", model="gpt-4o-mini", request=mock_req,
-        max_retries=0)
+    r = RetryConfig(max_retries = 2, base_delay_s = 0.01, jitter = false,
+        retriable_status_codes = Set{Int}([503]))
+    p = OpenAIProvider(api_key = "k", model = "gpt-4o-mini", request = mock_req,
+        max_retries = 0)
 
-    _LLM._post_json(p, "https://example.com", Dict{String,Any}(); retry_config=r)
+    _LLM._post_json(p, "https://example.com", Dict{String,Any}(); retry_config = r)
     @test attempt[] == 2
 end
 
@@ -236,28 +238,31 @@ end
 
 @testset "_execute_tool_calls fires on_tool_call and on_tool_result hooks" begin
     registry = ToolRegistry()
-    register_tool!(registry, ToolDef(
-        name="echo",
-        description="echo the input",
-        parameters=Dict{String,Any}(
-            "type" => "object",
-            "properties" => Dict("text" => Dict("type" => "string")),
+    register_tool!(
+        registry,
+        ToolDef(
+            name = "echo",
+            description = "echo the input",
+            parameters = Dict{String,Any}(
+                "type" => "object",
+                "properties" => Dict("text" => Dict("type" => "string")),
+            ),
+            execute = (args) -> get(args, "text", ""),
         ),
-        execute=(args) ->get(args, "text", ""),
-    ))
+    )
 
-    calls_seen  = String[]
+    calls_seen = String[]
     results_seen = String[]
     h = AgentHooks(
-        on_tool_call   = (name, args) -> push!(calls_seen, name),
-        on_tool_result = (name, res)  -> push!(results_seen, name),
+        on_tool_call = (name, args) -> push!(calls_seen, name),
+        on_tool_result = (name, res) -> push!(results_seen, name),
     )
 
     tool_calls = [_LLM.LLMToolCall("c1", "echo", Dict{String,Any}("text" => "hello"))]
 
     result = _LLM._execute_tool_calls(registry, tool_calls;
-        max_tool_output_chars=1000,
-        hooks=h,
+        max_tool_output_chars = 1000,
+        hooks = h,
     )
 
     @test calls_seen == ["echo"]
@@ -268,22 +273,28 @@ end
 
 @testset "_execute_tool_calls should_interrupt stops loop" begin
     registry = ToolRegistry()
-    register_tool!(registry, ToolDef(
-        name="tool_a",
-        description="first",
-        parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
-        execute=(_) ->"a done",
-    ))
-    register_tool!(registry, ToolDef(
-        name="tool_b",
-        description="second",
-        parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
-        execute=(_) ->"b done",
-    ))
+    register_tool!(
+        registry,
+        ToolDef(
+            name = "tool_a",
+            description = "first",
+            parameters = Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
+            execute = (_) -> "a done",
+        ),
+    )
+    register_tool!(
+        registry,
+        ToolDef(
+            name = "tool_b",
+            description = "second",
+            parameters = Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
+            execute = (_) -> "b done",
+        ),
+    )
 
     dispatched = String[]
     h = AgentHooks(
-        on_tool_call    = (name, args) -> push!(dispatched, name),
+        on_tool_call = (name, args) -> push!(dispatched, name),
         should_interrupt = (name, args) -> name == "tool_b",  # stop before tool_b
     )
 
@@ -293,8 +304,8 @@ end
     ]
 
     result = _LLM._execute_tool_calls(registry, tool_calls;
-        max_tool_output_chars=1000,
-        hooks=h,
+        max_tool_output_chars = 1000,
+        hooks = h,
     )
 
     @test result.interrupted == true
@@ -304,24 +315,27 @@ end
 
 @testset "_execute_tool_calls hook failures are swallowed" begin
     registry = ToolRegistry()
-    register_tool!(registry, ToolDef(
-        name="noop",
-        description="does nothing",
-        parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
-        execute=(_) ->"ok",
-    ))
+    register_tool!(
+        registry,
+        ToolDef(
+            name = "noop",
+            description = "does nothing",
+            parameters = Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}()),
+            execute = (_) -> "ok",
+        ),
+    )
 
     h = AgentHooks(
-        on_tool_call   = (name, args) -> error("hook exploded"),
-        on_tool_result = (name, res)  -> error("hook exploded too"),
+        on_tool_call = (name, args) -> error("hook exploded"),
+        on_tool_result = (name, res) -> error("hook exploded too"),
     )
 
     tool_calls = [_LLM.LLMToolCall("c1", "noop", Dict{String,Any}())]
 
     # Should not throw despite both hooks raising
     result = _LLM._execute_tool_calls(registry, tool_calls;
-        max_tool_output_chars=1000,
-        hooks=h,
+        max_tool_output_chars = 1000,
+        hooks = h,
     )
     @test length(result.events) == 1  # tool still ran
     @test result.interrupted == false

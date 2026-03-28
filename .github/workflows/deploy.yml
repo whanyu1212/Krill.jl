@@ -1,18 +1,26 @@
-name: Deploy to Cloud Run
+name: Deploy to Compute Engine
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: false
+        default: "main"
 
 env:
   PROJECT_ID: fleet-anagram-244304
-  REGION: us-central1
-  SERVICE_NAME: krill
-  IMAGE: us-central1-docker.pkg.dev/fleet-anagram-244304/krill/krill
+  REGION: asia-southeast1
+  IMAGE: asia-southeast1-docker.pkg.dev/fleet-anagram-244304/krill/krill
+  VM_HOST: 35.198.209.223
+  VM_USER: hanyuwu
+  CONTAINER_NAME: krill
 
 jobs:
   deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -47,17 +55,40 @@ jobs:
           docker push ${{ env.IMAGE }}:${{ github.sha }}
           docker push ${{ env.IMAGE }}:latest
 
-      - name: Deploy to Cloud Run
+      - name: Set up SSH key
         run: |
-          sed -e "s|${{ env.IMAGE }}:latest|${{ env.IMAGE }}:${{ github.sha }}|" \
-              -e "s|__TELEGRAM_BOT_TOKEN__|${{ secrets.TELEGRAM_BOT_TOKEN }}|" \
-              -e "s|__OPENAI_API_KEY__|${{ secrets.OPENAI_API_KEY }}|" \
-              -e "s|__GEMINI_API_KEY__|${{ secrets.GEMINI_API_KEY }}|" \
-              -e "s|__GH_PAT__|${{ secrets.GH_PAT }}|" \
-              cloudrun.yaml | gcloud run services replace - --region ${{ env.REGION }}
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GCP_SSH_KEY }}" > ~/.ssh/gce_key
+          chmod 600 ~/.ssh/gce_key
+          ssh-keyscan -H ${{ env.VM_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Show service URL
+      - name: Deploy to VM
         run: |
-          gcloud run services describe ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --format "value(status.url)"
+          ssh -i ~/.ssh/gce_key ${{ env.VM_USER }}@${{ env.VM_HOST }} << 'EOF'
+            # Authenticate Docker to pull from Artifact Registry
+            gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
+
+            # Pull the new image
+            docker pull ${{ env.IMAGE }}:${{ github.sha }}
+
+            # Stop and remove the old container if running
+            docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            docker rm   ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+
+            # Start the new container
+            docker run -d \
+              --name ${{ env.CONTAINER_NAME }} \
+              --restart always \
+              -e TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} \
+              -e DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }} \
+              -e OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+              -e GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
+              -e GH_PAT=${{ secrets.GH_PAT }} \
+              -v $HOME/.krill:/root/.krill \
+              -v $HOME/.claude/.credentials.json:/root/.claude/.credentials.json:ro \
+              -v $HOME/.codex/auth.json:/root/.codex/auth.json:ro \
+              ${{ env.IMAGE }}:${{ github.sha }}
+
+            # Clean up old images to free disk space
+            docker image prune -f
+          EOF

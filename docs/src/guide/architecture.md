@@ -102,9 +102,10 @@ sequenceDiagram
 
   P->>CH: raw event
   CH->>HUB: normalized message
+  HUB->>HUB: dedup check
   HUB->>SES: dequeue
-  SES->>SES: load history
-  SES->>LLM: prompt
+  SES->>SES: load history + memory
+  SES->>LLM: prompt (instructions + context)
   LLM-->>SES: response
 
   loop tool calls
@@ -114,7 +115,8 @@ sequenceDiagram
     LLM-->>SES: response
   end
 
-  SES->>SES: persist
+  SES->>SES: persist turns
+  SES->>SES: consolidate memory
   SES->>HUB: reply
   HUB->>MGR: dispatch
   MGR->>CH: send
@@ -142,12 +144,20 @@ sequenceDiagram
   }
 }}%%
 graph LR
+  subgraph NATIVE["Provider-native tools"]
+    NS["web search\nOpenAI · Gemini"]
+    NC["code interpreter\n(optional)"]
+  end
+
   subgraph LOCAL["Local built-ins"]
-    FT["file tools\nread · write · edit · list"]
-    WB["web tools\nsearch · fetch"]
+    FT["file tools\nread · write · edit · list · search"]
+    WF["web_fetch\nURL → markdown"]
     GH["github\ngh CLI wrapper"]
+    GW["google_workspace\ngws CLI wrapper"]
     EX["exec\n(optional)"]
     CC["claude_code / codex\n(optional)"]
+    CR["cron tools\nadd · list · remove"]
+    SP["spawn tools\nspawn · list · cancel"]
   end
 
   subgraph SKILLS["Skills"]
@@ -164,11 +174,16 @@ graph LR
   PC["PromptContext\nskill summaries +\nalways-on bodies"]
   SC["Session consumer"]
 
+  NS --> SC
+  NC --> SC
   FT --> TR
-  WB --> TR
+  WF --> TR
   GH --> TR
+  GW --> TR
   EX --> TR
   CC --> TR
+  CR --> TR
+  SP --> TR
   MS1 -->|mcp_name_tool| TR
   MS2 -->|mcp_name_tool| TR
   SK --> PC
@@ -176,6 +191,7 @@ graph LR
   TR --> SC
   PC --> SC
 
+  style NATIVE fill:#112240,stroke:#9558b2,stroke-width:1.5px,color:#c8d8f0
   style LOCAL fill:#112240,stroke:#4063d8,stroke-width:1.5px,color:#c8d8f0
   style SKILLS fill:#0d1e35,stroke:#389826,stroke-width:1.5px,color:#c8d8f0
   style MCP fill:#0b1c30,stroke:#c58d16,stroke-width:1.5px,color:#c8d8f0
@@ -222,8 +238,8 @@ The runtime boundary types shared by all subsystems:
 Session history and durable assistant memory are separated on purpose.
 
 - `SessionStore` writes ordered turn history to JSONL
-- `MemoryStore` writes `MEMORY.md`, `HISTORY.md`, and `state.json`
-- the memory consolidator periodically compresses durable facts out of long histories
+- `MemoryStore` writes per-session `MEMORY.md`, `HISTORY.md`, and `state.json` — the consolidator periodically compresses durable facts out of long histories
+- `GlobalMemoryStore` writes a per-user `MEMORY.md` keyed by `user_id` — shared across all channels and sessions for the same user, updated explicitly via `/remember`
 
 
 ### `Tools`, `Skills`, and `MCP`
@@ -234,7 +250,7 @@ The intelligence surface is layered rather than monolithic.
 - skills provide markdown instructions — always-on or on-demand via `read_skill`
 - MCP connections discover external tools and register them into the same registry
 
-**Note:** Julia has no official MCP SDK. Krill's MCP client (`src/core/mcp.jl`) implements JSON-RPC initialize / list / call over stdio and HTTP from scratch. It covers common cases well but may have edge-case issues with unusual servers. See [Known Limitations](/guide/features#Known-Limitations).
+**Note:** Julia has no official MCP SDK. Krill's MCP client (`src/tools/mcp.jl`) implements JSON-RPC initialize / list / call over stdio and HTTP from scratch. It covers common cases well but may have edge-case issues with unusual servers. See [Known Limitations](/guide/features#Known-Limitations).
 
 
 ### `PromptContext`
@@ -245,9 +261,10 @@ Krill composes the instruction stack explicitly on every turn:
 2. workspace bootstrap docs (`SOUL.md`, `AGENTS.md`, `USER.md`, `TOOLS.md`)
 3. skill metadata summary
 4. always-on skill bodies
-5. session memory
-6. tool-output safety notice
-7. runtime metadata (channel, session key, chat ID, UTC timestamp)
+5. global memory (`## User Profile`) — cross-channel user profile, written via `/remember`
+6. session memory (`## Session Memory`) — per-chat consolidated memory
+7. tool-output safety notice
+8. runtime metadata (channel, session key, chat ID, UTC timestamp)
 
 
 ### `LLM`
@@ -286,9 +303,10 @@ The agent can read and write inside this directory. File tools are restricted to
 | Path | Owned by | Purpose |
 | --- | --- | --- |
 | `sessions/.../history.jsonl` | `SessionStore` | ordered user/assistant turns |
-| `memory/.../MEMORY.md` | `MemoryStore` | consolidated durable memory |
+| `memory/.../MEMORY.md` | `MemoryStore` | consolidated per-session memory |
 | `memory/.../HISTORY.md` | `MemoryStore` | archived consolidation batches |
 | `memory/.../state.json` | `MemoryStore` | consolidation offsets and failures |
+| `global_memory/<user_id>/MEMORY.md` | `GlobalMemoryStore` | cross-channel user profile, written via `/remember` |
 | `cron/jobs.json` | `CronService` | persisted schedules |
 | `dead_letters.jsonl` | `ChannelManager` | failed dispatch records |
 

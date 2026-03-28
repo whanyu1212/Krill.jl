@@ -10,7 +10,7 @@ Pass everything directly as `llm_*` keyword arguments (flat API):
 
 ```julia
 rt = RuntimeState(channel;
-    llm_provider  = OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-4o-mini"),
+    llm_provider  = OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-5.4"),
     system_prompt = "You are a helpful assistant.",
     workspace     = "context",
     data_dir      = joinpath(homedir(), ".krill"),
@@ -24,7 +24,7 @@ shutdown!(rt)
 Or compose an `Agent` struct first and pass it directly (Agent API):
 
 ```julia
-agent = Agent(OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-4o-mini");
+agent = Agent(OpenAIProvider(api_key=ENV["OPENAI_API_KEY"], model="gpt-5.4");
     system_prompt = "You are a helpful assistant.",
     workspace     = "context",
     hooks = AgentHooks(
@@ -108,10 +108,9 @@ Enabled with `llm_enable_builtin_tools=true`. Always available regardless of pro
 | Tool | What it does |
 | --- | --- |
 | `read_file`, `write_file`, `edit_file`, `list_dir` | File operations inside `workspace` |
-| `web_search` | DuckDuckGo search (basic — prefer provider search when available) |
-| `web_fetch` | Fetch a URL as markdown |
+| `web_fetch` | Fetch a specific URL as markdown |
 | `github` | Wraps the `gh` CLI |
-| `message` | Send a message to a chat ID from within a tool call |
+| `message` | Send a message to a chat ID (only registered when a send function is available) |
 | `exec` | Shell commands — opt-in via `llm_builtin_enable_exec=true` |
 | `google_workspace` | Wraps the `gws` CLI for Gmail, Calendar, Drive — opt-in via `llm_enable_google_workspace=true` |
 | `claude_code` | Delegate a task to Claude Code CLI — opt-in via `llm_enable_claude_code=true` |
@@ -139,6 +138,18 @@ llm_tools = [
 ```
 
 For most bots, enable both: provider tools for web search quality, local tools for file access and GitHub. Use `claude_code` or `codex` for multi-step research or coding tasks.
+
+### Provider tools not yet enabled
+
+Both providers offer additional built-in tools that Krill doesn't enable by default. I may come back to these later, but most are not high-value items for a personal assistant use case right now.
+
+| Tool | Provider | Value | Notes |
+| --- | --- | --- | --- |
+| `image_generation` | OpenAI | High | "Generate an image of X" is a natural request. Easy to enable on the API side, but Krill's pipeline currently assumes text-only responses — displaying images in Telegram/Discord requires changes to parsing, message types, and channel senders. |
+| `googleMaps` | Gemini | Medium | Useful for location queries ("restaurants near me", "directions to X"). Has compatibility constraints — can't combine with `googleSearch`, `codeExecution`, or `urlContext` in the same request. The agent loses other tools when maps is active. `_sanitize_gemini_tools` in `parsing.jl` already handles this. |
+| `file_search` | Both | Low | Requires pre-uploading documents to vector stores (OpenAI) or file search stores (Gemini). Not useful unless you set up a knowledge base. Could be valuable later for searching over a document library. |
+| `computerUse` | Gemini | None | Krill runs headless — there's no screen to interact with. |
+| `mcp` (remote) | OpenAI | None | OpenAI's server-side MCP. Krill already has local MCP support which is more flexible. |
 
 ## MCP Servers
 
@@ -267,7 +278,11 @@ This is assembled fresh every turn, so changes to bootstrap docs or skills take 
 
 ## Memory
 
-Krill maintains per-session durable memory that persists across restarts.
+Krill has a two-layer memory system: **session memory** (per-chat, automatic) and **global memory** (per-user, explicit).
+
+### Session Memory
+
+Per-session durable memory that persists across restarts. Scoped to a session key (e.g. `telegram:123`), so each chat has its own isolated memory store.
 
 Enable with `llm_enable_memory=true` and `llm_enable_memory_consolidation=true`.
 
@@ -276,7 +291,7 @@ Enable with `llm_enable_memory=true` and `llm_enable_memory_consolidation=true`.
 1. After each turn, a consolidation process scans new history entries
 2. It calls the LLM to extract durable facts and merge them into `MEMORY.md`
 3. Processed history is archived to `HISTORY.md` so `MEMORY.md` stays compact
-4. On the next turn, `MEMORY.md` is injected into the system prompt
+4. On the next turn, `MEMORY.md` is injected into the system prompt as `## Session Memory`
 
 Files written under `~/.krill/memory/<session>/`:
 
@@ -285,6 +300,37 @@ Files written under `~/.krill/memory/<session>/`:
 | `MEMORY.md` | Live consolidated memory — injected each turn |
 | `HISTORY.md` | Archived consolidation batches |
 | `state.json` | Offsets and failure tracking |
+
+### Global Memory
+
+Cross-channel user profile that persists across sessions and channels. Keyed by `user_id` (not session key), so the same user is recognised whether they message from Telegram, Discord, or any other channel.
+
+Enable by passing `llm_global_memory_store` to `RuntimeState`.
+
+**How it works:**
+
+1. Users write facts explicitly with `/remember <fact>`
+2. The LLM merges the new fact into the existing profile — deduplicating, resolving contradictions, and reorganising into coherent sections
+3. The updated profile is saved to `MEMORY.md` for that user
+4. On every turn, the profile is injected into the system prompt as `## User Profile`, above session memory
+
+Files written under `~/.krill/global_memory/<user_id>/`:
+
+| File | Purpose |
+| --- | --- |
+| `MEMORY.md` | Live user profile — injected every turn across all sessions |
+
+**Prompt injection order** (when both layers are enabled):
+
+```
+[Base system prompt]
+[Bootstrap docs]
+[Skills]
+## User Profile       ← global memory (cross-channel)
+## Session Memory     ← session memory (per-chat)
+[Tool safety notice]
+[Runtime metadata]
+```
 
 ## Cron
 
@@ -358,6 +404,22 @@ Krill's MCP client is built from scratch with no official Julia SDK. Known edge 
 - **Session continuity** — HTTP re-initialization after reconnect may break servers that tie context to session state
 
 Open an issue with the raw JSON-RPC exchange and server name if you hit one of these.
+
+### Memory
+
+- **No memory retrieval tool** — the full `MEMORY.md` is dumped into context every turn; the LLM can't search or query it selectively
+- **No memory size cap** — if `MEMORY.md` grows large, it eats into the context window with no automatic pruning
+- **Session memory consolidation quality depends on the LLM** — the summarizer may drop facts the user considers important, or retain noise
+- **Global memory is explicit-only** — the user must invoke `/remember <fact>`; the LLM does not write to global memory automatically
+
+### Telegram rendering
+
+Krill converts markdown to Telegram HTML before sending — bold, italic, strikethrough, code blocks, inline code, links, and headings all translate. Tables are converted to aligned monospace `<pre>` blocks. Known rough edges:
+
+- **Complex tables** — Tables with very wide columns or mixed-width content may not align well on mobile screens
+- **Nested formatting in tables** — Bold/italic inside table cells is stripped (the table is rendered as plain text inside `<pre>`)
+- **Long messages** — Telegram has a 4096-character limit per message; Krill does not currently split long responses automatically (Discord does)
+- **HTML fallback** — If Telegram rejects the HTML (malformed tags from unusual LLM output), Krill retries as plain text, losing all formatting
 
 ### Current boundaries
 

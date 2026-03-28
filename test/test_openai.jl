@@ -8,14 +8,14 @@
         ]
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="now",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "now",
         )
 
-        ctx = build_context("sys", history, msg; max_context_tokens=30)
+        ctx = build_context("sys", history, msg; max_context_tokens = 30)
         @test ctx.instructions == "sys"
         @test length(ctx.messages) < 5
         @test ctx.messages[end]["role"] == "user"
@@ -28,14 +28,14 @@
         ]
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="follow up",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "follow up",
         )
 
-        ctx = build_context("sys", history, msg; max_context_tokens=1_000)
+        ctx = build_context("sys", history, msg; max_context_tokens = 1_000)
         @test length(ctx.messages) == 3
         @test ctx.messages[1]["content"][1]["type"] == "input_text"
         @test ctx.messages[2]["role"] == "assistant"
@@ -45,24 +45,24 @@
 
     @testset "build_context appends memory section to instructions" begin
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="follow up",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "follow up",
         )
 
         ctx = build_context("sys", TurnRecord[], msg;
-            max_context_tokens=1_000,
-            memory_text="Preferred language: Julia.",
+            max_context_tokens = 1_000,
+            memory_text = "Preferred language: Julia.",
         )
         @test occursin("sys", String(ctx.instructions))
         @test occursin("## Session Memory", String(ctx.instructions))
         @test occursin("Preferred language: Julia.", String(ctx.instructions))
 
         memory_only = build_context(nothing, TurnRecord[], msg;
-            max_context_tokens=1_000,
-            memory_text="Timezone: Asia/Singapore.",
+            max_context_tokens = 1_000,
+            memory_text = "Timezone: Asia/Singapore.",
         )
         @test memory_only.instructions == "## Session Memory\nTimezone: Asia/Singapore."
     end
@@ -70,44 +70,49 @@
     @testset "chat_completion sends responses payload and parses usage" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["method"] = method
             captured["url"] = url
             captured["headers"] = headers
             captured["payload"] = JSON3.read(String(body))
 
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_1",
-                "output_text" => "hello from openai",
-                "usage" => Dict(
-                    "input_tokens" => 11,
-                    "output_tokens" => 7,
-                    "total_tokens" => 18,
-                    "input_tokens_details" => Dict("cached_tokens" => 3),
-                    "output_tokens_details" => Dict("reasoning_tokens" => 2),
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_1",
+                        "output_text" => "hello from openai",
+                        "usage" => Dict(
+                            "input_tokens" => 11,
+                            "output_tokens" => 7,
+                            "total_tokens" => 18,
+                            "input_tokens_details" => Dict("cached_tokens" => 3),
+                            "output_tokens_details" => Dict("reasoning_tokens" => 2),
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            model="gpt-5.4-mini",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            model = "gpt-5.4-mini",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         response = chat_completion(
             provider,
             Any[Dict("role" => "user", "content" => Any[Dict("type" => "input_text", "text" => "hi")])];
-            instructions="You are concise",
-            reasoning=Dict("effort" => "low", "summary" => "auto"),
-            tools=Any[
+            instructions = "You are concise",
+            reasoning = Dict("effort" => "low", "summary" => "auto"),
+            tools = Any[
                 Dict("type" => "web_search"),
                 Dict("type" => "code_interpreter"),
                 Dict("type" => "file_search", "vector_store_ids" => ["vs_123"]),
             ],
-            include=Any["web_search_call.action.sources"],
+            include = Any["web_search_call.action.sources"],
         )
 
         @test captured["method"] == "POST"
@@ -127,30 +132,35 @@
     @testset "make_llm_processor supports text image and file content parts" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_2",
-                "output_text" => "multimodal ok",
-                "usage" => Dict(
-                    "input_tokens" => 20,
-                    "output_tokens" => 5,
-                    "total_tokens" => 25,
-                    "input_tokens_details" => Dict("cached_tokens" => 0),
-                    "output_tokens_details" => Dict("reasoning_tokens" => 1),
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_2",
+                        "output_text" => "multimodal ok",
+                        "usage" => Dict(
+                            "input_tokens" => 20,
+                            "output_tokens" => 5,
+                            "total_tokens" => 25,
+                            "input_tokens_details" => Dict("cached_tokens" => 0),
+                            "output_tokens_details" => Dict("reasoning_tokens" => 1),
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         processor = make_llm_processor(provider;
-            tools=Any[
+            tools = Any[
                 Dict("type" => "web_search"),
                 Dict("type" => "file_search", "vector_store_ids" => ["vs_abc"]),
                 Dict(
@@ -164,8 +174,8 @@
                     ),
                 ),
             ],
-            reasoning=Dict("effort" => "low", "summary" => "auto"),
-            include=Any["file_search_call.results"],
+            reasoning = Dict("effort" => "low", "summary" => "auto"),
+            include = Any["file_search_call.results"],
         )
 
         msg = InboundMessage(
@@ -217,37 +227,42 @@
     @testset "make_llm_processor injects session memory from MemoryStore" begin
         captured = Dict{String,Any}()
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_2b",
-                "output_text" => "ok",
-                "usage" => Dict("input_tokens" => 10, "output_tokens" => 2, "total_tokens" => 12),
-            )))
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_2b",
+                        "output_text" => "ok",
+                        "usage" => Dict("input_tokens" => 10, "output_tokens" => 2, "total_tokens" => 12),
+                    ),
+                ),
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         workspace = mktempdir()
-        memory_store = MemoryStore(; workspace=workspace)
+        memory_store = MemoryStore(; workspace = workspace)
         save_memory!(memory_store, "telegram:42", "Known preference: concise answers.")
 
         processor = make_llm_processor(provider;
-            system_prompt="sys",
-            memory_store=memory_store,
+            system_prompt = "sys",
+            memory_store = memory_store,
         )
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="hey",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "hey",
         )
 
         result = processor(msg, TurnRecord[])
@@ -262,30 +277,35 @@
         builder_calls = Ref(0)
         last_builder_memory = Ref{Union{Nothing,String}}(nothing)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             captured["payload"] = JSON3.read(String(body))
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_2c",
-                "output_text" => "ok",
-                "usage" => Dict("input_tokens" => 9, "output_tokens" => 2, "total_tokens" => 11),
-            )))
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_2c",
+                        "output_text" => "ok",
+                        "usage" => Dict("input_tokens" => 9, "output_tokens" => 2, "total_tokens" => 11),
+                    ),
+                ),
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         workspace = mktempdir()
-        memory_store = MemoryStore(; workspace=workspace)
+        memory_store = MemoryStore(; workspace = workspace)
         save_memory!(memory_store, "telegram:99", "Remember this user likes short replies.")
 
         processor = make_llm_processor(provider;
-            system_prompt=session_key -> "base for $(session_key)",
-            memory_store=memory_store,
-            instructions_builder=(msg, base, memory) -> begin
+            system_prompt = session_key -> "base for $(session_key)",
+            memory_store = memory_store,
+            instructions_builder = (msg, base, memory) -> begin
                 builder_calls[] += 1
                 last_builder_memory[] = memory === nothing ? nothing : String(memory)
                 return "$(base)\n\nChannel=$(String(msg.channel))\n\nMemory=$(memory)"
@@ -293,11 +313,11 @@
         )
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:99",
-            user_id="99",
-            chat_id="99",
-            text="hey",
+            channel = :telegram,
+            session_key = "telegram:99",
+            user_id = "99",
+            chat_id = "99",
+            text = "hey",
         )
 
         result = processor(msg, TurnRecord[])
@@ -317,52 +337,62 @@
         payloads = Any[]
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
             payload = JSON3.read(String(body))
             push!(payloads, payload)
 
             if call_no[] == 1
-                return HTTP.Response(200, JSON3.write(Dict(
-                    "id" => "resp_1",
-                    "output" => Any[
+                return HTTP.Response(
+                    200,
+                    JSON3.write(
                         Dict(
-                            "type" => "function_call",
-                            "id" => "fc_1",
-                            "call_id" => "call_1",
-                            "name" => "sum_numbers",
-                            "arguments" => "{\"a\":2,\"b\":3}",
+                            "id" => "resp_1",
+                            "output" => Any[
+                                Dict(
+                                "type" => "function_call",
+                                "id" => "fc_1",
+                                "call_id" => "call_1",
+                                "name" => "sum_numbers",
+                                "arguments" => "{\"a\":2,\"b\":3}",
+                            ),
+                            ],
+                            "usage" => Dict(
+                                "input_tokens" => 10,
+                                "output_tokens" => 3,
+                                "total_tokens" => 13,
+                            ),
                         ),
-                    ],
-                    "usage" => Dict(
-                        "input_tokens" => 10,
-                        "output_tokens" => 3,
-                        "total_tokens" => 13,
                     ),
-                )))
+                )
             end
 
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_2",
-                "output_text" => "The sum is 5",
-                "usage" => Dict(
-                    "input_tokens" => 12,
-                    "output_tokens" => 5,
-                    "total_tokens" => 17,
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_2",
+                        "output_text" => "The sum is 5",
+                        "usage" => Dict(
+                            "input_tokens" => 12,
+                            "output_tokens" => 5,
+                            "total_tokens" => 17,
+                        ),
+                    ),
                 ),
-            )))
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         sum_tool = ToolDef(
-            name="sum_numbers",
-            parameters=Dict{String,Any}(
+            name = "sum_numbers",
+            parameters = Dict{String,Any}(
                 "type" => "object",
                 "properties" => Dict{String,Any}(
                     "a" => Dict{String,Any}("type" => "integer"),
@@ -370,20 +400,20 @@
                 ),
                 "required" => Any["a", "b"],
             ),
-            execute=args -> Int(args["a"]) + Int(args["b"]),
+            execute = args -> Int(args["a"]) + Int(args["b"]),
         )
 
         processor = make_llm_processor(provider;
-            tools=[sum_tool],
-            max_tool_iterations=4,
+            tools = [sum_tool],
+            max_tool_iterations = 4,
         )
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="what is 2+3?",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "what is 2+3?",
         )
 
         result = processor(msg, TurnRecord[])
@@ -404,58 +434,63 @@
     @testset "return_direct tool short-circuits tool loop" begin
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_rd",
-                "output" => Any[
+            return HTTP.Response(
+                200,
+                JSON3.write(
                     Dict(
-                        "type" => "function_call",
-                        "id" => "fc_rd",
-                        "call_id" => "call_rd",
-                        "name" => "lookup_direct",
-                        "arguments" => "{\"q\":\"ok\"}",
+                        "id" => "resp_rd",
+                        "output" => Any[
+                            Dict(
+                            "type" => "function_call",
+                            "id" => "fc_rd",
+                            "call_id" => "call_rd",
+                            "name" => "lookup_direct",
+                            "arguments" => "{\"q\":\"ok\"}",
+                        ),
+                        ],
+                        "usage" => Dict(
+                            "input_tokens" => 5,
+                            "output_tokens" => 2,
+                            "total_tokens" => 7,
+                        ),
                     ),
-                ],
-                "usage" => Dict(
-                    "input_tokens" => 5,
-                    "output_tokens" => 2,
-                    "total_tokens" => 7,
                 ),
-            )))
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         direct_tool = ToolDef(
-            name="lookup_direct",
-            parameters=Dict{String,Any}(
+            name = "lookup_direct",
+            parameters = Dict{String,Any}(
                 "type" => "object",
                 "properties" => Dict{String,Any}(
                     "q" => Dict{String,Any}("type" => "string"),
                 ),
                 "required" => Any["q"],
             ),
-            execute=args -> "DIRECT_" * String(args["q"]),
-            return_direct=true,
+            execute = args -> "DIRECT_" * String(args["q"]),
+            return_direct = true,
         )
 
         processor = make_llm_processor(provider;
-            tools=[direct_tool],
-            max_tool_iterations=4,
+            tools = [direct_tool],
+            max_tool_iterations = 4,
         )
 
         msg = InboundMessage(
-            channel=:telegram,
-            session_key="telegram:42",
-            user_id="42",
-            chat_id="42",
-            text="direct",
+            channel = :telegram,
+            session_key = "telegram:42",
+            user_id = "42",
+            chat_id = "42",
+            text = "direct",
         )
 
         result = processor(msg, TurnRecord[])
@@ -467,65 +502,87 @@
         progress_log = Tuple{String,Dict{String,Any}}[]
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
             if call_no[] == 1
-                return HTTP.Response(200, JSON3.write(Dict(
-                    "id" => "resp_tp1",
-                    "output" => Any[
+                return HTTP.Response(
+                    200,
+                    JSON3.write(
                         Dict(
-                            "type" => "function_call",
-                            "id" => "fc_a",
-                            "call_id" => "call_a",
-                            "name" => "alpha",
-                            "arguments" => "{\"x\":1}",
+                            "id" => "resp_tp1",
+                            "output" => Any[
+                                Dict(
+                                    "type" => "function_call",
+                                    "id" => "fc_a",
+                                    "call_id" => "call_a",
+                                    "name" => "alpha",
+                                    "arguments" => "{\"x\":1}",
+                                ),
+                                Dict(
+                                    "type" => "function_call",
+                                    "id" => "fc_b",
+                                    "call_id" => "call_b",
+                                    "name" => "beta",
+                                    "arguments" => "{\"y\":2}",
+                                ),
+                            ],
+                            "usage" => Dict("input_tokens" => 5, "output_tokens" => 2, "total_tokens" => 7),
                         ),
-                        Dict(
-                            "type" => "function_call",
-                            "id" => "fc_b",
-                            "call_id" => "call_b",
-                            "name" => "beta",
-                            "arguments" => "{\"y\":2}",
-                        ),
-                    ],
-                    "usage" => Dict("input_tokens" => 5, "output_tokens" => 2, "total_tokens" => 7),
-                )))
+                    ),
+                )
             end
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_tp2",
-                "output_text" => "done",
-                "usage" => Dict("input_tokens" => 5, "output_tokens" => 1, "total_tokens" => 6),
-            )))
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_tp2",
+                        "output_text" => "done",
+                        "usage" => Dict("input_tokens" => 5, "output_tokens" => 1, "total_tokens" => 6),
+                    ),
+                ),
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         registry = ToolRegistry()
-        register_tool!(registry, ToolDef(
-            name="alpha",
-            parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}("x" => Dict{String,Any}("type" => "integer"))),
-            execute=args -> "alpha_$(args["x"])",
-        ))
-        register_tool!(registry, ToolDef(
-            name="beta",
-            parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}("y" => Dict{String,Any}("type" => "integer"))),
-            execute=args -> "beta_$(args["y"])",
-        ))
+        register_tool!(
+            registry,
+            ToolDef(
+                name = "alpha",
+                parameters = Dict{String,Any}(
+                    "type" => "object",
+                    "properties" => Dict{String,Any}("x" => Dict{String,Any}("type" => "integer")),
+                ),
+                execute = args -> "alpha_$(args["x"])",
+            ),
+        )
+        register_tool!(
+            registry,
+            ToolDef(
+                name = "beta",
+                parameters = Dict{String,Any}(
+                    "type" => "object",
+                    "properties" => Dict{String,Any}("y" => Dict{String,Any}("type" => "integer")),
+                ),
+                execute = args -> "beta_$(args["y"])",
+            ),
+        )
 
         processor = make_llm_processor(provider;
-            tools=tools_schema(registry),
-            tool_registry=registry,
-            max_tool_iterations=4,
-            tool_progress=(msg, tool_name, arguments) -> push!(progress_log, (tool_name, arguments)),
+            tools = tools_schema(registry),
+            tool_registry = registry,
+            max_tool_iterations = 4,
+            tool_progress = (msg, tool_name, arguments) -> push!(progress_log, (tool_name, arguments)),
         )
 
         msg = InboundMessage(
-            channel=:telegram, session_key="telegram:tp", user_id="1", chat_id="1", text="go",
+            channel = :telegram, session_key = "telegram:tp", user_id = "1", chat_id = "1", text = "go",
         )
         result = processor(msg, TurnRecord[])
         @test result.text == "done"
@@ -541,52 +598,68 @@
     @testset "tool_progress exception does not crash tool execution" begin
         call_no = Ref(0)
 
-        mock_request = function(method, url, headers, body)
+        mock_request = function (method, url, headers, body)
             call_no[] += 1
             if call_no[] == 1
-                return HTTP.Response(200, JSON3.write(Dict(
-                    "id" => "resp_tpe1",
-                    "output" => Any[
+                return HTTP.Response(
+                    200,
+                    JSON3.write(
                         Dict(
-                            "type" => "function_call",
-                            "id" => "fc_err",
-                            "call_id" => "call_err",
-                            "name" => "greet",
-                            "arguments" => "{\"name\":\"Alice\"}",
+                            "id" => "resp_tpe1",
+                            "output" => Any[
+                                Dict(
+                                "type" => "function_call",
+                                "id" => "fc_err",
+                                "call_id" => "call_err",
+                                "name" => "greet",
+                                "arguments" => "{\"name\":\"Alice\"}",
+                            ),
+                            ],
+                            "usage" => Dict("input_tokens" => 5, "output_tokens" => 2, "total_tokens" => 7),
                         ),
-                    ],
-                    "usage" => Dict("input_tokens" => 5, "output_tokens" => 2, "total_tokens" => 7),
-                )))
+                    ),
+                )
             end
-            return HTTP.Response(200, JSON3.write(Dict(
-                "id" => "resp_tpe2",
-                "output_text" => "greeted",
-                "usage" => Dict("input_tokens" => 5, "output_tokens" => 1, "total_tokens" => 6),
-            )))
+            return HTTP.Response(
+                200,
+                JSON3.write(
+                    Dict(
+                        "id" => "resp_tpe2",
+                        "output_text" => "greeted",
+                        "usage" => Dict("input_tokens" => 5, "output_tokens" => 1, "total_tokens" => 6),
+                    ),
+                ),
+            )
         end
 
         provider = OpenAIProvider(
-            api_key="test-key",
-            base_url="https://example.openai.test/v1",
-            request=mock_request,
-            max_retries=0,
+            api_key = "test-key",
+            base_url = "https://example.openai.test/v1",
+            request = mock_request,
+            max_retries = 0,
         )
 
         registry = ToolRegistry()
-        register_tool!(registry, ToolDef(
-            name="greet",
-            parameters=Dict{String,Any}("type" => "object", "properties" => Dict{String,Any}("name" => Dict{String,Any}("type" => "string"))),
-            execute=args -> "Hello $(args["name"])",
-        ))
+        register_tool!(
+            registry,
+            ToolDef(
+                name = "greet",
+                parameters = Dict{String,Any}(
+                    "type" => "object",
+                    "properties" => Dict{String,Any}("name" => Dict{String,Any}("type" => "string")),
+                ),
+                execute = args -> "Hello $(args["name"])",
+            ),
+        )
 
         processor = make_llm_processor(provider;
-            tools=tools_schema(registry),
-            tool_registry=registry,
-            tool_progress=(msg, tool_name, arguments) -> error("progress hook exploded"),
+            tools = tools_schema(registry),
+            tool_registry = registry,
+            tool_progress = (msg, tool_name, arguments) -> error("progress hook exploded"),
         )
 
         msg = InboundMessage(
-            channel=:telegram, session_key="telegram:tpe", user_id="1", chat_id="1", text="greet Alice",
+            channel = :telegram, session_key = "telegram:tpe", user_id = "1", chat_id = "1", text = "greet Alice",
         )
 
         # Should not throw — progress error is swallowed
@@ -598,8 +671,8 @@
 end
 
 @testset "Krill.jl HTML-to-markdown conversion" begin
-    html_to_md = Krill.Core.BuiltinTools._html_to_markdown
-    decode_entities = Krill.Core.BuiltinTools._decode_html_entities
+    html_to_md = Krill.BuiltinTools._html_to_markdown
+    decode_entities = Krill.BuiltinTools._decode_html_entities
 
     @testset "strips script, style, noscript tags" begin
         html = """<p>Hello</p><script>alert('xss')</script><style>body{}</style><noscript>Enable JS</noscript><p>world</p>"""
@@ -653,4 +726,3 @@ end
         @test html_to_md("plain text") == "plain text"
     end
 end
-

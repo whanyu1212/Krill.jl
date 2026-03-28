@@ -36,12 +36,12 @@ node_modules/
 # Environment secrets and local config
 .env
 *.json
+!docs/package.json
+!docs/package-lock.json
+
+# Build artifacts (sysimage)
+build/
 
 # Custom ignored folders
-refs/
-notes/
-
-# Personal context files — copy from *.example and fill in your details
-context/USER.md
-context/AGENTS.md
-AGENTS.md
+/refs/
+/notes/

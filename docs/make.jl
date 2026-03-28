@@ -23,14 +23,17 @@ makedocs(;
             "Configuration" => "guide/configuration.md",
             "Architecture" => "guide/architecture.md",
             "Features" => "guide/features.md",
+            "Agents & Subagents" => "guide/agents.md",
+            "Prompt Construction" => "guide/prompt_construction.md",
             "Security" => "guide/security.md",
+            "Deployment" => "guide/deployment.md",
         ],
         "Examples" => [
-            "Runnable Example" => "examples/telegram.md",
             "Use Case Testing" => "examples/use_cases.md",
         ],
         "Reference" => "api/reference.md",
         "Roadmap" => "notes/roadmap.md",
+        "Acknowledgements" => "notes/acknowledgements.md",
     ],
 )
 
@@ -60,13 +63,13 @@ function postprocess_markdown(builddir)
             # Restore collapsed ::: containers
             content = replace(content,
                 r"^(::: ?\w+)(?: ([^\n]*?))? (:::)$"m =>
-                    function(m)
+                    function (m)
                         m_match = match(r"^(::: ?\w+)(?: ([^\n]*?))? (:::)$", m)
                         opener = m_match[1]
                         body = m_match[2]
                         body === nothing && return m
                         return string(opener, "\n", body, "\n:::")
-                    end
+                    end,
             )
 
             # Collapse runs of 3+ newlines down to 2 (single blank line)
@@ -92,4 +95,4 @@ let builddir = joinpath(@__DIR__, "build", ".documenter")
 end
 
 # Rebuild VitePress from the post-processed Markdown.
-run(Cmd(`npm run docs:build`; dir=@__DIR__))
+run(Cmd(`npm run docs:build`; dir = @__DIR__))

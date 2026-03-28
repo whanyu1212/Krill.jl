@@ -6,27 +6,27 @@
     end
 
     @testset "get_session_lock! returns same lock for same key" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         lock1 = get_session_lock!(store, "session_a")
         lock2 = get_session_lock!(store, "session_a")
         @test lock1 === lock2
     end
 
     @testset "get_session_lock! returns different locks for different keys" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         lock1 = get_session_lock!(store, "session_a")
         lock2 = get_session_lock!(store, "session_b")
         @test lock1 !== lock2
     end
 
     @testset "load_history returns empty for new session" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         history = load_history(store, "new_session")
         @test isempty(history)
     end
 
     @testset "append_turn! and load_history roundtrip" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         turn = TurnRecord(:user, "hello", uuid4(), nothing, now(UTC))
         append_turn!(store, "test_session", turn)
 
@@ -39,7 +39,7 @@
     end
 
     @testset "append_turn! accumulates with correlation_id" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         t1 = TurnRecord(:user, "msg1", uuid4(), nothing, now(UTC))
         t2 = TurnRecord(:assistant, "reply1", uuid4(), t1.message_id, now(UTC))
         t3 = TurnRecord(:user, "msg2", uuid4(), nothing, now(UTC))
@@ -57,7 +57,7 @@
     end
 
     @testset "save_history overwrites" begin
-        store = SessionStore(; workspace=mktempdir())
+        store = SessionStore(; workspace = mktempdir())
         t1 = TurnRecord(:user, "old", uuid4(), nothing, now(UTC))
         append_turn!(store, "s1", t1)
 
@@ -71,7 +71,7 @@
 
     @testset "session_dir creates directory" begin
         workspace = mktempdir()
-        store = SessionStore(; workspace=workspace)
+        store = SessionStore(; workspace = workspace)
         dir = session_dir(store, "telegram:123")
         @test isdir(dir)
         @test dir == joinpath(workspace, "sessions", "telegram_123")
@@ -81,7 +81,7 @@ end
 @testset "Krill.jl MemoryStore" begin
     @testset "memory paths are per-session and sanitized" begin
         workspace = mktempdir()
-        store = MemoryStore(; workspace=workspace)
+        store = MemoryStore(; workspace = workspace)
         dir = memory_dir(store, "telegram:123:topic:9")
         @test isdir(dir)
         @test dir == joinpath(workspace, "memory", "telegram_123_topic_9")
@@ -91,7 +91,7 @@ end
     end
 
     @testset "save_memory! and load_memory roundtrip" begin
-        store = MemoryStore(; workspace=mktempdir())
+        store = MemoryStore(; workspace = mktempdir())
         @test load_memory(store, "s1") == ""
 
         save_memory!(store, "s1", "Important preference: terse replies.")
@@ -100,7 +100,7 @@ end
     end
 
     @testset "append_history! and memory state roundtrip" begin
-        store = MemoryStore(; workspace=mktempdir())
+        store = MemoryStore(; workspace = mktempdir())
         append_history!(store, "s2", "Archived turns 1-10")
         append_history!(store, "s2", "Archived turns 11-20")
 

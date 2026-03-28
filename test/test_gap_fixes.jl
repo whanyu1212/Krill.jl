@@ -242,17 +242,16 @@ using JSON3
     @testset "InboundMessage accepts content_parts kwarg" begin
         parts = ContentPart[TextPart("hi"), BinaryPart("image/png", "http://img", nothing, "img.png")]
         msg = InboundMessage(
-            channel=:test,
-            session_key="test:1",
-            user_id="1",
-            chat_id="1",
-            content_parts=parts,
+            channel = :test,
+            session_key = "test:1",
+            user_id = "1",
+            chat_id = "1",
+            content_parts = parts,
         )
         @test length(msg.content_parts) == 2
         @test msg.content_parts[1] isa TextPart
         @test msg.content_parts[2] isa BinaryPart
     end
-
 end
 
 # ============================================================================
@@ -260,7 +259,6 @@ end
 # ============================================================================
 
 @testset "Tool Result Caching" begin
-
     @testset "cache key produces consistent hashes" begin
         args1 = Dict{String,Any}("path" => "/tmp/foo.txt")
         args2 = Dict{String,Any}("path" => "/tmp/foo.txt")
@@ -287,7 +285,6 @@ end
         @test result_text == "result text"
         @test is_error == false
     end
-
 end
 
 # ============================================================================
@@ -295,7 +292,6 @@ end
 # ============================================================================
 
 @testset "Mid-Turn Cancellation" begin
-
     @testset "SessionCancelScope constructor" begin
         scope = SessionCancelScope()
         @test scope isa SessionCancelScope
@@ -372,5 +368,4 @@ end
         # Should not crash — final state depends on ordering
         @test is_cancelled(scope, "session:1") isa Bool
     end
-
 end

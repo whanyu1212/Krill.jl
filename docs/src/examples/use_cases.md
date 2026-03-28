@@ -2,6 +2,30 @@
 
 A quick reference for exercising each capability. Send these messages to your running agent to confirm a feature is working end-to-end.
 
+## Slash Commands
+
+No configuration needed — these work out of the box.
+
+```
+/help
+```
+
+Should display available commands, session turn count, and session age.
+
+```
+/new
+```
+
+Should clear the session and report how many turns were cleared.
+
+To test `/stop`, send a message that triggers a long tool chain (e.g., a web search + follow-up), then quickly send:
+
+```
+/stop
+```
+
+Should respond with "Stopped. The running task has been cancelled."
+
 ## Web Search
 
 **Requires:** `provider_builtins = true` (OpenAI `web_search` or Gemini `googleSearch`)
@@ -13,6 +37,16 @@ Search the web for recent news about OpenAI.
 ```
 
 The response should include cited sources. If it answers from training data only (no citations), `provider_builtins` may be off or the provider doesn't support it.
+
+## Web Fetch
+
+**Requires:** `local_builtins = true`
+
+```
+Read this page and summarise it: https://julialang.org
+```
+
+The agent should call `web_fetch` to retrieve the URL content. If it uses provider-native search instead of fetching the specific URL, the tool selection guidance in AGENTS.md may need tuning.
 
 ## File Operations
 
@@ -27,6 +61,18 @@ Read the file notes.md you just created.
 ```
 
 File tools are sandboxed to `context/` by default. A path-escape attempt should be denied.
+
+## GitHub
+
+**Requires:** `local_builtins = true`, `gh` CLI installed and authenticated
+
+```
+Show me the open issues on whanyu1212/Krill.jl
+
+How many stars does whanyu1212/Krill.jl have?
+```
+
+The agent should use the `github` tool wrapping `gh`. Verify it uses `--json` output for structured results.
 
 ## Memory
 
@@ -48,15 +94,31 @@ The agent should recall the preference from `~/.krill/memory/<session>/MEMORY.md
 
 **Requires:** `cron = true`
 
+Test a one-shot reminder (uses `at` schedule with computed UTC datetime):
+
+```
+Remind me in 2 minutes to check the oven.
+```
+
+The agent should create a one-shot job. After 2 minutes, it should send the reminder unprompted.
+
+Test a recurring job (uses `interval` schedule):
+
 ```
 Set a reminder every 1 minute to say "tick".
+```
 
+After adding the job, wait a minute — the agent should send "tick" unprompted.
+
+Then manage jobs:
+
+```
 List my scheduled jobs.
 
 Remove all cron jobs.
 ```
 
-After adding the job, wait a minute — the agent should send "tick" unprompted. Check `~/.krill/cron/jobs.json` to confirm persistence.
+Check `~/.krill/cron/jobs.json` to confirm persistence across restarts.
 
 ## Subagents
 
@@ -124,27 +186,27 @@ What is the current working directory?
 
 ## Claude Code / Codex Delegation
 
-**Requires:** `claude_code = true` or `codex = true`
+**Requires:** `claude_code = true` or `codex = true`, CLI authenticated beforehand
 
 ```
 Use Claude Code to find all Julia files in the workspace and summarise what each one does.
 
-Delegate to Codex: refactor the function in context/example.jl to use a more idiomatic style.
+Delegate to Codex: write a Julia function that computes the nth Fibonacci number and save it to the workspace.
 ```
 
-These spawn a subprocess and stream progress back. Useful for multi-step research or code changes across many files.
+These spawn a subprocess. The agent should report the result, cost/token usage, and session/thread ID when complete.
 
-## Hooks (Agent API)
+## Telegram Formatting
 
-**Requires:** running via `main_agent()` or a custom `Agent` with `AgentHooks`
+**Requires:** Telegram channel enabled
 
-Watch the Julia process stdout while sending any tool-triggering message:
+Send a message that triggers a table in the response:
 
 ```
-Search the web for the Julia programming language.
+Show me a comparison table of Julia, Python, and Rust — columns for typing, speed, and ecosystem size.
 ```
 
-You should see `@info "Tool called"` and `@info "Tool result"` log lines printed by the `on_tool_call` / `on_tool_result` hooks defined in `main_agent()`.
+Tables should render as aligned monospace text in Telegram (inside a `<pre>` block), not raw pipe characters. Bold, italic, code blocks, and links should also render correctly.
 
 ## History Summarization
 

@@ -4,11 +4,12 @@ using HTTP
 using JSON3
 using Dates
 using UUIDs
-using ...Core.Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
-using ...Core.MessageHub: MessageHubState
-using ...Core.Dedup: BoundedDedup
-using ...Core.ChannelInterface: AbstractChannel, make_inbound_handler
-import ...Core.ChannelInterface: channel_name, make_sender, normalize,
+using ...Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
+using ...MessageHub: MessageHubState
+using ...Dedup: BoundedDedup
+using ...ChannelInterface: AbstractChannel, make_inbound_handler
+import ...ChannelInterface:
+    channel_name, make_sender, normalize,
     start_channel!, stop_channel!, send_typing, send_direct, is_allowed
 
 export TelegramClient,
@@ -36,7 +37,11 @@ struct TelegramClient
     request::Function
 end
 
-function TelegramClient(token::AbstractString; base_url::Union{Nothing,AbstractString}=nothing, request::Function=HTTP.request)
+function TelegramClient(
+    token::AbstractString;
+    base_url::Union{Nothing,AbstractString} = nothing,
+    request::Function = HTTP.request,
+)
     resolved_base_url = isnothing(base_url) ? "https://api.telegram.org/bot$(token)" : String(base_url)
     return TelegramClient(String(token), resolved_base_url, request)
 end
@@ -56,7 +61,7 @@ function Base.showerror(io::IO, err::TelegramAPIError)
     print(io, "Telegram API error in ", err.method, " (", err.code, "): ", err.description)
 end
 
-function _api_call(client::TelegramClient, method::AbstractString; payload::Dict{String,Any}=Dict{String,Any}())
+function _api_call(client::TelegramClient, method::AbstractString; payload::Dict{String,Any} = Dict{String,Any}())
     url = "$(client.base_url)/$(method)"
     headers = ["Content-Type" => "application/json"]
     response = client.request("POST", url, headers, JSON3.write(payload))
@@ -84,10 +89,10 @@ Returns the raw array of update objects.
 """
 function get_updates(
     client::TelegramClient;
-    offset::Integer=0,
-    timeout::Integer=30,
-    limit::Union{Nothing,Integer}=nothing,
-    allowed_updates::Union{Nothing,Vector{String}}=nothing,
+    offset::Integer = 0,
+    timeout::Integer = 30,
+    limit::Union{Nothing,Integer} = nothing,
+    allowed_updates::Union{Nothing,Vector{String}} = nothing,
 )
     payload = Dict{String,Any}(
         "offset" => Int(offset),
@@ -100,7 +105,7 @@ function get_updates(
         payload["allowed_updates"] = allowed_updates
     end
 
-    return _api_call(client, "getUpdates"; payload=payload)
+    return _api_call(client, "getUpdates"; payload = payload)
 end
 
 """
@@ -112,8 +117,8 @@ function send_message(
     client::TelegramClient,
     chat_id,
     text::AbstractString;
-    parse_mode::Union{Nothing,AbstractString}="HTML",
-    disable_web_page_preview::Bool=false,
+    parse_mode::Union{Nothing,AbstractString} = "HTML",
+    disable_web_page_preview::Bool = false,
 )
     payload = Dict{String,Any}(
         "chat_id" => chat_id,
@@ -125,7 +130,7 @@ function send_message(
         payload["parse_mode"] = String(parse_mode)
     end
 
-    return _api_call(client, "sendMessage"; payload=payload)
+    return _api_call(client, "sendMessage"; payload = payload)
 end
 
 """
@@ -137,13 +142,13 @@ Returns the API result.
 function send_chat_action(
     client::TelegramClient,
     chat_id,
-    action::AbstractString="typing",
+    action::AbstractString = "typing",
 )
     payload = Dict{String,Any}(
         "chat_id" => chat_id,
         "action" => String(action),
     )
-    return _api_call(client, "sendChatAction"; payload=payload)
+    return _api_call(client, "sendChatAction"; payload = payload)
 end
 
 """
@@ -158,17 +163,17 @@ of each webhook request so you can verify authenticity.
 function set_webhook(
     client::TelegramClient,
     url::AbstractString;
-    secret_token::Union{Nothing,AbstractString}=nothing,
-    max_connections::Union{Nothing,Integer}=nothing,
-    allowed_updates::Union{Nothing,Vector{String}}=nothing,
-    drop_pending_updates::Bool=false,
+    secret_token::Union{Nothing,AbstractString} = nothing,
+    max_connections::Union{Nothing,Integer} = nothing,
+    allowed_updates::Union{Nothing,Vector{String}} = nothing,
+    drop_pending_updates::Bool = false,
 )
     payload = Dict{String,Any}("url" => String(url))
     secret_token === nothing || (payload["secret_token"] = String(secret_token))
     max_connections === nothing || (payload["max_connections"] = Int(max_connections))
     allowed_updates === nothing || (payload["allowed_updates"] = allowed_updates)
     drop_pending_updates && (payload["drop_pending_updates"] = true)
-    return _api_call(client, "setWebhook"; payload=payload)
+    return _api_call(client, "setWebhook"; payload = payload)
 end
 
 """
@@ -176,10 +181,10 @@ end
 
 Remove the current webhook. After this, you can switch back to `getUpdates` polling.
 """
-function delete_webhook(client::TelegramClient; drop_pending_updates::Bool=false)
+function delete_webhook(client::TelegramClient; drop_pending_updates::Bool = false)
     payload = Dict{String,Any}()
     drop_pending_updates && (payload["drop_pending_updates"] = true)
-    return _api_call(client, "deleteWebhook"; payload=payload)
+    return _api_call(client, "deleteWebhook"; payload = payload)
 end
 
 function _escape_html(text::AbstractString)
@@ -197,33 +202,40 @@ end
 
 function _replace_markdown_code_blocks(text::AbstractString)
     blocks = String[]
-    replaced = replace(String(text), r"(?ms)```([^\n`]*)\n?(.*?)```" => raw_match -> begin
-        match_obj = match(r"(?ms)^```([^\n`]*)\n?(.*?)```$", String(raw_match))
-        match_obj === nothing && return String(raw_match)
+    replaced = replace(
+        String(text),
+        r"(?ms)```([^\n`]*)\n?(.*?)```" =>
+            raw_match -> begin
+                match_obj = match(r"(?ms)^```([^\n`]*)\n?(.*?)```$", String(raw_match))
+                match_obj === nothing && return String(raw_match)
 
-        lang = strip(String(match_obj.captures[1]))
-        code = _escape_html(String(match_obj.captures[2]))
-        rendered = if isempty(lang)
-            "<pre><code>$(code)</code></pre>"
-        else
-            "<pre><code class=\"language-$(_escape_html_attr(lang))\">$(code)</code></pre>"
-        end
-        push!(blocks, rendered)
-        return "\0KRILLCODEBLOCK$(length(blocks))\0"
-    end)
+                lang = strip(String(match_obj.captures[1]))
+                code = _escape_html(String(match_obj.captures[2]))
+                rendered = if isempty(lang)
+                    "<pre><code>$(code)</code></pre>"
+                else
+                    "<pre><code class=\"language-$(_escape_html_attr(lang))\">$(code)</code></pre>"
+                end
+                push!(blocks, rendered)
+                return "\0KRILLCODEBLOCK$(length(blocks))\0"
+            end,
+    )
     return replaced, blocks
 end
 
 function _replace_markdown_inline_code(text::AbstractString)
     snippets = String[]
-    replaced = replace(String(text), r"`([^`\n]+)`" => raw_match -> begin
-        match_obj = match(r"^`([^`\n]+)`$", String(raw_match))
-        match_obj === nothing && return String(raw_match)
+    replaced = replace(
+        String(text),
+        r"`([^`\n]+)`" => raw_match -> begin
+            match_obj = match(r"^`([^`\n]+)`$", String(raw_match))
+            match_obj === nothing && return String(raw_match)
 
-        rendered = "<code>$(_escape_html(String(match_obj.captures[1])))</code>"
-        push!(snippets, rendered)
-        return "\0KRILLINLINECODE$(length(snippets))\0"
-    end)
+            rendered = "<code>$(_escape_html(String(match_obj.captures[1])))</code>"
+            push!(snippets, rendered)
+            return "\0KRILLINLINECODE$(length(snippets))\0"
+        end,
+    )
     return replaced, snippets
 end
 
@@ -235,20 +247,81 @@ function _restore_placeholders(text::AbstractString, prefix::String, values::Vec
     return out
 end
 
+"""Convert a markdown table (header + separator + rows) into a monospace <pre> block."""
+function _replace_markdown_tables(text::AbstractString)
+    table_blocks = String[]
+    # Match contiguous runs of pipe-delimited lines (header, separator, data rows)
+    replaced = replace(
+        String(text),
+        r"(?m)((?:^[ \t]*\|.+\|[ \t]*$\n?){3,})" =>
+            block -> begin
+                lines = split(strip(String(block)), '\n')
+                # Parse cells from each line
+                parsed = Vector{Vector{String}}()
+                for line in lines
+                    stripped = strip(line)
+                    # Skip separator rows (|---|---|)
+                    occursin(r"^\|[\s:|\-]+\|$", stripped) && continue
+                    cells = [strip(c) for c in split(stripped, '|')]
+                    # Remove empty first/last from leading/trailing |
+                    !isempty(cells) && isempty(cells[1]) && popfirst!(cells)
+                    !isempty(cells) && isempty(cells[end]) && pop!(cells)
+                    push!(parsed, cells)
+                end
+                isempty(parsed) && return String(block)
+
+                # Strip inline markdown markers — <pre> renders as plain text anyway
+                _strip_md = s -> replace(s, r"\*\*|__|\*|_|`" => "")
+                parsed = [[_strip_md(cell) for cell in row] for row in parsed]
+
+                # Calculate column widths
+                ncols = maximum(length.(parsed))
+                widths = zeros(Int, ncols)
+                for row in parsed
+                    for (i, cell) in enumerate(row)
+                        i <= ncols && (widths[i] = max(widths[i], length(cell)))
+                    end
+                end
+
+                # Render aligned text
+                out = IOBuffer()
+                for (ri, row) in enumerate(parsed)
+                    for ci in 1:ncols
+                        cell = ci <= length(row) ? row[ci] : ""
+                        padded = rpad(cell, widths[ci])
+                        ci > 1 && print(out, "  ")
+                        print(out, padded)
+                    end
+                    ri < length(parsed) && println(out)
+                end
+
+                rendered = "<pre>$(_escape_html(String(take!(out))))</pre>"
+                push!(table_blocks, rendered)
+                return "\0KRILLTABLE$(length(table_blocks))\0"
+            end,
+    )
+    return replaced, table_blocks
+end
+
 function _markdown_to_telegram_html(text::AbstractString)
     normalized = replace(String(text), "\r\n" => "\n")
     normalized = replace(normalized, '\r' => '\n')
 
-    with_blocks, code_blocks = _replace_markdown_code_blocks(normalized)
+    with_tables, table_blocks = _replace_markdown_tables(normalized)
+    with_blocks, code_blocks = _replace_markdown_code_blocks(with_tables)
     with_inline, inline_codes = _replace_markdown_inline_code(with_blocks)
 
     escaped = _escape_html(with_inline)
     escaped = replace(escaped, r"(?m)^#{1,6}[ \t]+(.+)$" => s"<b>\1</b>")
-    escaped = replace(escaped, r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)" => raw_match -> begin
-        match_obj = match(r"^\[([^\]\n]+)\]\((https?://[^\s)]+)\)$", String(raw_match))
-        match_obj === nothing && return String(raw_match)
-        return "<a href=\"$(String(match_obj.captures[2]))\">$(String(match_obj.captures[1]))</a>"
-    end)
+    escaped = replace(
+        escaped,
+        r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)" =>
+            raw_match -> begin
+                match_obj = match(r"^\[([^\]\n]+)\]\((https?://[^\s)]+)\)$", String(raw_match))
+                match_obj === nothing && return String(raw_match)
+                return "<a href=\"$(String(match_obj.captures[2]))\">$(String(match_obj.captures[1]))</a>"
+            end,
+    )
     escaped = replace(escaped, r"\*\*([^*\n]+)\*\*" => s"<b>\1</b>")
     escaped = replace(escaped, r"__([^_\n]+)__" => s"<b>\1</b>")
     escaped = replace(escaped, r"~~([^~\n]+)~~" => s"<s>\1</s>")
@@ -257,6 +330,7 @@ function _markdown_to_telegram_html(text::AbstractString)
 
     escaped = _restore_placeholders(escaped, "KRILLINLINECODE", inline_codes)
     escaped = _restore_placeholders(escaped, "KRILLCODEBLOCK", code_blocks)
+    escaped = _restore_placeholders(escaped, "KRILLTABLE", table_blocks)
     return escaped
 end
 
@@ -284,17 +358,23 @@ Handler exceptions are logged and do not terminate the polling loop.
 function run_polling(
     client::TelegramClient,
     handler::Function;
-    offset::Integer=0,
-    timeout::Integer=30,
-    poll_interval::Real=0.1,
-    max_updates::Union{Nothing,Integer}=nothing,
-    running::Ref{Bool}=Ref(true),
+    offset::Integer = 0,
+    timeout::Integer = 30,
+    poll_interval::Real = 0.1,
+    max_updates::Union{Nothing,Integer} = nothing,
+    running::Ref{Bool} = Ref(true),
 )
     next_offset = Int(offset)
     processed = 0
 
     while running[]
-        updates = get_updates(client; offset=next_offset, timeout=timeout)
+        updates = try
+            get_updates(client; offset = next_offset, timeout = timeout)
+        catch err
+            @warn "telegram polling request failed, retrying" exception=(err, catch_backtrace())
+            sleep(min(5.0, Float64(poll_interval) + 1.0))
+            continue
+        end
         running[] || break
 
         for update in updates
@@ -381,7 +461,12 @@ function _extract_media_parts(msg)
     if haskey(msg, :sticker)
         sticker = msg[:sticker]
         file_id = String(sticker[:file_id])
-        is_animated = try Bool(get(sticker, :is_animated, false)) catch _; false end
+        is_animated = try
+            Bool(get(sticker, :is_animated, false))
+        catch _
+            ;
+            false
+        end
         mime = is_animated ? "application/x-tgsticker" : "image/webp"
         push!(parts, BinaryPart(mime, nothing, nothing, file_id))
     end
@@ -403,13 +488,13 @@ function normalize_update(update)
         session_key = "telegram:$(chat_id)"
 
         return InboundMessage(
-            channel=:telegram,
-            session_key=session_key,
-            user_id=user_id,
-            chat_id=chat_id,
-            text=data,
-            raw=update,
-            metadata=Dict{String,Any}(
+            channel = :telegram,
+            session_key = session_key,
+            user_id = user_id,
+            chat_id = chat_id,
+            text = data,
+            raw = update,
+            metadata = Dict{String,Any}(
                 "type" => "callback_query",
                 "callback_query_id" => String(cq[:id]),
             ),
@@ -453,13 +538,13 @@ function normalize_update(update)
     end
 
     return InboundMessage(
-        channel=:telegram,
-        session_key=session_key,
-        user_id=user_id,
-        chat_id=chat_id,
-        content_parts=parts,
-        text=text,
-        raw=update,
+        channel = :telegram,
+        session_key = session_key,
+        user_id = user_id,
+        chat_id = chat_id,
+        content_parts = parts,
+        text = text,
+        raw = update,
     )
 end
 
@@ -475,7 +560,7 @@ The returned function takes an [`OutboundMessage`](@ref) and sends its text
 content to the appropriate chat via the Telegram Bot API.
 """
 function make_telegram_sender(client::TelegramClient)
-    return function(msg::OutboundMessage)
+    return function (msg::OutboundMessage)
         raw_text = message_text(msg)
         text = raw_text
         parse_mode = nothing
@@ -487,12 +572,12 @@ function make_telegram_sender(client::TelegramClient)
         end
 
         try
-            send_message(client, msg.chat_id, text; parse_mode=parse_mode)
+            send_message(client, msg.chat_id, text; parse_mode = parse_mode)
         catch err
             code = _error_code(err)
             if parse_mode == "HTML" && code == 400
                 @warn "telegram HTML send failed; retrying as plain text" chat_id=msg.chat_id message_id=msg.message_id
-                return send_message(client, msg.chat_id, raw_text; parse_mode=nothing)
+                return send_message(client, msg.chat_id, raw_text; parse_mode = nothing)
             end
             rethrow()
         end
@@ -518,23 +603,23 @@ end
 
 function TelegramChannel(
     client::TelegramClient;
-    poll_timeout::Integer=30,
-    poll_interval::Real=0.1,
-    allow_from::Vector{String}=String[],
+    poll_timeout::Integer = 30,
+    poll_interval::Real = 0.1,
+    allow_from::Vector{String} = String[],
 )
     return TelegramChannel(client, Int(poll_timeout), Float64(poll_interval), allow_from)
 end
 
 function TelegramChannel(
     token::AbstractString;
-    base_url::Union{Nothing,AbstractString}=nothing,
-    request::Function=HTTP.request,
-    poll_timeout::Integer=30,
-    poll_interval::Real=0.1,
-    allow_from::Vector{String}=String[],
+    base_url::Union{Nothing,AbstractString} = nothing,
+    request::Function = HTTP.request,
+    poll_timeout::Integer = 30,
+    poll_interval::Real = 0.1,
+    allow_from::Vector{String} = String[],
 )
-    client = TelegramClient(token; base_url=base_url, request=request)
-    return TelegramChannel(client; poll_timeout=poll_timeout, poll_interval=poll_interval, allow_from=allow_from)
+    client = TelegramClient(token; base_url = base_url, request = request)
+    return TelegramChannel(client; poll_timeout = poll_timeout, poll_interval = poll_interval, allow_from = allow_from)
 end
 
 channel_name(::TelegramChannel) = :telegram
@@ -559,8 +644,8 @@ function send_direct(ch::TelegramChannel, chat_id, text::AbstractString; kwargs.
     disable_web_page_preview = get(kwargs, :disable_web_page_preview, false)
     return send_message(
         ch.client, chat_id, String(text);
-        parse_mode=parse_mode,
-        disable_web_page_preview=Bool(disable_web_page_preview),
+        parse_mode = parse_mode,
+        disable_web_page_preview = Bool(disable_web_page_preview),
     )
 end
 
@@ -568,16 +653,16 @@ function start_channel!(
     ch::TelegramChannel,
     hub::MessageHubState,
     running::Ref{Bool};
-    dedup::Union{Nothing,BoundedDedup}=nothing,
-    on_message::Union{Nothing,Function}=nothing,
+    dedup::Union{Nothing,BoundedDedup} = nothing,
+    on_message::Union{Nothing,Function} = nothing,
 )
-    handler = make_inbound_handler(ch, hub; dedup=dedup, on_poll=on_message)
+    handler = make_inbound_handler(ch, hub; dedup = dedup, on_poll = on_message)
     task = Threads.@spawn begin
         try
             run_polling(ch.client, handler;
-                timeout=ch.poll_timeout,
-                poll_interval=ch.poll_interval,
-                running=running,
+                timeout = ch.poll_timeout,
+                poll_interval = ch.poll_interval,
+                running = running,
             )
         catch e
             e isa InterruptException && return
@@ -622,13 +707,13 @@ end
 function TelegramWebhookChannel(
     client::TelegramClient;
     url::AbstractString,
-    host::AbstractString="0.0.0.0",
-    port::Integer=8443,
-    path::AbstractString="/webhook",
-    secret_token::Union{Nothing,AbstractString}=nothing,
-    set_webhook_on_start::Bool=true,
-    delete_webhook_on_stop::Bool=true,
-    drop_pending_updates::Bool=false,
+    host::AbstractString = "0.0.0.0",
+    port::Integer = 8443,
+    path::AbstractString = "/webhook",
+    secret_token::Union{Nothing,AbstractString} = nothing,
+    set_webhook_on_start::Bool = true,
+    delete_webhook_on_stop::Bool = true,
+    drop_pending_updates::Bool = false,
 )
     return TelegramWebhookChannel(
         client,
@@ -646,11 +731,11 @@ end
 
 function TelegramWebhookChannel(
     token::AbstractString;
-    base_url::Union{Nothing,AbstractString}=nothing,
-    request::Function=HTTP.request,
-    kwargs...
+    base_url::Union{Nothing,AbstractString} = nothing,
+    request::Function = HTTP.request,
+    kwargs...,
 )
-    client = TelegramClient(token; base_url=base_url, request=request)
+    client = TelegramClient(token; base_url = base_url, request = request)
     return TelegramWebhookChannel(client; kwargs...)
 end
 
@@ -670,8 +755,8 @@ function send_direct(ch::TelegramWebhookChannel, chat_id, text::AbstractString; 
     disable_web_page_preview = get(kwargs, :disable_web_page_preview, false)
     return send_message(
         ch.client, chat_id, String(text);
-        parse_mode=parse_mode,
-        disable_web_page_preview=Bool(disable_web_page_preview),
+        parse_mode = parse_mode,
+        disable_web_page_preview = Bool(disable_web_page_preview),
     )
 end
 
@@ -679,7 +764,7 @@ function _make_webhook_router(ch::TelegramWebhookChannel, handler::Function)
     expected_path = ch.path
     secret = ch.secret_token
 
-    return function(req::HTTP.Request)
+    return function (req::HTTP.Request)
         # Only accept POST to the configured path
         if req.method != "POST" || HTTP.URI(req.target).path != expected_path
             return HTTP.Response(404, "Not Found")
@@ -716,16 +801,16 @@ function start_channel!(
     ch::TelegramWebhookChannel,
     hub::MessageHubState,
     running::Ref{Bool};
-    dedup::Union{Nothing,BoundedDedup}=nothing,
-    on_message::Union{Nothing,Function}=nothing,
+    dedup::Union{Nothing,BoundedDedup} = nothing,
+    on_message::Union{Nothing,Function} = nothing,
 )
-    handler = make_inbound_handler(ch, hub; dedup=dedup, on_poll=on_message)
+    handler = make_inbound_handler(ch, hub; dedup = dedup, on_poll = on_message)
     router = _make_webhook_router(ch, handler)
 
     if ch.set_webhook_on_start
         set_webhook(ch.client, ch.url;
-            secret_token=ch.secret_token,
-            drop_pending_updates=ch.drop_pending_updates,
+            secret_token = ch.secret_token,
+            drop_pending_updates = ch.drop_pending_updates,
         )
         @info "Telegram webhook registered" url=ch.url
     end

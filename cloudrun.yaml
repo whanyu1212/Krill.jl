@@ -12,14 +12,30 @@ spec:
         autoscaling.knative.dev/maxScale: "1"
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/cpu-throttling: "false"
     spec:
       serviceAccountName: hy-408@fleet-anagram-244304.iam.gserviceaccount.com
-      timeoutSeconds: 300
+      timeoutSeconds: 900
       containers:
         - image: us-central1-docker.pkg.dev/fleet-anagram-244304/krill/krill:latest
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 60
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 5
           resources:
             limits:
-              cpu: "1"
+              cpu: "2"
               memory: 2Gi
           env:
             - name: TELEGRAM_BOT_TOKEN

@@ -55,14 +55,16 @@ This file documents non-obvious constraints, best practices, and patterns that g
 
 ---
 
-## web_search
-- Uses DuckDuckGo. Returns titles and URLs only — no snippets.
-- Max 10 results per query. Default is 5 (configurable by the runtime).
-- Useful for finding documentation URLs, checking package versions, or current events.
-- Follow up with `web_fetch` to read the actual page content.
+## Web search (provider-native)
+- The provider's built-in search (OpenAI `web_search` / Gemini `googleSearch`) is the **primary** way to search the web. It returns rich results with snippets and citations.
+- Use for: factual lookups, current events, research questions, finding documentation.
+- You do NOT need to call `web_fetch` after a provider search — results already include content.
+- If the provider search returns poor or insufficient results, delegate a deeper search to `claude_code` or `codex` — they have their own built-in web search and can perform multi-step research.
 
 ## web_fetch
-- Fetches a URL and converts HTML to simplified markdown. Non-HTML content is returned raw.
+- Fetches a specific URL and converts HTML to simplified markdown. Non-HTML content is returned raw.
+- Use when: a user shares a link and asks you to read it, or you need the full content of a specific page that search snippets don't cover.
+- Do NOT use `web_fetch` as a replacement for search — use provider-native search for discovery, and `web_fetch` only for targeted URL reads.
 - Default character limit is 8,000. Set `max_chars` higher if you need more content.
 - SSRF protection blocks private IPs, localhost, and link-local addresses. This also applies to redirects.
 - Timeouts after 15 seconds. If a page is slow, it may fail.
@@ -219,7 +221,7 @@ gh api search/repositories?q=QUERY --jq '.items[0:5] | .[].full_name'
 - `cron_add` schedules a recurring or one-shot task. The prompt fires as if a user sent it.
 - Schedule types:
   - `at` — one-shot at an ISO datetime (e.g., `2026-03-25T09:00:00`)
-  - `every` — recurring interval (e.g., `30s`, `5m`, `2h`)
+  - `every` or `interval` — recurring interval (e.g., `30s`, `5m`, `2h`)
   - `cron` — standard 5-field cron expression (e.g., `0 9 * * 1-5` for weekdays at 9am)
 - Channel, session_key, and chat_id are auto-detected from the current conversation.
 - Use `cron_list` to see all jobs with status, fire count, and last fired time.

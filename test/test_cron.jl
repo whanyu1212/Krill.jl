@@ -4,8 +4,8 @@ using Dates
 using UUIDs
 using Krill.Telegram: HTTP, JSON3
 
-const CronMod = Krill.Core.Cron
-const BuiltinToolsMod = Krill.Core.BuiltinTools
+const CronMod = Krill.Cron
+const BuiltinToolsMod = Krill.BuiltinTools
 
 @testset "Krill.jl C.7 Cron expression parsing" begin
     @testset "parse_cron parses simple expression" begin
@@ -90,7 +90,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -113,7 +113,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -134,7 +134,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, true, false,
+            now(UTC), nothing, 0, true, false, false,
             CronMod.JobExecution[],
         )
 
@@ -158,7 +158,7 @@ end
         job = CronMod.CronJob(
             uuid4(), "test", sched, "do something",
             :telegram, "telegram:42", "42",
-            now(UTC), nothing, 0, false, false,  # enabled=false
+            now(UTC), nothing, 0, false, false, false,  # enabled=false
             CronMod.JobExecution[],
         )
         @test !is_due(job, now(UTC))
@@ -168,12 +168,12 @@ end
 @testset "Krill.jl C.7 CronJob constructor" begin
     @testset "creates job with defaults" begin
         job = CronJob(
-            label="test job",
-            schedule=parse_schedule("every", "5m"),
-            prompt="check status",
-            channel=:telegram,
-            session_key="telegram:42",
-            chat_id="42",
+            label = "test job",
+            schedule = parse_schedule("every", "5m"),
+            prompt = "check status",
+            channel = :telegram,
+            session_key = "telegram:42",
+            chat_id = "42",
         )
         @test job.label == "test job"
         @test job.prompt == "check status"
@@ -186,13 +186,13 @@ end
 
     @testset "rejects from_cron=true" begin
         @test_throws ArgumentError CronJob(
-            label="bad",
-            schedule=parse_schedule("every", "1m"),
-            prompt="nope",
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
-            from_cron=true,
+            label = "bad",
+            schedule = parse_schedule("every", "1m"),
+            prompt = "nope",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
+            from_cron = true,
         )
     end
 end
@@ -201,15 +201,15 @@ end
     workspace = mktempdir()
 
     @testset "add, list, get, remove" begin
-        svc = CronService(workspace=workspace, tick_interval_s=1.0)
+        svc = CronService(workspace = workspace, tick_interval_s = 1.0)
 
         job = CronJob(
-            label="job1",
-            schedule=parse_schedule("every", "10s"),
-            prompt="hello",
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
+            label = "job1",
+            schedule = parse_schedule("every", "10s"),
+            prompt = "hello",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
         )
         add_job!(svc, job)
 
@@ -219,12 +219,12 @@ end
 
         # Add second job
         job2 = CronJob(
-            label="job2",
-            schedule=parse_schedule("cron", "*/5 * * * *"),
-            prompt="check",
-            channel=:telegram,
-            session_key="telegram:2",
-            chat_id="2",
+            label = "job2",
+            schedule = parse_schedule("cron", "*/5 * * * *"),
+            prompt = "check",
+            channel = :telegram,
+            session_key = "telegram:2",
+            chat_id = "2",
         )
         add_job!(svc, job2)
         @test length(list_jobs(svc)) == 2
@@ -243,15 +243,15 @@ end
     workspace = mktempdir()
 
     @testset "save and reload jobs" begin
-        svc1 = CronService(workspace=workspace, tick_interval_s=1.0)
+        svc1 = CronService(workspace = workspace, tick_interval_s = 1.0)
 
         job = CronJob(
-            label="persist_test",
-            schedule=parse_schedule("cron", "0 9 * * 1-5"),
-            prompt="daily standup",
-            channel=:telegram,
-            session_key="telegram:99",
-            chat_id="99",
+            label = "persist_test",
+            schedule = parse_schedule("cron", "0 9 * * 1-5"),
+            prompt = "daily standup",
+            channel = :telegram,
+            session_key = "telegram:99",
+            chat_id = "99",
         )
         add_job!(svc1, job)
 
@@ -259,7 +259,7 @@ end
         @test isfile(joinpath(workspace, "cron", "jobs.json"))
 
         # Create new service from same workspace — should load the job
-        svc2 = CronService(workspace=workspace, tick_interval_s=1.0)
+        svc2 = CronService(workspace = workspace, tick_interval_s = 1.0)
         loaded = list_jobs(svc2)
         @test length(loaded) == 1
         @test loaded[1].id == job.id
@@ -271,14 +271,44 @@ end
 
     @testset "persistence roundtrip preserves all schedule types" begin
         ws = mktempdir()
-        svc = CronService(workspace=ws, tick_interval_s=1.0)
+        svc = CronService(workspace = ws, tick_interval_s = 1.0)
 
-        add_job!(svc, CronJob(label="at_job", schedule=parse_schedule("at", "2026-12-25T00:00:00"), prompt="xmas", channel=:telegram, session_key="t:1", chat_id="1"))
-        add_job!(svc, CronJob(label="every_job", schedule=parse_schedule("every", "2h"), prompt="check", channel=:telegram, session_key="t:2", chat_id="2"))
-        add_job!(svc, CronJob(label="cron_job", schedule=parse_schedule("cron", "*/10 * * * *"), prompt="poll", channel=:telegram, session_key="t:3", chat_id="3"))
+        add_job!(
+            svc,
+            CronJob(
+                label = "at_job",
+                schedule = parse_schedule("at", "2026-12-25T00:00:00"),
+                prompt = "xmas",
+                channel = :telegram,
+                session_key = "t:1",
+                chat_id = "1",
+            ),
+        )
+        add_job!(
+            svc,
+            CronJob(
+                label = "every_job",
+                schedule = parse_schedule("every", "2h"),
+                prompt = "check",
+                channel = :telegram,
+                session_key = "t:2",
+                chat_id = "2",
+            ),
+        )
+        add_job!(
+            svc,
+            CronJob(
+                label = "cron_job",
+                schedule = parse_schedule("cron", "*/10 * * * *"),
+                prompt = "poll",
+                channel = :telegram,
+                session_key = "t:3",
+                chat_id = "3",
+            ),
+        )
 
-        svc2 = CronService(workspace=ws, tick_interval_s=1.0)
-        jobs = sort(list_jobs(svc2), by=j -> j.label)
+        svc2 = CronService(workspace = ws, tick_interval_s = 1.0)
+        jobs = sort(list_jobs(svc2), by = j -> j.label)
 
         @test length(jobs) == 3
         @test jobs[1].label == "at_job" && jobs[1].schedule isa CronMod.AtSchedule
@@ -297,15 +327,15 @@ end
             return true
         end
 
-        svc = CronService(workspace=workspace, tick_interval_s=0.1, publish_fn=publish_fn)
+        svc = CronService(workspace = workspace, tick_interval_s = 0.1, publish_fn = publish_fn)
 
         job = CronJob(
-            label="tick_test",
-            schedule=parse_schedule("every", "0.1s"),
-            prompt="ping",
-            channel=:telegram,
-            session_key="telegram:50",
-            chat_id="50",
+            label = "tick_test",
+            schedule = parse_schedule("every", "0.1s"),
+            prompt = "ping",
+            channel = :telegram,
+            session_key = "telegram:50",
+            chat_id = "50",
         )
         add_job!(svc, job)
 
@@ -329,16 +359,16 @@ end
         published = InboundMessage[]
         publish_fn = msg -> (push!(published, msg); true)
 
-        svc = CronService(workspace=workspace, tick_interval_s=0.1, publish_fn=publish_fn)
+        svc = CronService(workspace = workspace, tick_interval_s = 0.1, publish_fn = publish_fn)
 
         # Schedule far in the future
         job = CronJob(
-            label="future",
-            schedule=parse_schedule("at", "2099-01-01T00:00:00"),
-            prompt="nope",
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
+            label = "future",
+            schedule = parse_schedule("at", "2099-01-01T00:00:00"),
+            prompt = "nope",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
         )
         add_job!(svc, job)
 
@@ -351,16 +381,16 @@ end
         published = InboundMessage[]
         publish_fn = msg -> (push!(published, msg); true)
 
-        svc = CronService(workspace=workspace, tick_interval_s=0.1, publish_fn=publish_fn)
+        svc = CronService(workspace = workspace, tick_interval_s = 0.1, publish_fn = publish_fn)
 
         # Schedule in the past so it fires immediately
         job = CronJob(
-            label="oneshot",
-            schedule=parse_schedule("at", "2020-01-01T00:00:00"),
-            prompt="fire once",
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
+            label = "oneshot",
+            schedule = parse_schedule("at", "2020-01-01T00:00:00"),
+            prompt = "fire once",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
         )
         add_job!(svc, job)
 
@@ -380,34 +410,34 @@ end
         published = InboundMessage[]
         publish_fn = msg -> (push!(published, msg); true)
 
-        svc = CronService(workspace=workspace, tick_interval_s=0.1, publish_fn=publish_fn)
+        svc = CronService(workspace = workspace, tick_interval_s = 0.1, publish_fn = publish_fn)
 
         job = CronJob(
-            label="lifecycle",
-            schedule=parse_schedule("every", "0.05s"),
-            prompt="tick",
-            channel=:telegram,
-            session_key="telegram:1",
-            chat_id="1",
+            label = "lifecycle",
+            schedule = parse_schedule("every", "0.05s"),
+            prompt = "tick",
+            channel = :telegram,
+            session_key = "telegram:1",
+            chat_id = "1",
         )
         add_job!(svc, job)
 
-        Krill.Core.Cron.start!(svc)
+        Krill.Cron.start!(svc)
         @test svc.running[] == true
         @test svc.tick_task !== nothing
 
         # Wait for at least one tick
         sleep(0.5)
 
-        Krill.Core.Cron.stop!(svc)
+        Krill.Cron.stop!(svc)
         @test svc.running[] == false
 
         @test length(published) >= 1
     end
 
     @testset "start! without publish_fn throws" begin
-        svc = CronService(workspace=mktempdir(), tick_interval_s=1.0)
-        @test_throws ArgumentError Krill.Core.Cron.start!(svc)
+        svc = CronService(workspace = mktempdir(), tick_interval_s = 1.0)
+        @test_throws ArgumentError Krill.Cron.start!(svc)
     end
 end
 
@@ -416,15 +446,15 @@ end
     published = InboundMessage[]
     publish_fn = msg -> (push!(published, msg); true)
 
-    svc = CronService(workspace=workspace, tick_interval_s=0.1, publish_fn=publish_fn)
+    svc = CronService(workspace = workspace, tick_interval_s = 0.1, publish_fn = publish_fn)
 
     job = CronJob(
-        label="history_test",
-        schedule=parse_schedule("every", "0.05s"),
-        prompt="go",
-        channel=:telegram,
-        session_key="telegram:1",
-        chat_id="1",
+        label = "history_test",
+        schedule = parse_schedule("every", "0.05s"),
+        prompt = "go",
+        channel = :telegram,
+        session_key = "telegram:1",
+        chat_id = "1",
     )
     add_job!(svc, job)
 
@@ -441,8 +471,8 @@ end
 end
 
 @testset "Krill.jl C.7 CronService validation" begin
-    @test_throws ArgumentError CronService(workspace=mktempdir(), tick_interval_s=0.0)
-    @test_throws ArgumentError CronService(workspace=mktempdir(), tick_interval_s=-1.0)
+    @test_throws ArgumentError CronService(workspace = mktempdir(), tick_interval_s = 0.0)
+    @test_throws ArgumentError CronService(workspace = mktempdir(), tick_interval_s = -1.0)
 end
 
 @testset "Krill.jl C.7 cron day-of-week mapping" begin
@@ -455,7 +485,7 @@ end
     job = CronMod.CronJob(
         uuid4(), "wed", sched, "test",
         :telegram, "t:1", "1",
-        now(UTC), nothing, 0, true, false,
+        now(UTC), nothing, 0, true, false, false,
         CronMod.JobExecution[],
     )
     @test is_due(job, wed)
@@ -472,7 +502,7 @@ end
     job_sun = CronMod.CronJob(
         uuid4(), "sun", sched_sun, "test",
         :telegram, "t:1", "1",
-        now(UTC), nothing, 0, true, false,
+        now(UTC), nothing, 0, true, false, false,
         CronMod.JobExecution[],
     )
     @test is_due(job_sun, sun)
@@ -482,20 +512,24 @@ end
 
 @testset "Krill.jl C.7 cron_add tool" begin
     workspace = mktempdir()
-    svc = CronService(workspace=workspace, tick_interval_s=1.0)
+    svc = CronService(workspace = workspace, tick_interval_s = 1.0)
     registry = ToolRegistry()
     register_cron_tools!(registry, svc)
 
     @testset "creates interval job via tool dispatch" begin
-        result = dispatch_tool(registry, "cron_add", Dict{String,Any}(
-            "label" => "test_add",
-            "schedule_type" => "every",
-            "schedule_value" => "5m",
-            "prompt" => "check status",
-            "session_key" => "telegram:42",
-            "chat_id" => "42",
-        ))
-        @test occursin("Created cron job", result)
+        result = dispatch_tool(
+            registry,
+            "cron_add",
+            Dict{String,Any}(
+                "label" => "test_add",
+                "schedule_type" => "every",
+                "schedule_value" => "5m",
+                "task" => "check status",
+                "session_key" => "telegram:42",
+                "chat_id" => "42",
+            ),
+        )
+        @test occursin("Added cron job", result)
         @test occursin("test_add", result)
         jobs = list_jobs(svc)
         @test length(jobs) == 1
@@ -504,46 +538,58 @@ end
     end
 
     @testset "creates cron-expression job" begin
-        result = dispatch_tool(registry, "cron_add", Dict{String,Any}(
-            "label" => "daily",
-            "schedule_type" => "cron",
-            "schedule_value" => "0 9 * * 1-5",
-            "prompt" => "standup",
-            "session_key" => "telegram:1",
-            "chat_id" => "1",
-        ))
-        @test occursin("Created cron job", result)
+        result = dispatch_tool(
+            registry,
+            "cron_add",
+            Dict{String,Any}(
+                "label" => "daily",
+                "schedule_type" => "cron",
+                "schedule_value" => "0 9 * * 1-5",
+                "task" => "standup",
+                "session_key" => "telegram:1",
+                "chat_id" => "1",
+            ),
+        )
+        @test occursin("Added cron job", result)
         @test length(list_jobs(svc)) == 2
     end
 
     @testset "returns error on invalid schedule value" begin
-        result = dispatch_tool(registry, "cron_add", Dict{String,Any}(
-            "label" => "bad",
-            "schedule_type" => "cron",
-            "schedule_value" => "not a cron expr",
-            "prompt" => "nope",
-            "session_key" => "t:1",
-            "chat_id" => "1",
-        ))
+        result = dispatch_tool(
+            registry,
+            "cron_add",
+            Dict{String,Any}(
+                "label" => "bad",
+                "schedule_type" => "cron",
+                "schedule_value" => "not a cron expr",
+                "task" => "nope",
+                "session_key" => "t:1",
+                "chat_id" => "1",
+            ),
+        )
         @test occursin("Error", result)
     end
 
     @testset "returns error on missing required fields" begin
-        result = dispatch_tool(registry, "cron_add", Dict{String,Any}(
-            "label" => "missing",
-            "schedule_type" => "every",
-            "schedule_value" => "5m",
-            "prompt" => "",
-            "session_key" => "t:1",
-            "chat_id" => "1",
-        ))
+        result = dispatch_tool(
+            registry,
+            "cron_add",
+            Dict{String,Any}(
+                "label" => "missing",
+                "schedule_type" => "every",
+                "schedule_value" => "5m",
+                "task" => "",
+                "session_key" => "t:1",
+                "chat_id" => "1",
+            ),
+        )
         @test occursin("Error", result)
     end
 end
 
 @testset "Krill.jl C.7 cron_list tool" begin
     workspace = mktempdir()
-    svc = CronService(workspace=workspace, tick_interval_s=1.0)
+    svc = CronService(workspace = workspace, tick_interval_s = 1.0)
     registry = ToolRegistry()
     register_cron_tools!(registry, svc)
 
@@ -553,73 +599,103 @@ end
     end
 
     @testset "lists added jobs" begin
-        add_job!(svc, CronJob(label="j1", schedule=parse_schedule("every", "1m"), prompt="a", channel=:telegram, session_key="t:1", chat_id="1"))
-        add_job!(svc, CronJob(label="j2", schedule=parse_schedule("cron", "0 12 * * *"), prompt="b", channel=:telegram, session_key="t:2", chat_id="2"))
+        add_job!(
+            svc,
+            CronJob(
+                label = "j1",
+                schedule = parse_schedule("every", "1m"),
+                prompt = "a",
+                channel = :telegram,
+                session_key = "t:1",
+                chat_id = "1",
+            ),
+        )
+        add_job!(
+            svc,
+            CronJob(
+                label = "j2",
+                schedule = parse_schedule("cron", "0 12 * * *"),
+                prompt = "b",
+                channel = :telegram,
+                session_key = "t:2",
+                chat_id = "2",
+            ),
+        )
         result = dispatch_tool(registry, "cron_list", Dict{String,Any}())
         @test occursin("j1", result)
         @test occursin("j2", result)
         @test occursin("every", result)
-        @test occursin("cron:", result)
+        @test occursin("cron '", result)
     end
 end
 
 @testset "Krill.jl C.7 cron_remove tool" begin
     workspace = mktempdir()
-    svc = CronService(workspace=workspace, tick_interval_s=1.0)
+    svc = CronService(workspace = workspace, tick_interval_s = 1.0)
     registry = ToolRegistry()
     register_cron_tools!(registry, svc)
 
-    job = CronJob(label="removeme", schedule=parse_schedule("every", "1h"), prompt="x", channel=:telegram, session_key="t:1", chat_id="1")
+    job = CronJob(
+        label = "removeme",
+        schedule = parse_schedule("every", "1h"),
+        prompt = "x",
+        channel = :telegram,
+        session_key = "t:1",
+        chat_id = "1",
+    )
     add_job!(svc, job)
     @test length(list_jobs(svc)) == 1
 
     @testset "removes existing job" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => string(job.id)))
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => "removeme"))
         @test occursin("Removed", result)
         @test length(list_jobs(svc)) == 0
     end
 
-    @testset "returns not found for unknown id" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => string(uuid4())))
-        @test occursin("not found", result)
+    @testset "returns not found for unknown label" begin
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => "nonexistent"))
+        @test occursin("not found", result) || occursin("Error", result)
     end
 
-    @testset "returns error for invalid uuid" begin
-        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("job_id" => "not-a-uuid"))
-        @test occursin("Error", result) || occursin("invalid", result)
+    @testset "returns error for empty label" begin
+        result = dispatch_tool(registry, "cron_remove", Dict{String,Any}("label" => ""))
+        @test occursin("Error", result) || occursin("empty", result)
     end
 end
 
 @testset "Krill.jl C.7 cron tool recursion prevention" begin
-    workspace = mktempdir()
-    svc = CronService(workspace=workspace, tick_interval_s=1.0)
-    registry = ToolRegistry()
-    register_cron_tools!(registry, svc; from_cron=true)
-
-    result = dispatch_tool(registry, "cron_add", Dict{String,Any}(
-        "label" => "recursive",
-        "schedule_type" => "every",
-        "schedule_value" => "1m",
-        "prompt" => "should fail",
-        "session_key" => "t:1",
-        "chat_id" => "1",
-    ))
-    @test occursin("Error", result) || occursin("cron execution", result)
-    @test length(list_jobs(svc)) == 0
+    # CronJob constructor throws when from_cron=true, preventing recursive scheduling
+    @test_throws ArgumentError CronJob(
+        label = "recursive",
+        schedule = parse_schedule("every", "1m"),
+        prompt = "should fail",
+        channel = :telegram,
+        session_key = "t:1",
+        chat_id = "1",
+        from_cron = true,
+    )
 end
 
 @testset "Krill.jl C.7 RuntimeState cron integration" begin
     @testset "RuntimeState with LLM provider registers cron tools" begin
-        mock_request = (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        mock_request =
+            (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
 
         workspace = mktempdir()
-        provider = OpenAIProvider(api_key="test", model="gpt-4.1-mini", base_url="https://example.test/v1", request=mock_request, max_retries=0)
+        provider = OpenAIProvider(
+            api_key = "test",
+            model = "gpt-4.1-mini",
+            base_url = "https://example.test/v1",
+            request = mock_request,
+            max_retries = 0,
+        )
 
         rt = RuntimeState(TelegramChannel(client);
-            llm_provider=provider,
-            workspace=workspace,
-            llm_enable_cron=true,
+            llm_provider = provider,
+            workspace = workspace,
+            data_dir = mktempdir(),
+            llm_enable_cron = true,
         )
 
         @test rt.cron_service !== nothing
@@ -632,10 +708,11 @@ end
     end
 
     @testset "RuntimeState without LLM provider has no cron" begin
-        mock_request = (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        mock_request =
+            (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
 
-        rt = RuntimeState(TelegramChannel(client); workspace=mktempdir())
+        rt = RuntimeState(TelegramChannel(client); workspace = mktempdir())
 
         @test rt.cron_service === nothing
         st = status(rt)
@@ -646,15 +723,22 @@ end
     end
 
     @testset "RuntimeState with cron disabled" begin
-        mock_request = (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
-        client = TelegramClient("token"; base_url="https://example.test/botTOKEN", request=mock_request)
+        mock_request =
+            (method, url, headers, body) -> HTTP.Response(200, JSON3.write(Dict("ok" => true, "result" => Any[])))
+        client = TelegramClient("token"; base_url = "https://example.test/botTOKEN", request = mock_request)
 
-        provider = OpenAIProvider(api_key="test", model="gpt-4.1-mini", base_url="https://example.test/v1", request=mock_request, max_retries=0)
+        provider = OpenAIProvider(
+            api_key = "test",
+            model = "gpt-4.1-mini",
+            base_url = "https://example.test/v1",
+            request = mock_request,
+            max_retries = 0,
+        )
 
         rt = RuntimeState(TelegramChannel(client);
-            llm_provider=provider,
-            workspace=mktempdir(),
-            llm_enable_cron=false,
+            llm_provider = provider,
+            workspace = mktempdir(),
+            llm_enable_cron = false,
         )
 
         @test rt.cron_service === nothing

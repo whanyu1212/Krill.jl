@@ -2,14 +2,13 @@ using Krill
 using Test
 using Sockets
 
-const _check_exec_denylist = Krill.Core.BuiltinTools._check_exec_denylist
-const _check_exec_urls = Krill.Core.BuiltinTools._check_exec_urls
-const _is_forbidden_ip = Krill.Core.BuiltinTools._is_forbidden_ip
-const _validate_http_url = Krill.Core.BuiltinTools._validate_http_url
-const _resolve_path = Krill.Core.BuiltinTools._resolve_path
+const _check_exec_denylist = Krill.BuiltinTools._check_exec_denylist
+const _check_exec_urls = Krill.BuiltinTools._check_exec_urls
+const _is_forbidden_ip = Krill.BuiltinTools._is_forbidden_ip
+const _validate_http_url = Krill.BuiltinTools._validate_http_url
+const _resolve_path = Krill.BuiltinTools._resolve_path
 
 @testset "Exec command denylist" begin
-
     @testset "blocks rm -rf variants" begin
         @test _check_exec_denylist("rm -rf /") !== nothing
         @test _check_exec_denylist("rm -rf ~") !== nothing
@@ -68,11 +67,9 @@ const _resolve_path = Krill.Core.BuiltinTools._resolve_path
         @test _check_exec_denylist("cp src/foo.jl dst/foo.jl") === nothing
         @test _check_exec_denylist("grep -r 'pattern' ./src") === nothing
     end
-
 end
 
 @testset "SSRF: _is_forbidden_ip" begin
-
     @testset "blocks IPv4 private/reserved ranges" begin
         @test _is_forbidden_ip(IPv4("127.0.0.1"))       # loopback
         @test _is_forbidden_ip(IPv4("10.0.0.1"))        # 10/8
@@ -102,11 +99,9 @@ end
     @testset "allows public IPv6" begin
         @test !_is_forbidden_ip(IPv6("2606:4700:4700::1111"))  # Cloudflare DNS
     end
-
 end
 
 @testset "SSRF: _validate_http_url" begin
-
     @testset "blocks IP-literal private addresses in URL" begin
         url, err = _validate_http_url("http://127.0.0.1/secret")
         @test url === nothing
@@ -140,11 +135,9 @@ end
         @test err === nothing
         @test url !== nothing
     end
-
 end
 
 @testset "Exec URL scan" begin
-
     @testset "blocks commands with internal URLs" begin
         @test _check_exec_urls("curl http://169.254.169.254/latest/meta-data/") !== nothing
         @test _check_exec_urls("wget http://192.168.1.1/admin") !== nothing
@@ -163,22 +156,21 @@ end
         @test _check_exec_urls("echo hello") === nothing
         @test _check_exec_urls("julia --version") === nothing
     end
-
 end
 
 @testset "Workspace path resolution" begin
     mktempdir() do workspace
         @testset "allows paths inside workspace" begin
-            p = _resolve_path("file.txt", workspace; restrict_to_workspace=true)
+            p = _resolve_path("file.txt", workspace; restrict_to_workspace = true)
             @test startswith(p, workspace)
         end
 
         @testset "blocks absolute paths outside workspace" begin
-            @test_throws ArgumentError _resolve_path("/etc/passwd", workspace; restrict_to_workspace=true)
+            @test_throws ArgumentError _resolve_path("/etc/passwd", workspace; restrict_to_workspace = true)
         end
 
         @testset "blocks path traversal" begin
-            @test_throws ArgumentError _resolve_path("../../etc/passwd", workspace; restrict_to_workspace=true)
+            @test_throws ArgumentError _resolve_path("../../etc/passwd", workspace; restrict_to_workspace = true)
         end
 
         @testset "blocks symlink escape" begin
@@ -187,12 +179,12 @@ end
             write(target, "secret")
             link = joinpath(workspace, "escape_link")
             symlink(target, link)
-            @test_throws ArgumentError _resolve_path("escape_link", workspace; restrict_to_workspace=true)
+            @test_throws ArgumentError _resolve_path("escape_link", workspace; restrict_to_workspace = true)
             rm(target)
         end
 
         @testset "allows path when restriction disabled" begin
-            p = _resolve_path("/etc/hosts", workspace; restrict_to_workspace=false)
+            p = _resolve_path("/etc/hosts", workspace; restrict_to_workspace = false)
             @test p == "/etc/hosts"
         end
     end

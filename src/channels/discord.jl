@@ -5,11 +5,12 @@ using HTTP.WebSockets
 using JSON3
 using Dates
 using UUIDs
-using ...Core.Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
-using ...Core.MessageHub: MessageHubState
-using ...Core.Dedup: BoundedDedup
-using ...Core.ChannelInterface: AbstractChannel, make_inbound_handler
-import ...Core.ChannelInterface: channel_name, make_sender, normalize,
+using ...Types: InboundMessage, OutboundMessage, TextPart, BinaryPart, ContentPart, message_text
+using ...MessageHub: MessageHubState
+using ...Dedup: BoundedDedup
+using ...ChannelInterface: AbstractChannel, make_inbound_handler
+import ...ChannelInterface:
+    channel_name, make_sender, normalize,
     start_channel!, stop_channel!, send_typing, send_direct, is_allowed
 
 export DiscordClient,
@@ -32,8 +33,8 @@ end
 
 function DiscordClient(
     token::AbstractString;
-    api_base::Union{Nothing,AbstractString}=nothing,
-    request::Function=HTTP.request,
+    api_base::Union{Nothing,AbstractString} = nothing,
+    request::Function = HTTP.request,
 )
     resolved = api_base === nothing ? DISCORD_API_BASE : String(api_base)
     return DiscordClient(String(token), resolved, request)
@@ -61,7 +62,7 @@ function _api_call(
     client::DiscordClient,
     method::AbstractString,
     path::AbstractString;
-    payload::Union{Nothing,Dict{String,Any}}=nothing,
+    payload::Union{Nothing,Dict{String,Any}} = nothing,
 )
     url = "$(client.api_base)$(path)"
     headers = _api_headers(client)
@@ -99,7 +100,7 @@ function discord_send_message(
     content::AbstractString;
 )
     payload = Dict{String,Any}("content" => String(content))
-    return _api_call(client, "POST", "/channels/$(channel_id)/messages"; payload=payload)
+    return _api_call(client, "POST", "/channels/$(channel_id)/messages"; payload = payload)
 end
 
 """
@@ -119,14 +120,14 @@ end
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json"
 
 # Gateway opcodes
-const OP_DISPATCH        = 0
-const OP_HEARTBEAT       = 1
-const OP_IDENTIFY        = 2
-const OP_RESUME          = 6
-const OP_RECONNECT       = 7
+const OP_DISPATCH = 0
+const OP_HEARTBEAT = 1
+const OP_IDENTIFY = 2
+const OP_RESUME = 6
+const OP_RECONNECT = 7
 const OP_INVALID_SESSION = 9
-const OP_HELLO           = 10
-const OP_HEARTBEAT_ACK   = 11
+const OP_HELLO = 10
+const OP_HEARTBEAT_ACK = 11
 
 # Default intents: GUILDS | GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT
 const DEFAULT_INTENTS = (1 << 0) | (1 << 9) | (1 << 12) | (1 << 15)
@@ -151,18 +152,18 @@ to `handler(event_data)`. Handles heartbeating, identify, and reconnection.
 function run_gateway(
     client::DiscordClient,
     handler::Function;
-    running::Ref{Bool}=Ref(true),
-    intents::Int=DEFAULT_INTENTS,
-    gateway_url::AbstractString=GATEWAY_URL,
-    max_reconnects::Int=10,
+    running::Ref{Bool} = Ref(true),
+    intents::Int = DEFAULT_INTENTS,
+    gateway_url::AbstractString = GATEWAY_URL,
+    max_reconnects::Int = 10,
 )
     state = GatewayState()
     reconnects = 0
 
     while running[] && reconnects <= max_reconnects
         try
-            _gateway_session(client, handler, state; running=running, intents=intents,
-                gateway_url=state.resume_url !== nothing ? state.resume_url : gateway_url)
+            _gateway_session(client, handler, state; running = running, intents = intents,
+                gateway_url = state.resume_url !== nothing ? state.resume_url : gateway_url)
         catch e
             e isa InterruptException && return
             running[] || return
@@ -172,7 +173,10 @@ function run_gateway(
                 return
             end
             backoff = min(30.0, 1.0 * 2^(reconnects - 1))
-            @warn "discord gateway disconnected, reconnecting" attempt=reconnects backoff_s=backoff exception=(e, catch_backtrace())
+            @warn "discord gateway disconnected, reconnecting" attempt=reconnects backoff_s=backoff exception=(
+                e,
+                catch_backtrace(),
+            )
             _interruptible_sleep(backoff, running)
         end
     end
@@ -279,7 +283,12 @@ function _gateway_session(
                         try
                             handler(event[:d])
                         catch err
-                            msg_id = try string(event[:d][:id]) catch _; "unknown" end
+                            msg_id = try
+                                string(event[:d][:id])
+                            catch _
+                                ;
+                                "unknown"
+                            end
                             @error "discord handler failed" message_id=msg_id error=err
                         end
                     end
@@ -295,7 +304,12 @@ function _gateway_session(
                     break
 
                 elseif op == OP_INVALID_SESSION
-                    resumable = try Bool(event[:d]) catch _; false end
+                    resumable = try
+                        Bool(event[:d])
+                    catch _
+                        ;
+                        false
+                    end
                     if !resumable
                         state.session_id = nothing
                         state.sequence = nothing
@@ -365,13 +379,19 @@ function normalize_discord_event(event_data)
 
     # Skip bot messages
     author = event_data[:author]
-    is_bot = try Bool(get(author, :bot, false)) catch _; false end
+    is_bot = try
+        Bool(get(author, :bot, false))
+    catch _
+        ;
+        false
+    end
     is_bot && return nothing
 
     content = String(event_data[:content])
     channel_id = string(event_data[:channel_id])
     user_id = string(author[:id])
-    guild_id = haskey(event_data, :guild_id) && event_data[:guild_id] !== nothing ?
+    guild_id =
+        haskey(event_data, :guild_id) && event_data[:guild_id] !== nothing ?
         string(event_data[:guild_id]) : nothing
 
     # Determine session key
@@ -399,9 +419,24 @@ function normalize_discord_event(event_data)
     media_parts = ContentPart[]
     if haskey(event_data, :attachments) && !isempty(event_data[:attachments])
         for att in event_data[:attachments]
-            url = try String(att[:url]) catch _; continue end
-            mime = try String(att[:content_type]) catch _; "application/octet-stream" end
-            filename = try String(att[:filename]) catch _; nothing end
+            url = try
+                String(att[:url])
+            catch _
+                ;
+                continue
+            end
+            mime = try
+                String(att[:content_type])
+            catch _
+                ;
+                "application/octet-stream"
+            end
+            filename = try
+                String(att[:filename])
+            catch _
+                ;
+                nothing
+            end
             push!(media_parts, BinaryPart(mime, url, nothing, filename))
         end
     end
@@ -412,16 +447,21 @@ function normalize_discord_event(event_data)
     isempty(parts) && return nothing
 
     return InboundMessage(
-        channel=:discord,
-        session_key=session_key,
-        user_id=user_id,
-        chat_id=channel_id,
-        content_parts=parts,
-        text=content,
-        raw=event_data,
-        metadata=Dict{String,Any}(
+        channel = :discord,
+        session_key = session_key,
+        user_id = user_id,
+        chat_id = channel_id,
+        content_parts = parts,
+        text = content,
+        raw = event_data,
+        metadata = Dict{String,Any}(
             "guild_id" => something(guild_id, ""),
-            "username" => try String(author[:username]) catch _; "" end,
+            "username" => try
+                String(author[:username])
+            catch _
+                ;
+                ""
+            end,
         ),
     )
 end
@@ -530,7 +570,7 @@ end
 
 """Convert markdown headings to Discord bold text (Discord doesn't render #)."""
 function _convert_md_headings(text::AbstractString)
-    out = replace(text, r"^(#{1,6})\s+(.+)$"m => function(m)
+    out = replace(text, r"^(#{1,6})\s+(.+)$"m => function (m)
         match_result = match(r"^#{1,6}\s+(.+)$", m)
         match_result === nothing ? m : "**$(match_result.captures[1])**"
     end)
@@ -543,7 +583,7 @@ function _convert_md_hrs(text::AbstractString)
 end
 
 function make_discord_sender(client::DiscordClient)
-    return function(msg::OutboundMessage)
+    return function (msg::OutboundMessage)
         text = message_text(msg)
         if msg.format === :telegram_html
             # Strip basic HTML tags for Discord (best-effort)
@@ -584,7 +624,7 @@ function _split_message(text::AbstractString, max_len::Int)
             split_idx = max_len
         end
         push!(chunks, remaining[1:split_idx])
-        remaining = remaining[split_idx+1:end]
+        remaining = remaining[(split_idx + 1):end]
     end
     isempty(remaining) || push!(chunks, remaining)
     return chunks
@@ -611,23 +651,23 @@ end
 
 function DiscordChannel(
     client::DiscordClient;
-    intents::Integer=DEFAULT_INTENTS,
-    gateway_url::AbstractString=GATEWAY_URL,
-    allow_from::Vector{String}=String[],
+    intents::Integer = DEFAULT_INTENTS,
+    gateway_url::AbstractString = GATEWAY_URL,
+    allow_from::Vector{String} = String[],
 )
     return DiscordChannel(client, Int(intents), String(gateway_url), allow_from)
 end
 
 function DiscordChannel(
     token::AbstractString;
-    api_base::Union{Nothing,AbstractString}=nothing,
-    request::Function=HTTP.request,
-    intents::Integer=DEFAULT_INTENTS,
-    gateway_url::AbstractString=GATEWAY_URL,
-    allow_from::Vector{String}=String[],
+    api_base::Union{Nothing,AbstractString} = nothing,
+    request::Function = HTTP.request,
+    intents::Integer = DEFAULT_INTENTS,
+    gateway_url::AbstractString = GATEWAY_URL,
+    allow_from::Vector{String} = String[],
 )
-    client = DiscordClient(token; api_base=api_base, request=request)
-    return DiscordChannel(client; intents=intents, gateway_url=gateway_url, allow_from=allow_from)
+    client = DiscordClient(token; api_base = api_base, request = request)
+    return DiscordChannel(client; intents = intents, gateway_url = gateway_url, allow_from = allow_from)
 end
 
 channel_name(::DiscordChannel) = :discord
@@ -655,16 +695,16 @@ function start_channel!(
     ch::DiscordChannel,
     hub::MessageHubState,
     running::Ref{Bool};
-    dedup::Union{Nothing,BoundedDedup}=nothing,
-    on_message::Union{Nothing,Function}=nothing,
+    dedup::Union{Nothing,BoundedDedup} = nothing,
+    on_message::Union{Nothing,Function} = nothing,
 )
-    handler = make_inbound_handler(ch, hub; dedup=dedup, on_poll=on_message)
+    handler = make_inbound_handler(ch, hub; dedup = dedup, on_poll = on_message)
     task = Threads.@spawn begin
         try
             run_gateway(ch.client, handler;
-                running=running,
-                intents=ch.intents,
-                gateway_url=ch.gateway_url,
+                running = running,
+                intents = ch.intents,
+                gateway_url = ch.gateway_url,
             )
         catch e
             e isa InterruptException && return
