@@ -7,7 +7,8 @@ export SkillDef,
     read_skill,
     skills_summary,
     load_always_skills,
-    register_read_skill_tool!
+    register_read_skill_tool!,
+    parse_skill_frontmatter
 
 """
     SkillDef
@@ -65,6 +66,14 @@ function _parse_frontmatter(content::AbstractString)
     end
     return meta
 end
+
+"""
+    parse_skill_frontmatter(content) -> Dict{String,String}
+
+Public API for parsing YAML frontmatter from a SKILL.md file.
+Returns key-value pairs from simple `key: value` lines.
+"""
+parse_skill_frontmatter(content::AbstractString) = _parse_frontmatter(content)
 
 """
     _strip_frontmatter(content) -> String
@@ -178,11 +187,15 @@ end
 function discover_skills(
     workspace::AbstractString;
     builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
+    clawhub_skills_dir::Union{Nothing,AbstractString} = nothing,
 )
     discovered = Dict{String,SkillDef}()
     _collect_skills!(discovered, joinpath(workspace, "skills"), "workspace"; override_existing = true)
     if builtin_skills_dir !== nothing
         _collect_skills!(discovered, String(builtin_skills_dir), "builtin"; override_existing = false)
+    end
+    if clawhub_skills_dir !== nothing
+        _collect_skills!(discovered, String(clawhub_skills_dir), "clawhub"; override_existing = false)
     end
     skills = collect(values(discovered))
     sort!(skills; by = s -> lowercase(s.name))
@@ -193,6 +206,7 @@ function read_skill(
     workspace::AbstractString,
     name::AbstractString;
     builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
+    clawhub_skills_dir::Union{Nothing,AbstractString} = nothing,
 )
     skill_name = strip(String(name))
     isempty(skill_name) && return nothing
@@ -211,6 +225,17 @@ function read_skill(
         if isfile(builtin_file)
             return try
                 read(builtin_file, String)
+            catch _
+                nothing
+            end
+        end
+    end
+
+    if clawhub_skills_dir !== nothing
+        clawhub_file = joinpath(String(clawhub_skills_dir), skill_name, "SKILL.md")
+        if isfile(clawhub_file)
+            return try
+                read(clawhub_file, String)
             catch _
                 nothing
             end
@@ -268,12 +293,15 @@ function register_read_skill_tool!(
     registry::ToolRegistry;
     workspace::AbstractString,
     builtin_skills_dir::Union{Nothing,AbstractString} = nothing,
+    clawhub_skills_dir::Union{Nothing,AbstractString} = nothing,
     skills::Union{Nothing,Vector{SkillDef}} = nothing,
     replace::Bool = false,
 )
-    skill_list = skills === nothing ?
-                 discover_skills(workspace; builtin_skills_dir = builtin_skills_dir) :
-                 skills
+    skill_list =
+        skills === nothing ?
+        discover_skills(workspace; builtin_skills_dir = builtin_skills_dir,
+            clawhub_skills_dir = clawhub_skills_dir) :
+        skills
 
     names = isempty(skill_list) ? "(none)" : join((s.name for s in skill_list), ", ")
     tool = ToolDef(
@@ -292,7 +320,9 @@ function register_read_skill_tool!(
         execute = function (args::Dict{String,Any})
             name = get(args, "name", nothing)
             name isa AbstractString || return "Error: `name` must be a string"
-            content = read_skill(workspace, String(name); builtin_skills_dir = builtin_skills_dir)
+            content = read_skill(workspace, String(name);
+                builtin_skills_dir = builtin_skills_dir,
+                clawhub_skills_dir = clawhub_skills_dir)
             if content === nothing
                 return "Error: skill '$(name)' not found. Available: $(names)."
             end

@@ -224,27 +224,57 @@ Krill ships with the following skills out of the box:
 | `weather` | No | Free weather APIs (wttr.in, Open-Meteo) with no API key required |
 | `google-workspace` | No | Gmail, Calendar, Drive patterns for the `google_workspace` tool — send, triage, reply, API commands |
 | `skill-creator` | No | Guide to creating new skills — anatomy, frontmatter, bundled resources, design principles |
-| `clawhub` | No | Search, install, and manage community skills from [ClawHub](https://clawhub.ai) |
-
 Always-on skills (`memory`) are injected into every system prompt. The rest are loaded on-demand when the LLM calls `read_skill("github")` etc.
 
-### Discovering Community Skills
+### ClawHub Integration
 
-The agent can search and install skills from [ClawHub](https://clawhub.ai), a public skill registry, using the built-in `clawhub` skill. This lets the agent extend its own capabilities on the fly:
+The agent can search and install skills from [ClawHub](https://clawhub.ai), a public registry with 3,200+ community skills. Enable with `clawhub = true` in `[profile.tools]`.
+
+Unlike a raw `npx clawhub install` (which drops files directly into the workspace with no checks), Krill's built-in ClawHub tools route every skill through a **quarantine → validation → verified store** pipeline:
+
+```
+ClawHub API (untrusted source)
+    ↓
+clawhub_install tool
+    ↓
+Download ZIP → ~/.krill/skill_store/quarantine/{slug}/
+    ↓
+Validation gate
+  ├─ Content scan (run(), ENV[], @eval, ccall, shell blocks, ...)
+  ├─ Metadata check (SKILL.md exists, has description)
+  ├─ Popularity thresholds (configurable min downloads/stars)
+  └─ Allow/blocklist (by slug or author)
+    ↓
+Pass → ~/.krill/skill_store/verified/{slug}/  →  available via read_skill
+Fail → rejected, quarantine cleaned up, failure reasons reported
+```
+
+Four tools are registered when ClawHub is enabled:
+
+| Tool | What it does |
+| --- | --- |
+| `clawhub_search` | Vector similarity search across the registry |
+| `clawhub_install` | Download → quarantine → validate → promote or reject |
+| `clawhub_remove` | Remove a skill from the verified store |
+| `clawhub_list` | List installed skills with status, version, author |
+
+Example conversation flow:
 
 ```
 User: "Find me a skill for PDF processing"
-  → LLM loads clawhub skill via read_skill("clawhub")
-  → LLM calls exec: npx clawhub@latest search "PDF processing" --limit 5
-  → LLM calls exec: npx clawhub@latest inspect pdf-toolkit-pro
-  → LLM calls exec: npx clawhub@latest install pdf-toolkit-pro --workdir context/
-  → Skill installed to context/skills/pdf-toolkit-pro/
-  → Available after restart
+  → LLM calls clawhub_search("PDF processing")
+  → Returns 5 matching skills with metadata
+  → LLM calls clawhub_install(slug="pdf-toolkit-pro")
+  → Downloaded, quarantined, validated...
+  → ✅ Promoted to verified store
+  → Skill immediately available via read_skill("pdf-toolkit-pro")
 ```
 
-Community skills use the same `SKILL.md` format. Some may reference tool names from other agent frameworks — minor edits may be needed to map to Krill's tool names (`exec`, `github`, `cron_add`, etc.).
+Verified skills are discovered as a third source alongside workspace and builtin skills, with lowest precedence (workspace > builtin > clawhub). A workspace skill with the same name always wins.
 
-No API key is required for searching and installing. See `context/skills/clawhub/SKILL.md` for full usage.
+Community skills use the same `SKILL.md` format. Some may reference tool names from other frameworks — minor edits may be needed to map to Krill's tool names.
+
+No API key is required for searching and installing public skills. See [Configuration](/guide/configuration) for the full `[clawhub]` config section and [Security](/guide/security) for details on the validation gate.
 
 ### Creating Custom Skills
 

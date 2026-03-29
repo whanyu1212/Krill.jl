@@ -55,6 +55,7 @@ include("test_context_window.jl")
 include("test_gap_fixes.jl")
 include("test_security.jl")
 include("test_skills.jl")
+include("test_clawhub.jl")
 include("test_subagent.jl")
 
 # ─── Global memory (not in fast mode) ──────────────────────────
@@ -66,6 +67,6 @@ include("test_global_memory.jl")
         Krill;
         ambiguities = false,
         stale_deps = (ignore = [:Test, :Dates, :UUIDs],),
-        deps_compat = (ignore = [:Test, :Base64, :Dates, :Sockets, :TOML, :UUIDs],),
+        deps_compat = (ignore = [:Test, :Base64, :Dates, :SHA, :Sockets, :TOML, :UUIDs],),
     )
 end

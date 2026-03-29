@@ -39,8 +39,6 @@ The same `ALLOW_FROM` env var works for both bots. IDs from different platforms 
 
 The alternative (allow-all by default) was a major criticism of OpenClaw. If you forget to set `ALLOW_FROM`, a stranger who discovers your bot token gets a fully-capable shell agent. Deny-by-default means forgetting to configure access control results in a bot that does nothing, not one that's open to the world.
 
----
-
 ## Exec Command Denylist
 
 When `ENABLE_EXEC=true`, the agent can run shell commands. A denylist blocks the most destructive patterns before they reach the shell:
@@ -66,8 +64,6 @@ In addition, any `http`/`https` URLs embedded in the command string are extracte
 ### What's still allowed
 
 Normal commands pass through unfiltered: `rm file.txt`, `rm -r ./build`, `git clean -fdx`, `ls`, `cat`, `grep`, `cp`, `mkdir`, `julia`, etc.
-
----
 
 ## SSRF Protection
 
@@ -109,10 +105,6 @@ Checking the hostname string before fetching is the naive approach and it fails 
 If the hostname resolves to any blocked IP, the request is rejected before a connection is opened.
 
 **Redirect validation:** HTTP redirects are followed manually rather than transparently. Each redirect destination goes through the same full validation — hostname string check + DNS resolution — before the next request is made. A public URL that redirects to `169.254.x.x` is blocked at the redirect hop.
-
----
-
----
 
 ## Context Sandboxing
 
@@ -160,10 +152,6 @@ RuntimeState(channel; llm_builtin_restrict_to_workspace=false)
 
 Note: disabling this removes the file system boundary entirely. Use with care.
 
----
-
----
-
 ## Claude Code & Codex Permission Mode
 
 Claude Code and Codex run as subprocesses with their own permission models. Krill currently passes `--permission-mode bypassPermissions` to Claude Code, meaning it runs without pausing for approval on file edits or shell commands.
@@ -172,7 +160,64 @@ This is intentional for a headless bot — interactive permission prompts would 
 
 **A future improvement** would be to relay permission prompts through the chat itself — Claude Code would pause, send you a Telegram/Discord message asking "approve edit to `src/foo.jl`?", and resume when you reply. This would give you real `acceptEdits` semantics through the chat interface. It's architecturally feasible (file-based IPC between the hook script and Krill, with a bypass path in the session router) but non-trivial to implement. Tracked for a future phase.
 
----
+## ClawHub Skill Validation Gate
+
+[ClawHub](https://clawhub.ai) is a public skill registry with 3,200+ community-contributed skills. Because it's an untrusted upstream (a coordinated supply-chain attack was [documented in 2026](https://www.esecurityplanet.com/threats/hundreds-of-malicious-skills-found-in-openclaws-clawhub/)), Krill never installs ClawHub skills directly. Every skill passes through a quarantine and validation pipeline before it reaches the agent runtime.
+
+### Pipeline stages
+
+```
+Download → Quarantine → Validation gate → Verified store (or rejection)
+```
+
+1. **Quarantine** — The skill ZIP is downloaded to `~/.krill/skill_store/quarantine/{slug}/` and a SHA-256 hash is recorded in the manifest. The skill is not visible to the agent at this point.
+
+2. **Validation gate** — A configurable set of checks runs against the quarantined skill:
+
+| Check | Default | What it catches |
+|-------|---------|-----------------|
+| Content scan | On | Regex patterns for `run()`, `ENV[]`, `@eval`, `ccall`, `unsafe_*`, `include()`, embedded shell blocks, `Meta.parse`, `chmod`, `rm /` |
+| Metadata check | On | Missing `SKILL.md`, missing `description` in frontmatter |
+| Popularity threshold | Configurable | Skills with too few downloads or stars (configurable via `min_downloads`, `min_stars`) |
+| Blocklist | Configurable | Specific slugs or authors blocked by name |
+| Allowlist | Optional | When set, only listed slugs or authors are permitted |
+
+3. **Promote or reject** — If all checks pass, the skill moves from quarantine to `~/.krill/skill_store/verified/{slug}/` and becomes discoverable by the agent. If any check fails, the quarantine directory is cleaned up and the failure reasons are reported to the LLM (and through it, to the user).
+
+### Configuration
+
+Enable in `krill.toml`:
+
+```toml
+[profile.tools]
+clawhub = true
+
+[clawhub]
+min_downloads   = 10        # reject skills with fewer downloads
+min_stars       = 0
+blocked_slugs   = []        # e.g. ["known-malicious-skill"]
+blocked_authors = []        # e.g. ["suspicious-author"]
+```
+
+### Precedence
+
+Verified ClawHub skills have the **lowest priority** in the skill discovery chain:
+
+1. **Workspace** (`context/skills/`) — highest, user-managed
+2. **Builtin** (packaged defaults) — middle
+3. **ClawHub verified** (`~/.krill/skill_store/verified/`) — lowest
+
+A workspace skill with the same name as a ClawHub skill always takes precedence. This lets you override or patch any community skill locally.
+
+### What isn't caught
+
+The content scanner uses pattern matching, not sandboxed execution. It will catch common dangerous patterns but cannot detect:
+
+- Obfuscated code (string concatenation to build dangerous calls)
+- Indirect execution via legitimate-looking tool invocations
+- Social engineering embedded in skill instructions ("tell the user to run...")
+
+The validation gate is a **defense-in-depth layer**, not a guarantee. Review installed skills when security matters.
 
 ## What's Coming
 

@@ -23,9 +23,10 @@ include("prompt_context.jl")
 # ─── Scheduling (cron before builtin_tools — builtin_tools uses Cron) ─
 include("scheduling/cron.jl")
 
-# ─── Builtin tools & MCP (depend on Tools + Cron) ───────────────
+# ─── Builtin tools, MCP, ClawHub (depend on Tools + Cron) ───────
 include("tools/builtin/builtin_tools.jl")
 include("tools/mcp.jl")
+include("tools/clawhub/clawhub.jl")
 
 # ─── LLM providers ──────────────────────────────────────────────
 include("llm/llm.jl")
@@ -102,7 +103,8 @@ using .Tools: AbstractToolDef, ToolDef, ToolRegistry,
 
 using .Skills: SkillDef,
     discover_skills, read_skill, skills_summary,
-    load_always_skills, register_read_skill_tool!
+    load_always_skills, register_read_skill_tool!,
+    parse_skill_frontmatter
 
 using .PromptContext: BootstrapDoc, DEFAULT_BOOTSTRAP_DOCS,
     RUNTIME_CONTEXT_MARKER, TOOL_OUTPUT_SAFETY_NOTICE,
@@ -112,6 +114,12 @@ using .PromptContext: BootstrapDoc, DEFAULT_BOOTSTRAP_DOCS,
 using .BuiltinTools: register_builtin_tools!, register_cron_tools!, set_cron_context!
 
 using .MCP: MCPServer
+
+using .ClawHub: ClawHubClient, SkillStore, SkillManifestEntry,
+    ValidationPolicy, ValidationResult,
+    clawhub_search, clawhub_skill_info, clawhub_download,
+    register_clawhub_tools!, default_policy, validate_skill,
+    verified_root
 
 using .LLM: AbstractLLMProvider,
     OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider,
@@ -136,7 +144,8 @@ using .DurableQueue: DurableQueueState,
 
 using .AgentModule: RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
-    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig
+    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig,
+    ClawHubConfig
 
 using .Channels: Telegram, TelegramClient, TelegramAPIError,
     TelegramChannel, TelegramWebhookChannel,
@@ -160,7 +169,7 @@ using .Config: KrillConfig, load_config, start_agent!,
 export # ─── Submodules ───
     Types, MessageHub, ChannelManager, Dedup, ChannelInterface,
     Sessions, Memory, GlobalMemory, Echo, SessionConsumer, Tools, Skills,
-    PromptContext, BuiltinTools, MCP, LLM, MemoryConsolidation,
+    PromptContext, BuiltinTools, MCP, ClawHub, LLM, MemoryConsolidation,
     Cron, Subagent, AgentModule, DurableQueue,
     Channels, Telegram, Discord,
     RuntimeModule, Config,
@@ -218,6 +227,7 @@ export # ─── Submodules ───
     SkillDef,
     discover_skills, read_skill, skills_summary,
     load_always_skills, register_read_skill_tool!,
+    parse_skill_frontmatter,
 
     # ─── Prompt context ───
     BootstrapDoc, DEFAULT_BOOTSTRAP_DOCS,
@@ -227,6 +237,12 @@ export # ─── Submodules ───
 
     # ─── MCP ───
     MCPServer,
+
+    # ─── ClawHub ───
+    ClawHubClient, SkillStore, SkillManifestEntry,
+    ValidationPolicy, ValidationResult,
+    clawhub_search, clawhub_skill_info, clawhub_download,
+    register_clawhub_tools!, default_policy, validate_skill,
 
     # ─── LLM ───
     AbstractLLMProvider,
@@ -259,6 +275,7 @@ export # ─── Submodules ───
     RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
     ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig,
+    ClawHubConfig,
 
     # ─── Channels (Telegram) ───
     TelegramClient, TelegramAPIError,
