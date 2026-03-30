@@ -272,6 +272,8 @@ User: "Find me a skill for PDF processing"
 
 Verified skills are discovered as a third source alongside workspace and builtin skills, with lowest precedence (workspace > builtin > clawhub). A workspace skill with the same name always wins.
 
+ClawHub skills are also subject to prompt injection hardening beyond the validation gate: their descriptions are not injected into the system prompt (replaced by a static `(third-party, on-demand)` marker), `always: true` in their frontmatter is ignored, and content returned via `read_skill` is wrapped in an explicit untrusted-content frame. See [Security](/guide/security) for details.
+
 Community skills use the same `SKILL.md` format. Some may reference tool names from other frameworks — minor edits may be needed to map to Krill's tool names.
 
 No API key is required for searching and installing public skills. See [Configuration](/guide/configuration) for the full `[clawhub]` config section and [Security](/guide/security) for details on the validation gate.
