@@ -57,7 +57,12 @@ Channel (Telegram/Discord)
 - **`src/tools/builtin/`** — All built-in tool implementations. `registration.jl` registers them into the registry.
 - **`src/scheduling/cron.jl`** — `CronService` runs a background tick loop, fires due jobs by injecting synthetic `InboundMessage` into the hub. Three schedule types: `AtSchedule`, `IntervalSchedule`, `CronSchedule`.
 - **`src/tools/mcp.jl`** — MCP client (stdio/HTTP transports). Tools registered as `{server}_{tool}` to avoid collisions.
-- **`src/tools/skills.jl`** — Discovers `SKILL.md` files from `context/skills/`. Skills with `always: true` in frontmatter are auto-injected into every system prompt.
+- **`src/tools/skills.jl`** — Discovers `SKILL.md` files from workspace, builtin, and ClawHub verified store. Workspace/builtin skills with `always: true` are auto-injected into every system prompt. ClawHub skills are subject to three prompt-injection hardening rules: descriptions are masked in the summary (replaced with a static `(third-party, on-demand)` marker), `always: true` is ignored regardless of frontmatter, and content returned via `read_skill` is wrapped in an explicit untrusted-content frame.
+- **`src/tools/clawhub/`** — ClawHub skill registry integration:
+  - `client.jl` — HTTP client for searching, fetching metadata, and downloading skill ZIPs from the registry
+  - `store.jl` — Thread-safe `SkillStore` with quarantine/verified/rejected directories and JSON manifest persistence
+  - `validation.jl` — Validation pipeline: content scan (dangerous patterns), metadata check, popularity thresholds, allow/blocklists
+  - `tools.jl` — Registers `clawhub_search`, `clawhub_install`, `clawhub_remove`, `clawhub_list` tools; install routes through quarantine → validate → promote or reject
 - **`src/config/config.jl`** — `load_config()` parses `krill.toml`, expands `$ENV_VAR` references from environment or `.env`.
 
 ### Configuration
@@ -65,8 +70,9 @@ Channel (Telegram/Discord)
 All config in `krill.toml`. Key sections:
 - `[provider]` — LLM provider (`openai` or `gemini`), model, API key
 - `[telegram]`/`[discord]` — Channel config with `allow_from` ACL
-- `[profile]` — System prompt and `[profile.tools]` toggles (exec, cron, memory, claude_code, codex, etc.)
+- `[profile]` — System prompt and `[profile.tools]` toggles (exec, cron, memory, claude_code, codex, clawhub, etc.)
 - `[[profile.mcp]]` — MCP server connections (stdio or HTTP)
+- `[clawhub]` — ClawHub registry config: `api_url`, `auth_token`, `min_downloads`, `min_stars`, `blocked_slugs`, `blocked_authors`
 - Secrets use `$VAR` syntax, expanded from env or `.env` at startup
 
 ### Context Workspace (`context/`)
@@ -83,6 +89,7 @@ When `provider_builtins = true` in config, native search (OpenAI `web_search` / 
 - Session history, memory, cron jobs stored under `data_dir` (default `~/.krill`)
 - Cron jobs persisted to `{data_dir}/cron/jobs.json`
 - Memory stored as `{data_dir}/memory/{session_key}.json`
+- ClawHub skill store at `{data_dir}/skill_store/` — `manifest.json` plus `quarantine/` and `verified/` subdirectories
 
 ## Code Conventions
 

@@ -4,6 +4,17 @@
 # to search the public skill registry, inspect results, and install a
 # skill through the quarantine → validation → verified store pipeline.
 #
+# It also demonstrates the trust-boundary behaviour applied to verified
+# ClawHub skills in the agent runtime:
+#
+#   1. Skills summary — description is masked; only a static
+#      "(third-party, on-demand) [source: clawhub]" marker appears.
+#   2. Always-on injection — `always: true` in ClawHub frontmatter is
+#      silently ignored; bodies are never auto-injected into the system prompt.
+#   3. read_skill — the returned body is wrapped in an explicit
+#      untrusted-content frame so the LLM treats it as reference material,
+#      not as instructions.
+#
 # The same flow happens automatically when the agent calls the
 # `clawhub_search` and `clawhub_install` tools during a conversation.
 #
@@ -14,7 +25,10 @@ using Krill
 using Krill: ClawHubClient, SkillStore, SkillManifestEntry,
     ValidationPolicy, ValidationResult,
     clawhub_search, clawhub_skill_info, clawhub_download,
-    validate_skill, default_policy
+    validate_skill, default_policy,
+    discover_skills, skills_summary, load_always_skills, register_read_skill_tool!,
+    ToolRegistry, get_tool,
+    verified_root
 
 # ── Configuration ─────────────────────────────────────────────────────
 
@@ -130,6 +144,63 @@ if result.passed
         length(content) > 500 && println("... ($(length(content)) chars total)")
         println("────────────────────────────────────────────────────")
     end
+
+    # ── Step 6: Show trust-boundary behaviour ─────────────────────────
+    #
+    # Verified ClawHub skills are subject to three prompt-injection
+    # hardening rules. This block demonstrates each one so you can see
+    # exactly what the agent runtime sees.
+
+    println("\n🔐 Trust-boundary demonstration\n")
+
+    # Use a minimal workspace with no local skills so the ClawHub skill
+    # is the only one discovered.
+    tmp_ws = mktempdir()
+    mkpath(joinpath(tmp_ws, "skills"))
+
+    discovered = discover_skills(tmp_ws; clawhub_skills_dir = verified_root(store))
+
+    # ── 6a: Skills summary ────────────────────────────────────────────
+    println("6a. Skills summary (what appears in the system prompt):")
+    println()
+    println(skills_summary(discovered))
+    println()
+    println("  ↳ The ClawHub skill's description is NOT shown.")
+    println("    Only the static '(third-party, on-demand) [source: clawhub]'")
+    println("    marker appears, regardless of what the skill author wrote.")
+    println()
+
+    # ── 6b: Always-on injection ───────────────────────────────────────
+    println("6b. Always-on injection check:")
+    always_text = load_always_skills(discovered)
+    if always_text === nothing
+        println("  load_always_skills → nothing")
+        println("  ↳ No ClawHub skill body was auto-injected, even if the skill")
+        println("    declares 'always: true' in its frontmatter.")
+    else
+        # Should not happen — shown here for completeness
+        println("  load_always_skills returned content (unexpected for ClawHub skills):")
+        println(always_text)
+    end
+    println()
+
+    # ── 6c: read_skill wrapping ───────────────────────────────────────
+    println("6c. read_skill result (what the LLM receives on demand):")
+    println()
+    registry = ToolRegistry()
+    register_read_skill_tool!(
+        registry;
+        workspace = tmp_ws,
+        clawhub_skills_dir = verified_root(store),
+        skills = discovered,
+    )
+    read_skill_tool = get_tool(registry, "read_skill")
+    wrapped = read_skill_tool.execute(Dict{String,Any}("name" => slug))
+    println(wrapped)
+    println()
+    println("  ↳ The body is present for reference, but bracketed by explicit")
+    println("    untrusted-content markers so the LLM cannot mistake it for")
+    println("    authoritative instructions.")
 else
     println("  ❌ Validation FAILED:")
     for reason in result.reasons
