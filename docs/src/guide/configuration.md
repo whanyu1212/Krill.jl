@@ -67,6 +67,13 @@ name      = "filesystem"
 transport = "stdio"
 command   = "npx"
 args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
+
+[[profile.mcp]]
+name      = "huggingface"
+transport = "streamable_http"
+url       = "https://huggingface.co/mcp"
+[profile.mcp.headers]
+Authorization = "Bearer $HF_TOKEN"
 ```
 
 Token values beginning with `$` are expanded from the environment at startup, so secrets stay in `.env` and `krill.toml` can be safely version-controlled (without the tokens).
@@ -82,6 +89,7 @@ The recommended approach is to keep tokens in `.env` and reference them from `kr
 | `DISCORD_BOT_TOKEN` | Discord bot token |
 | `OPENAI_API_KEY` | OpenAI provider key |
 | `GEMINI_API_KEY` | Gemini provider key |
+| `HF_TOKEN` | Hugging Face API token (for HF MCP server) |
 
 
 ## Tools

@@ -156,6 +156,22 @@ Use the filesystem MCP server to list files in the context directory.
 
 MCP tool names are namespaced as `mcp_<name>_<tool>` — confirm the tool IDs in the response match the server's declared tools.
 
+### Hugging Face MCP
+
+**Requires:** `huggingface` MCP server configured with a valid `$HF_TOKEN`
+
+```
+Search for recent papers on vision-language models.
+
+Find Hugging Face models for text-to-speech.
+
+Search Hugging Face datasets about weather time-series.
+
+How do I use LoRA adapters with PEFT?
+```
+
+Validates that the HF MCP tools (`mcp_huggingface_*`) return results with titles, links, and metadata. The last prompt uses documentation semantic search.
+
 ## Google Workspace (Gmail)
 
 **Requires:** `google_workspace = true`, `gws` CLI installed and authenticated (`gws auth login`)
