@@ -163,9 +163,18 @@ name      = "filesystem"
 transport = "stdio"
 command   = "npx"
 args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
+
+[[profile.mcp]]
+name      = "huggingface"
+transport = "streamable_http"
+url       = "https://huggingface.co/mcp"
+[profile.mcp.headers]
+Authorization = "Bearer $HF_TOKEN"
 ```
 
 At startup, Krill calls `initialize` and `list_tools` on each server and registers the results into the local `ToolRegistry` under namespaced IDs: `mcp_<name>_<tool>`.
+
+The **Hugging Face MCP server** provides semantic search across ML papers, models, datasets, Spaces, and HF documentation — no local Node.js process needed since HF hosts the server remotely.
 
 | Transport | When to use |
 | --- | --- |
@@ -307,6 +316,17 @@ On every turn, Krill assembles the system prompt from multiple sources in order:
 7. Runtime metadata — channel name, session key, chat ID, user ID, UTC timestamp
 
 This is assembled fresh every turn, so changes to bootstrap docs or skills take effect immediately without restarting.
+
+## Slash Commands
+
+Users can send slash commands directly in the chat. These are handled by the session consumer before reaching the LLM.
+
+| Command | Description |
+| --- | --- |
+| `/help` | Show available commands and current session info (turn count, age) |
+| `/new` | Clear the session history and start fresh |
+| `/stop` | Interrupt the currently running LLM task |
+| `/remember <fact>` | Save a fact to the user's global memory profile (see [Global Memory](#global-memory) below) |
 
 ## Memory
 
