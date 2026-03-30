@@ -8,7 +8,8 @@ using ..PromptContext: DEFAULT_BOOTSTRAP_DOCS
 
 export RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
-    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig
+    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig,
+    ClawHubConfig
 
 # ---------------------------------------------------------------------------
 # RetryConfig
@@ -274,6 +275,41 @@ function SubagentConfig(;
     SubagentConfig(enable, max_concurrent, max_iterations)
 end
 
+"""
+    ClawHubConfig(; enable, api_url, auth_token, min_downloads, min_stars, blocked_slugs, blocked_authors)
+
+Configuration for ClawHub skill registry integration. When enabled, the agent
+can search, install, and manage skills from ClawHub with a security-first
+validation pipeline (quarantine → validate → verified store).
+"""
+struct ClawHubConfig
+    enable::Bool
+    api_url::String
+    auth_token::Union{Nothing,String}
+    min_downloads::Int
+    min_stars::Int
+    blocked_slugs::Vector{String}
+    blocked_authors::Vector{String}
+end
+
+function ClawHubConfig(;
+    enable::Bool = false,
+    api_url::AbstractString = "https://clawhub.ai/api/v1",
+    auth_token::Union{Nothing,AbstractString} = nothing,
+    min_downloads::Int = 0,
+    min_stars::Int = 0,
+    blocked_slugs::AbstractVector = String[],
+    blocked_authors::AbstractVector = String[],
+)
+    ClawHubConfig(
+        enable, String(api_url),
+        auth_token === nothing ? nothing : String(auth_token),
+        min_downloads, min_stars,
+        String.(collect(blocked_slugs)),
+        String.(collect(blocked_authors)),
+    )
+end
+
 # ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
@@ -347,6 +383,8 @@ struct Agent
     claude_code::ClaudeCodeConfig
     codex::CodexConfig
     subagents::SubagentConfig
+    # ClawHub
+    clawhub::ClawHubConfig
     # History summarization
     enable_history_summarization::Bool
     history_summarization_max_chars::Int
@@ -435,6 +473,15 @@ function Agent(
     enable_subagents::Bool = true,
     subagent_max_concurrent::Int = 5,
     subagent_max_iterations::Int = 15,
+    # ClawHub — flat kwargs or struct
+    clawhub::Union{ClawHubConfig,Nothing} = nothing,
+    enable_clawhub::Bool = false,
+    clawhub_api_url::AbstractString = "https://clawhub.ai/api/v1",
+    clawhub_auth_token::Union{Nothing,AbstractString} = nothing,
+    clawhub_min_downloads::Int = 0,
+    clawhub_min_stars::Int = 0,
+    clawhub_blocked_slugs::AbstractVector = String[],
+    clawhub_blocked_authors::AbstractVector = String[],
     # History summarization
     enable_history_summarization::Bool = false,
     history_summarization_max_chars::Int = 2_000,
@@ -517,6 +564,18 @@ function Agent(
             max_iterations = subagent_max_iterations,
         )
 
+    ch =
+        clawhub !== nothing ? clawhub :
+        ClawHubConfig(
+            enable = enable_clawhub,
+            api_url = clawhub_api_url,
+            auth_token = clawhub_auth_token,
+            min_downloads = clawhub_min_downloads,
+            min_stars = clawhub_min_stars,
+            blocked_slugs = clawhub_blocked_slugs,
+            blocked_authors = clawhub_blocked_authors,
+        )
+
     return Agent(
         provider,
         resolved_system_prompt,
@@ -544,6 +603,7 @@ function Agent(
         cc,
         cx,
         sa,
+        ch,
         enable_history_summarization,
         history_summarization_max_chars,
         enable_google_workspace,

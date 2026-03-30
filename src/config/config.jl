@@ -7,7 +7,8 @@ using ..LLM: AbstractLLMProvider, OpenAIProvider, GeminiProvider
 using ..MCP: MCPServer
 using ..AgentModule: Agent, AgentHooks,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig,
-    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig
+    ClaudeCodeConfig, CodexConfig, PromptContextConfig, SubagentConfig,
+    ClawHubConfig
 using ..Channels.Telegram: TelegramChannel
 using ..Channels.Discord: DiscordChannel
 using ..RuntimeModule: RuntimeState, start!, shutdown!
@@ -91,7 +92,7 @@ function _validate_config(cfg::Dict)
     if tc isa Dict
         bool_keys = ("provider_builtins", "local_builtins", "builtin_skills", "memory",
             "memory_consolidation", "cron", "subagents", "exec", "claude_code",
-            "codex", "google_workspace", "history_summarization")
+            "codex", "google_workspace", "history_summarization", "clawhub")
         for k in bool_keys
             v = get(tc, k, nothing)
             if v !== nothing && !(v isa Bool)
@@ -252,6 +253,21 @@ function start_agent!(config::KrillConfig;
         subagents = SubagentConfig(
             enable = get(tc, "subagents", true),
         ),
+        clawhub = let ch_cfg = get(config.raw, "clawhub", Dict())
+            ClawHubConfig(
+                enable = get(tc, "clawhub", false),
+                api_url = let url = get(ch_cfg, "api_url", "")
+                    isempty(url) ? "https://clawhub.ai/api/v1" : url
+                end,
+                auth_token = let token = get(ch_cfg, "auth_token", "")
+                    isempty(token) ? nothing : token
+                end,
+                min_downloads = get(ch_cfg, "min_downloads", 0),
+                min_stars = get(ch_cfg, "min_stars", 0),
+                blocked_slugs = String.(get(ch_cfg, "blocked_slugs", String[])),
+                blocked_authors = String.(get(ch_cfg, "blocked_authors", String[])),
+            )
+        end,
         # Flat flags
         enable_history_summarization = get(tc, "history_summarization", false),
         enable_cron = get(tc, "cron", true),

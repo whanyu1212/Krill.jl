@@ -58,6 +58,7 @@ claude_code_model    = "sonnet"
 codex                = false
 codex_model          = ""
 google_workspace     = false
+clawhub              = false    # ClawHub skill registry
 history_summarization = false
 
 # MCP servers (add as many blocks as needed)
@@ -66,6 +67,13 @@ name      = "filesystem"
 transport = "stdio"
 command   = "npx"
 args      = ["-y", "@modelcontextprotocol/server-filesystem", "context"]
+
+[[profile.mcp]]
+name      = "huggingface"
+transport = "streamable_http"
+url       = "https://huggingface.co/mcp"
+[profile.mcp.headers]
+Authorization = "Bearer $HF_TOKEN"
 ```
 
 Token values beginning with `$` are expanded from the environment at startup, so secrets stay in `.env` and `krill.toml` can be safely version-controlled (without the tokens).
@@ -81,6 +89,7 @@ The recommended approach is to keep tokens in `.env` and reference them from `kr
 | `DISCORD_BOT_TOKEN` | Discord bot token |
 | `OPENAI_API_KEY` | OpenAI provider key |
 | `GEMINI_API_KEY` | Gemini provider key |
+| `HF_TOKEN` | Hugging Face API token (for HF MCP server) |
 
 
 ## Tools
@@ -113,6 +122,7 @@ Implemented by Krill and registered in a local `ToolRegistry`.
 | `codex` _(optional)_ | Delegate to OpenAI Codex CLI |
 | `cron_add/list/remove` | Schedule management when cron is enabled |
 | `spawn/spawn_list/spawn_cancel` | Subagent management when subagents are enabled |
+| `clawhub_search/install/remove/list` _(optional)_ | ClawHub skill registry — search, install with validation, manage |
 
 `claude_code` and `codex` run their own internal search and file pipelines. Enable them when the task involves multi-step research or code changes across multiple files.
 
@@ -157,6 +167,37 @@ MCP is the right choice for tools not in Krill's built-ins: database queries, ca
 **Note:** Krill has no official Julia MCP SDK — the client is built from scratch. It handles common cases well but may have edge-case issues with non-standard servers. See [Known Limitations](/guide/features#Known-Limitations).
 
 
+## ClawHub Skill Registry
+
+Enable with `clawhub = true` under `[profile.tools]`. This registers four tools (`clawhub_search`, `clawhub_install`, `clawhub_remove`, `clawhub_list`) that let the agent discover and install community skills from [ClawHub](https://clawhub.ai) through a security validation pipeline.
+
+```toml
+[profile.tools]
+clawhub = true
+
+[clawhub]
+api_url         = "https://clawhub.ai/api/v1"
+auth_token      = "$CLAWHUB_TOKEN"       # optional, only needed for private skills
+min_downloads   = 10                      # minimum download count to pass validation
+min_stars       = 0
+blocked_slugs   = []
+blocked_authors = []
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `api_url` | `https://clawhub.ai/api/v1` | ClawHub API base URL |
+| `auth_token` | _(none)_ | Bearer token for authenticated requests |
+| `min_downloads` | `0` | Reject skills with fewer downloads than this |
+| `min_stars` | `0` | Reject skills with fewer stars than this |
+| `blocked_slugs` | `[]` | Skill slugs to always reject |
+| `blocked_authors` | `[]` | Authors to always reject |
+
+Installed skills are stored in `~/.krill/skill_store/` with separate `quarantine/` and `verified/` directories. A `manifest.json` tracks all entries with status, version, SHA-256 hash, and timestamps.
+
+See [Security](/guide/security) for details on the validation gate and what it catches.
+
+
 ## Filesystem Layout
 
 ### `context/` — agent sandbox (committed to git)
@@ -189,4 +230,7 @@ Bootstrap docs and skills live here. The agent can read and write inside this di
 | `memory/<session>/HISTORY.md` | Archived consolidation dumps |
 | `memory/<session>/state.json` | Memory bookkeeping |
 | `cron/jobs.json` | Persisted cron jobs |
+| `skill_store/manifest.json` | ClawHub skill registry manifest |
+| `skill_store/quarantine/<slug>/` | Skills awaiting validation |
+| `skill_store/verified/<slug>/` | Validated and promoted skills |
 | `dead_letters.jsonl` | Failed outbound delivery records |

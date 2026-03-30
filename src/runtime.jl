@@ -20,13 +20,15 @@ using ..PromptContext: DEFAULT_BOOTSTRAP_DOCS, load_bootstrap_docs, make_prompt_
 using ..LLM: AbstractLLMProvider, OpenAIProvider, GeminiProvider, GeminiOpenAICompatProvider, make_llm_processor
 using ..AgentModule: RetryConfig, AgentHooks, Agent,
     MemoryConfig, BuiltinToolsConfig, SkillsConfig, ClaudeCodeConfig, CodexConfig,
-    PromptContextConfig, SubagentConfig
+    PromptContextConfig, SubagentConfig, ClawHubConfig
 using ..MemoryConsolidation: make_memory_consolidator
 using ..BuiltinTools: register_builtin_tools!, register_cron_tools!, set_cron_context!
 using ..Cron
 using ..Cron: CronService, CronJob, add_job!
 using ..Subagent: SubagentManager, register_spawn_tools!, set_spawn_context!, cancel_subagents!, subagent_count
 using ..MCP: MCPServer, MCPConnectionSet, connect, connect_mcp_servers!, close!
+using ..ClawHub: ClawHubClient, SkillStore, ValidationPolicy,
+    register_clawhub_tools!, default_policy, verified_root
 
 using ..Channels.Telegram: TelegramClient, TelegramChannel, TelegramWebhookChannel,
     run_polling, normalize_update, make_telegram_sender, send_chat_action, send_message
@@ -386,10 +388,45 @@ function RuntimeState(
         )
     end
 
+    # ─── ClawHub skill store ──────────────────────────────────────
+    clawhub_tool_defs = ToolDef[]
+    clawhub_store = nothing
+    clawhub_verified_dir = nothing
+
+    if agent.clawhub.enable
+        resolved_tool_registry === nothing && (resolved_tool_registry = ToolRegistry())
+
+        clawhub_store = SkillStore(; data_dir = data_dir)
+        clawhub_client = ClawHubClient(
+            base_url = agent.clawhub.api_url,
+            auth_token = agent.clawhub.auth_token,
+        )
+        clawhub_policy = ValidationPolicy(
+            content_scan = true,
+            metadata_check = true,
+            min_downloads = agent.clawhub.min_downloads,
+            min_stars = agent.clawhub.min_stars,
+            blocked_slugs = Set(agent.clawhub.blocked_slugs),
+            blocked_authors = Set(agent.clawhub.blocked_authors),
+        )
+        clawhub_tool_defs = register_clawhub_tools!(
+            resolved_tool_registry, clawhub_store, clawhub_client;
+            policy = clawhub_policy,
+            replace = false,
+        )
+
+        vd = verified_root(clawhub_store)
+        if isdir(vd)
+            clawhub_verified_dir = vd
+        end
+    end
+
+    # ─── Skills ───────────────────────────────────────────────────
     if agent.skills.enable
         discovered_skills = discover_skills(
             workspace;
             builtin_skills_dir = agent.skills.dir,
+            clawhub_skills_dir = clawhub_verified_dir,
         )
         if !isempty(discovered_skills)
             resolved_tool_registry === nothing && (resolved_tool_registry = ToolRegistry())
@@ -397,6 +434,7 @@ function RuntimeState(
                 resolved_tool_registry;
                 workspace = workspace,
                 builtin_skills_dir = agent.skills.dir,
+                clawhub_skills_dir = clawhub_verified_dir,
                 skills = discovered_skills,
                 replace = false,
             )
@@ -520,6 +558,7 @@ function RuntimeState(
     tools_for_processor = _merge_tool_items(tools_for_processor, Any[cron_tool_defs...])
     tools_for_processor = _merge_tool_items(tools_for_processor, Any[spawn_tool_defs...])
     tools_for_processor = _merge_tool_items(tools_for_processor, Any[mcp_tool_defs...])
+    tools_for_processor = _merge_tool_items(tools_for_processor, Any[clawhub_tool_defs...])
     memory_store_for_processor = if agent.memory.enable
         agent.memory_store === nothing ? MemoryStore(; workspace = data_dir) : agent.memory_store
     else

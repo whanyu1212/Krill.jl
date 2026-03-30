@@ -66,6 +66,7 @@ claude_code_model    = "sonnet"
 codex                = true
 codex_model          = ""
 google_workspace     = true
+clawhub              = true    # ClawHub skill registry integration
 history_summarization = false
 
 # ---------------------------------------------------------------------------
@@ -90,3 +91,22 @@ X-MCP-Readonly = "true"
 name      = "langchain"
 transport = "streamable_http"
 url       = "https://docs.langchain.com/mcp"
+
+[[profile.mcp]]
+name      = "huggingface"
+transport = "streamable_http"
+url       = "https://huggingface.co/mcp"
+[profile.mcp.headers]
+Authorization = "Bearer $HF_TOKEN"
+
+# ---------------------------------------------------------------------------
+# ClawHub — skill registry integration (requires clawhub = true above)
+# ---------------------------------------------------------------------------
+
+[clawhub]
+api_url         = "https://clawhub.ai/api/v1"
+auth_token      = "$CLAWHUB_TOKEN"       # optional, only needed for private skills
+min_downloads   = 10                      # minimum download count to pass validation
+min_stars       = 0
+blocked_slugs   = []
+blocked_authors = []

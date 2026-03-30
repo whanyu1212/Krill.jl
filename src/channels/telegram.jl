@@ -322,11 +322,11 @@ function _markdown_to_telegram_html(text::AbstractString)
                 return "<a href=\"$(String(match_obj.captures[2]))\">$(String(match_obj.captures[1]))</a>"
             end,
     )
-    escaped = replace(escaped, r"\*\*([^*\n]+)\*\*" => s"<b>\1</b>")
-    escaped = replace(escaped, r"__([^_\n]+)__" => s"<b>\1</b>")
+    escaped = replace(escaped, r"(?<!\*)\*\*([^*\n]+)\*\*(?!\*)" => s"<b>\1</b>")
+    escaped = replace(escaped, r"(?<![_\w])__([^_\n]+)__(?![_\w])" => s"<b>\1</b>")
     escaped = replace(escaped, r"~~([^~\n]+)~~" => s"<s>\1</s>")
-    escaped = replace(escaped, r"(?<!\*)\*([^*\n]+)\*(?!\*)" => s"<i>\1</i>")
-    escaped = replace(escaped, r"(?<!_)_([^_\n]+)_(?!_)" => s"<i>\1</i>")
+    escaped = replace(escaped, r"(?<![*\w])\*([^*\n]+)\*(?![*\w])" => s"<i>\1</i>")
+    escaped = replace(escaped, r"(?<![_\w])_([^_\n]+)_(?![_\w])" => s"<i>\1</i>")
 
     escaped = _restore_placeholders(escaped, "KRILLINLINECODE", inline_codes)
     escaped = _restore_placeholders(escaped, "KRILLCODEBLOCK", code_blocks)

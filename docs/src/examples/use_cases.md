@@ -156,6 +156,22 @@ Use the filesystem MCP server to list files in the context directory.
 
 MCP tool names are namespaced as `mcp_<name>_<tool>` — confirm the tool IDs in the response match the server's declared tools.
 
+### Hugging Face MCP
+
+**Requires:** `huggingface` MCP server configured with a valid `$HF_TOKEN`
+
+```
+Search for recent papers on vision-language models.
+
+Find Hugging Face models for text-to-speech.
+
+Search Hugging Face datasets about weather time-series.
+
+How do I use LoRA adapters with PEFT?
+```
+
+Validates that the HF MCP tools (`mcp_huggingface_*`) return results with titles, links, and metadata. The last prompt uses documentation semantic search.
+
 ## Google Workspace (Gmail)
 
 **Requires:** `google_workspace = true`, `gws` CLI installed and authenticated (`gws auth login`)
@@ -173,6 +189,55 @@ The agent should use the `google_workspace` tool with `gws gmail +triage`, `+sen
 ::: warning
 **Other Google Workspace services** (Calendar, Drive, Sheets, Docs) are supported by the `gws` CLI but have not been thoroughly tested with Krill. Gmail send/triage/reply is the primary tested workflow. If you use other services, verify the commands work via `gws` directly first.
 :::
+
+## ClawHub Skill Registry
+
+**Requires:** `clawhub = true` in `[profile.tools]`, internet access to `clawhub.ai`
+
+Search for a community skill:
+
+```
+Search ClawHub for a skill related to web scraping.
+```
+
+The agent should call `clawhub_search` and return a list of matching skills with slug, description, author, downloads, and stars.
+
+Install a skill through the validation pipeline:
+
+```
+Install the <slug> skill from ClawHub.
+```
+
+The agent should call `clawhub_install`, which downloads the skill to quarantine, runs the validation gate (content scan, metadata check, popularity thresholds), and either promotes it to the verified store or rejects it with reasons. Check `~/.krill/skill_store/` to confirm the directory structure:
+
+```
+~/.krill/skill_store/
+├── manifest.json
+├── quarantine/        # empty after install completes
+└── verified/
+    └── <slug>/
+        └── SKILL.md
+```
+
+Verify the installed skill is discoverable:
+
+```
+What skills do you have available?
+```
+
+The newly installed skill should appear in the list with source `clawhub`.
+
+List and remove installed skills:
+
+```
+List my installed ClawHub skills.
+
+Remove the <slug> skill.
+```
+
+Test validation rejection by configuring a high `min_downloads` threshold in `[clawhub]` (e.g., `min_downloads = 999999`) and attempting to install a low-download skill — it should be rejected with a reason about the download count.
+
+---
 
 ## Shell Exec
 

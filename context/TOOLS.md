@@ -236,4 +236,33 @@ gh api search/repositories?q=QUERY --jq '.items[0:5] | .[].full_name'
 - Available skills are listed in the tool description and the system prompt skills summary.
 - Skills marked `[unavailable]` are missing required binaries or env vars.
 - Use when a task matches a skill's domain — the skill provides detailed, domain-specific instructions.
-- Skills are discovered from the workspace `.skills/` directory and the built-in skills directory.
+- Skills are discovered from the workspace `skills/` directory, the built-in skills directory, and the ClawHub verified store.
+
+---
+
+## clawhub_search
+- Searches the ClawHub public skill registry by natural language query (vector similarity).
+- Returns matching skills with name, slug, description, author, downloads, and stars.
+- Use to discover community skills that might help with the current task.
+- The slug is the identifier used with `clawhub_install`.
+
+## clawhub_install
+- Installs a skill from ClawHub into the local verified store.
+- **Security pipeline:** Download → quarantine → validation gate → verified store (or rejection).
+- The validation gate checks:
+  - Content scanning for dangerous patterns (shell code, `run()`, `ENV[]`, `@eval`, `ccall`, etc.)
+  - Metadata validation (SKILL.md exists with description in frontmatter)
+  - Popularity thresholds (configurable minimum downloads/stars)
+  - Allow/blocklist (configurable by slug or author)
+- If validation passes, the skill is promoted to the verified store and immediately available via `read_skill`.
+- If validation fails, the skill is rejected and removed. The failure reasons are reported.
+- Do NOT use `exec npx clawhub install` — it bypasses the security pipeline. Always use this tool.
+- Pass `version` to install a specific version; defaults to "latest".
+
+## clawhub_remove
+- Removes a skill from the local verified store.
+- Use when a skill is no longer needed or to clean up the store.
+
+## clawhub_list
+- Lists all skills in the local store with their status (verified, quarantined, rejected), version, author, and install date.
+- Use to check what skills are currently installed.
