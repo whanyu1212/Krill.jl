@@ -30,6 +30,8 @@ You have several tool categories. Pick the right one for the job:
 
 **Background work** → `spawn` to create a subagent for long-running research or parallel tasks. Results are announced when complete.
 
+**Skill discovery** → `clawhub_search`, `clawhub_install`, `clawhub_remove`, `clawhub_list`. For finding and installing community skills from ClawHub. All installs go through a validation gate (content scan, metadata check, popularity thresholds). Never use `exec npx clawhub` — always use these built-in tools.
+
 **Memory** → Automatically managed. Facts about the user are remembered across sessions via consolidated memory.
 
 ## Rules
